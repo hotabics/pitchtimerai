@@ -289,7 +289,7 @@ const Index = () => {
           case 0:
             return <HackathonPainStep key="pain" onNext={(v) => handleTrackStepNext('pain', v)} onBack={handleBack} initialValue={td.pain as string} idea={data.idea} />;
           case 1:
-            return <HackathonFixStep key="fix" onNext={(v) => handleTrackStepNext('fix', v)} onBack={handleBack} initialValue={td.fix as string} />;
+            return <HackathonFixStep key="fix" onNext={(v) => handleTrackStepNext('fix', v)} onBack={handleBack} initialValue={td.fix as string} idea={data.idea} pain={td.pain as string} />;
           case 2:
             return <HackathonProgressStep key="progress" onNext={(v) => handleTrackStepNext('progress', v)} onBack={handleBack} initialValue={td.progress as string} />;
           case 3:
@@ -369,7 +369,7 @@ const Index = () => {
           case 0:
             return <HackathonPainStep key="pain" onNext={(v) => handleTrackStepNext('pain', v)} onBack={handleBack} initialValue={td.pain as string} idea={data.idea} />;
           case 1:
-            return <HackathonFixStep key="fix" onNext={(v) => handleTrackStepNext('fix', v)} onBack={handleBack} initialValue={td.fix as string} />;
+            return <HackathonFixStep key="fix" onNext={(v) => handleTrackStepNext('fix', v)} onBack={handleBack} initialValue={td.fix as string} idea={data.idea} pain={td.pain as string} />;
           case 2:
             return <HackathonProgressStep key="progress" onNext={(v) => handleTrackStepNext('progress', v)} onBack={handleBack} initialValue={td.progress as string} />;
           case 3:
