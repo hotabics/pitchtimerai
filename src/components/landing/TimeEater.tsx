@@ -425,7 +425,7 @@ export const TimeEater = ({
                     transition-all duration-300
                   ">
                   <Rocket className="w-5 h-5 mr-2 group-hover:animate-float" />
-                  <span className="font-semibold">Generate Pitch >> </span>
+                  <span className="font-semibold">Generate Pitch</span>
                 </Button>
               </div>
 
