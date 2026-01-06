@@ -1,8 +1,15 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, Video, BarChart3, Play, Pause, RotateCcw } from "lucide-react";
+import { FileText, Video, BarChart3, Play, Pause, RotateCcw, Monitor, MousePointer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+interface DemoInfo {
+  hasDemo: boolean;
+  demoType?: string;
+  demoUrl?: string;
+  demoDescription?: string;
+}
 
 interface DashboardProps {
   data: {
@@ -10,6 +17,7 @@ interface DashboardProps {
     duration: number;
     problem: string;
     pitch: string;
+    demo?: DemoInfo;
   };
 }
 
@@ -19,33 +27,92 @@ const tabs = [
   { id: "analysis", label: "Analysis", icon: BarChart3 },
 ];
 
-const generateScript = (data: DashboardProps["data"]) => [
-  {
-    time: "0:00 - 0:30",
-    title: "The Hook",
-    content: `Imagine a world where ${data.problem.slice(0, 50)}... That's the reality for millions today.`,
-  },
-  {
-    time: "0:30 - 1:00",
-    title: "The Problem",
-    content: data.problem,
-  },
-  {
-    time: "1:00 - 1:30",
-    title: "The Solution",
-    content: data.pitch,
-  },
-  {
-    time: "1:30 - 2:30",
-    title: "How It Works",
-    content: `Our platform leverages AI to transform ${data.idea} into a seamless experience. Users simply connect, customize, and launch.`,
-  },
-  {
-    time: "2:30 - 3:00",
-    title: "The Ask",
-    content: "We're looking for partners who believe in democratizing innovation. Join us in making this vision a reality.",
-  },
-];
+const getDemoActions = (demo?: DemoInfo) => {
+  if (!demo?.hasDemo) return [];
+  
+  const actions = [];
+  
+  if (demo.demoType === "website") {
+    actions.push(
+      { action: "Open browser to demo URL", timing: "Before slide 'How It Works'" },
+      { action: "Show landing page and key features", timing: "During explanation" },
+      { action: "Demonstrate user flow", timing: "Highlight the core value" },
+    );
+  } else if (demo.demoType === "mobile") {
+    actions.push(
+      { action: "Ensure device is mirrored to screen", timing: "Before demo section" },
+      { action: "Open app and show home screen", timing: "During 'How It Works'" },
+      { action: "Walk through main user journey", timing: "Keep interactions slow and visible" },
+    );
+  } else if (demo.demoType === "slides") {
+    actions.push(
+      { action: "Queue up video/slides in presenter mode", timing: "Before pitch starts" },
+      { action: "Play pre-recorded demo", timing: "During 'How It Works' section" },
+      { action: "Pause on key moments for emphasis", timing: "Sync with narration" },
+    );
+  }
+  
+  if (demo.demoDescription) {
+    actions.push({ action: demo.demoDescription, timing: "Custom demo focus" });
+  }
+  
+  return actions;
+};
+
+const generateScript = (data: DashboardProps["data"]) => {
+  const hasDemo = data.demo?.hasDemo;
+  
+  const blocks = [
+    {
+      time: "0:00 - 0:30",
+      title: "The Hook",
+      content: `Imagine a world where ${data.problem.slice(0, 50)}... That's the reality for millions today.`,
+      isDemo: false,
+    },
+    {
+      time: "0:30 - 1:00",
+      title: "The Problem",
+      content: data.problem,
+      isDemo: false,
+    },
+    {
+      time: "1:00 - 1:30",
+      title: "The Solution",
+      content: data.pitch,
+      isDemo: false,
+    },
+  ];
+  
+  if (hasDemo) {
+    blocks.push({
+      time: "1:30 - 2:30",
+      title: "🖥️ Live Demo",
+      content: `Let me show you how this works in action. [DEMO: ${data.demo?.demoDescription || "Show core functionality"}]`,
+      isDemo: true,
+    });
+    blocks.push({
+      time: "2:30 - 3:00",
+      title: "The Ask",
+      content: "As you just saw, our solution works. We're looking for partners who believe in this vision. Join us in making it a reality.",
+      isDemo: false,
+    });
+  } else {
+    blocks.push({
+      time: "1:30 - 2:30",
+      title: "How It Works",
+      content: `Our platform leverages AI to transform ${data.idea} into a seamless experience. Users simply connect, customize, and launch.`,
+      isDemo: false,
+    });
+    blocks.push({
+      time: "2:30 - 3:00",
+      title: "The Ask",
+      content: "We're looking for partners who believe in democratizing innovation. Join us in making this vision a reality.",
+      isDemo: false,
+    });
+  }
+  
+  return blocks;
+};
 
 const analysisData = {
   score: 85,
@@ -119,11 +186,15 @@ export const Dashboard = ({ data }: DashboardProps) => {
                   transition={{ delay: index * 0.1 }}
                   className={cn(
                     "glass-card rounded-xl p-4 transition-all",
-                    currentBlock === index && "ring-2 ring-primary"
+                    currentBlock === index && "ring-2 ring-primary",
+                    block.isDemo && "border-2 border-time-low bg-time-low/5"
                   )}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded">
+                    <span className={cn(
+                      "text-xs font-medium px-2 py-1 rounded",
+                      block.isDemo ? "bg-time-low/20 text-time-low" : "bg-primary/10 text-primary"
+                    )}>
                       {block.time}
                     </span>
                     <span className="text-sm font-semibold text-foreground">{block.title}</span>
@@ -131,8 +202,48 @@ export const Dashboard = ({ data }: DashboardProps) => {
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     {block.content}
                   </p>
+                  {block.isDemo && (
+                    <div className="mt-3 flex items-center gap-2 text-xs text-time-low">
+                      <Monitor className="w-3 h-3" />
+                      <span>Demo segment - practice transitions!</span>
+                    </div>
+                  )}
                 </motion.div>
               ))}
+              
+              {/* Demo Actions Section */}
+              {data.demo?.hasDemo && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                  className="mt-6 p-4 rounded-xl bg-gradient-to-r from-time-low/10 to-primary/10 border border-time-low/30"
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <MousePointer className="w-4 h-4 text-time-low" />
+                    <h3 className="font-semibold text-foreground">Recommended Demo Actions</h3>
+                  </div>
+                  <div className="space-y-2">
+                    {getDemoActions(data.demo).map((action, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.6 + index * 0.1 }}
+                        className="flex items-start gap-3 p-2 rounded-lg bg-background/50"
+                      >
+                        <div className="w-5 h-5 rounded-full bg-time-low/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <span className="text-xs font-bold text-time-low">{index + 1}</span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{action.action}</p>
+                          <p className="text-xs text-muted-foreground">{action.timing}</p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
             </motion.div>
           )}
 
