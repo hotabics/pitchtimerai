@@ -8,37 +8,29 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 // Custom hook for counting animation
 const useCountUp = (end: number, duration: number = 1500, start: boolean = false) => {
   const [count, setCount] = useState(0);
-  
   useEffect(() => {
     if (!start) {
       setCount(0);
       return;
     }
-    
     let startTime: number;
     let animationFrame: number;
-    
     const animate = (timestamp: number) => {
       if (!startTime) startTime = timestamp;
       const progress = Math.min((timestamp - startTime) / duration, 1);
-      
+
       // Easing function for smooth animation
       const easeOutQuart = 1 - Math.pow(1 - progress, 4);
       setCount(Math.floor(easeOutQuart * end));
-      
       if (progress < 1) {
         animationFrame = requestAnimationFrame(animate);
       }
     };
-    
     animationFrame = requestAnimationFrame(animate);
-    
     return () => cancelAnimationFrame(animationFrame);
   }, [end, duration, start]);
-  
   return count;
 };
-
 interface TimeEaterProps {
   onSubmit: (idea: string) => void;
 }
@@ -114,9 +106,9 @@ export const TimeEater = ({
   const totalManual = tasks.reduce((sum, t) => sum + t.manualMinutes, 0);
   const totalAI = tasks.reduce((sum, t) => sum + t.aiMinutes, 0);
   const timeSaved = totalManual - totalAI;
-  const percentageSaved = Math.round((timeSaved / totalManual) * 100);
+  const percentageSaved = Math.round(timeSaved / totalManual * 100);
   const maxManualMinutes = Math.max(...tasks.map(t => t.manualMinutes));
-  
+
   // Counting animations
   const animatedTimeSaved = useCountUp(timeSaved, 1500, animateBars);
   const animatedPercentage = useCountUp(percentageSaved, 1500, animateBars);
@@ -508,7 +500,7 @@ export const TimeEater = ({
               transition-all duration-300
             ">
             <Rocket className="w-5 h-5 mr-2 group-hover:animate-float" />
-            <span className="font-semibold">Optimise My Pitch</span>
+            <span className="font-semibold">Generate Pitch</span>
           </Button>
         </motion.div>}
     </div>;
