@@ -287,7 +287,7 @@ const Index = () => {
       case 'hackathon-no-demo':
         switch (trackStep) {
           case 0:
-            return <HackathonPainStep key="pain" onNext={(v) => handleTrackStepNext('pain', v)} onBack={handleBack} initialValue={td.pain as string} />;
+            return <HackathonPainStep key="pain" onNext={(v) => handleTrackStepNext('pain', v)} onBack={handleBack} initialValue={td.pain as string} idea={data.idea} />;
           case 1:
             return <HackathonFixStep key="fix" onNext={(v) => handleTrackStepNext('fix', v)} onBack={handleBack} initialValue={td.fix as string} />;
           case 2:
@@ -367,7 +367,7 @@ const Index = () => {
       case 'hackathon-with-demo':
         switch (trackStep) {
           case 0:
-            return <HackathonPainStep key="pain" onNext={(v) => handleTrackStepNext('pain', v)} onBack={handleBack} initialValue={td.pain as string} />;
+            return <HackathonPainStep key="pain" onNext={(v) => handleTrackStepNext('pain', v)} onBack={handleBack} initialValue={td.pain as string} idea={data.idea} />;
           case 1:
             return <HackathonFixStep key="fix" onNext={(v) => handleTrackStepNext('fix', v)} onBack={handleBack} initialValue={td.fix as string} />;
           case 2:

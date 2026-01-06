@@ -1,27 +1,99 @@
 import { motion } from "framer-motion";
-import { ArrowRight, ArrowLeft, Users, Zap, Code, CheckCircle, HelpCircle } from "lucide-react";
+import { ArrowRight, ArrowLeft, Users, Zap, Code, CheckCircle, HelpCircle, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { WizardStep } from "@/components/WizardStep";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { supabase } from "@/integrations/supabase/client";
+
+interface PainSuggestion {
+  id: string;
+  text: string;
+}
 
 // Step 1: The Pain
 interface PainStepProps {
   onNext: (pain: string) => void;
   onBack: () => void;
   initialValue?: string;
+  idea?: string;
 }
 
-export const HackathonPainStep = ({ onNext, onBack, initialValue = "" }: PainStepProps) => {
+export const HackathonPainStep = ({ onNext, onBack, initialValue = "", idea = "" }: PainStepProps) => {
   const [pain, setPain] = useState(initialValue);
+  const [suggestions, setSuggestions] = useState<PainSuggestion[]>([]);
+  const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (idea) {
+      fetchSuggestions();
+    }
+  }, [idea]);
+
+  const fetchSuggestions = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-pitch", {
+        body: {
+          type: "pain-suggestions",
+          idea,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.suggestions && Array.isArray(data.suggestions)) {
+        setSuggestions(
+          data.suggestions.map((text: string, index: number) => ({
+            id: `suggestion-${index}`,
+            text,
+          }))
+        );
+      }
+    } catch (error) {
+      console.error("Failed to fetch suggestions:", error);
+      // Fallback suggestions
+      setSuggestions([
+        { id: "s1", text: "Users spend too much time on repetitive manual tasks" },
+        { id: "s2", text: "Existing solutions are too complex or expensive" },
+        { id: "s3", text: "Critical information is scattered across multiple tools" },
+        { id: "s4", text: "No real-time visibility into key metrics or status" },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const toggleSuggestion = (id: string) => {
+    setSelectedSuggestions((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+    );
+  };
+
+  // Combine custom input with selected suggestions
+  const getCombinedPain = () => {
+    const selectedTexts = suggestions
+      .filter((s) => selectedSuggestions.includes(s.id))
+      .map((s) => s.text);
+    
+    const parts = [...selectedTexts];
+    if (pain.trim()) {
+      parts.push(pain.trim());
+    }
+    return parts.join(". ");
+  };
+
+  const hasContent = pain.trim() || selectedSuggestions.length > 0;
 
   return (
     <WizardStep
@@ -70,6 +142,50 @@ export const HackathonPainStep = ({ onNext, onBack, initialValue = "" }: PainSte
               className="h-12"
             />
           </div>
+
+          {/* AI Suggestions */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="space-y-3"
+          >
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-violet-500" />
+              <Label className="text-sm text-muted-foreground">AI Suggestions (select any that apply)</Label>
+            </div>
+            
+            {isLoading ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="w-5 h-5 animate-spin text-violet-500" />
+                <span className="ml-2 text-sm text-muted-foreground">Generating suggestions...</span>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {suggestions.map((suggestion, index) => (
+                  <motion.div
+                    key={suggestion.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.25 + index * 0.05 }}
+                    className={`flex items-start gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
+                      selectedSuggestions.includes(suggestion.id)
+                        ? "border-violet-500 bg-violet-500/10"
+                        : "border-border hover:border-violet-500/50 hover:bg-muted/50"
+                    }`}
+                    onClick={() => toggleSuggestion(suggestion.id)}
+                  >
+                    <Checkbox
+                      checked={selectedSuggestions.includes(suggestion.id)}
+                      onCheckedChange={() => toggleSuggestion(suggestion.id)}
+                      className="mt-0.5"
+                    />
+                    <span className="text-sm leading-relaxed">{suggestion.text}</span>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </motion.div>
         </motion.div>
 
         <div className="flex-1" />
@@ -83,8 +199,8 @@ export const HackathonPainStep = ({ onNext, onBack, initialValue = "" }: PainSte
           <Button
             variant="default"
             size="lg"
-            onClick={() => onNext(pain)}
-            disabled={!pain.trim()}
+            onClick={() => onNext(getCombinedPain())}
+            disabled={!hasContent}
             className="w-full"
           >
             Continue
