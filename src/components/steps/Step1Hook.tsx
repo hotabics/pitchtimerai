@@ -21,7 +21,7 @@ export const Step1Hook = ({ onNext }: Step1HookProps) => {
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % sloganVariations.length);
-    }, 3000);
+    }, 8000);
     return () => clearInterval(interval);
   }, []);
 
@@ -59,7 +59,7 @@ export const Step1Hook = ({ onNext }: Step1HookProps) => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.4 }}
-                className="inline-block"
+                className="inline-block text-primary underline decoration-primary/50 underline-offset-4"
               >
                 {subject}
               </motion.span>
@@ -76,7 +76,7 @@ export const Step1Hook = ({ onNext }: Step1HookProps) => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.4 }}
-                className="inline-block"
+                className="inline-block text-primary underline decoration-primary/50 underline-offset-4"
               >
                 {contrast}
               </motion.span>
