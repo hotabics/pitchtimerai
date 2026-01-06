@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  FileText, Video, BarChart3, Play, Pause, RotateCcw, Monitor, 
+  FileText, Video, Play, Pause, RotateCcw, Monitor, 
   Smartphone, Presentation, RefreshCw, Download, Clock, Minus, 
-  Smile, Zap, ChevronRight, Timer, SkipForward, Volume2, VolumeX,
-  Gauge, Mic, ChevronDown
+  Smile, Zap, Timer, SkipForward, Volume2, VolumeX,
+  Gauge, Mic
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -61,7 +61,6 @@ const tabs = [
   { id: "script", label: "Speech", icon: FileText },
   { id: "practice", label: "Practice", icon: Video },
   { id: "coach", label: "AI Coach", icon: Mic },
-  { id: "analysis", label: "Analysis", icon: BarChart3 },
 ];
 
 const regenerateOptions = [
@@ -570,16 +569,6 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
     });
   };
 
-  const analysisData = {
-    score: 85,
-    feedback: [
-      { type: "positive", text: "Strong opening hook that captures attention" },
-      { type: "positive", text: "Clear problem-solution narrative" },
-      { type: "positive", text: "Good pacing throughout the speech" },
-      { type: "warning", text: "Consider adding specific metrics or traction" },
-      { type: "warning", text: "Missing competitive differentiation" },
-    ],
-  };
 
   if (isLoading) {
     return (
@@ -998,55 +987,6 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
             </motion.div>
           )}
 
-          {activeTab === "analysis" && (
-            <motion.div
-              key="analysis"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-6"
-            >
-              {/* Score */}
-              <div className="glass-card rounded-xl p-6 text-center">
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", delay: 0.2 }}
-                  className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-success/10 mb-4"
-                >
-                  <span className="text-4xl font-bold text-success">{analysisData.score}</span>
-                </motion.div>
-                <p className="text-lg font-semibold text-foreground">Great Speech!</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Your speech scores above average for {trackConfig?.name || "presentations"}
-                </p>
-              </div>
-
-              {/* Feedback */}
-              <div className="space-y-3">
-                {analysisData.feedback.map((item, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.3 + index * 0.1 }}
-                    className={cn(
-                      "flex items-start gap-3 p-3 rounded-lg",
-                      item.type === "positive" ? "bg-success/10" : "bg-warning/10"
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        "w-2 h-2 rounded-full mt-1.5 flex-shrink-0",
-                        item.type === "positive" ? "bg-success" : "bg-warning"
-                      )}
-                    />
-                    <p className="text-sm text-foreground">{item.text}</p>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          )}
         </AnimatePresence>
       </div>
     </div>
