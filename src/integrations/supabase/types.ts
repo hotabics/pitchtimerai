@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      practice_sessions: {
+        Row: {
+          created_at: string
+          duration_minutes: number
+          feedback: string[] | null
+          filler_breakdown: Json | null
+          filler_count: number
+          id: string
+          idea: string
+          missed_sections: string[] | null
+          original_script: string | null
+          recording_duration_seconds: number
+          score: number
+          session_group_id: string | null
+          tone: string | null
+          track: string
+          transcription: string | null
+          transcription_html: string | null
+          wpm: number
+        }
+        Insert: {
+          created_at?: string
+          duration_minutes: number
+          feedback?: string[] | null
+          filler_breakdown?: Json | null
+          filler_count?: number
+          id?: string
+          idea: string
+          missed_sections?: string[] | null
+          original_script?: string | null
+          recording_duration_seconds: number
+          score?: number
+          session_group_id?: string | null
+          tone?: string | null
+          track: string
+          transcription?: string | null
+          transcription_html?: string | null
+          wpm?: number
+        }
+        Update: {
+          created_at?: string
+          duration_minutes?: number
+          feedback?: string[] | null
+          filler_breakdown?: Json | null
+          filler_count?: number
+          id?: string
+          idea?: string
+          missed_sections?: string[] | null
+          original_script?: string | null
+          recording_duration_seconds?: number
+          score?: number
+          session_group_id?: string | null
+          tone?: string | null
+          track?: string
+          transcription?: string | null
+          transcription_html?: string | null
+          wpm?: number
+        }
+        Relationships: []
+      }
       suggestion_analytics: {
         Row: {
           id: string

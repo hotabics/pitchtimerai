@@ -133,6 +133,69 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
     ? calculateBlockDuration(speechBlocks[currentBlock].content, speedMultiplier)
     : 0;
 
+  // Pre-cache all blocks when audio is enabled
+  const [isCachingAudio, setIsCachingAudio] = useState(false);
+  const [cacheProgress, setCacheProgress] = useState(0);
+
+  const precacheAllAudio = useCallback(async () => {
+    if (speechBlocks.length === 0) return;
+    
+    setIsCachingAudio(true);
+    setCacheProgress(0);
+    
+    try {
+      for (let i = 0; i < speechBlocks.length; i++) {
+        // Skip if already cached
+        if (audioCache.current.has(i)) {
+          setCacheProgress(((i + 1) / speechBlocks.length) * 100);
+          continue;
+        }
+
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({ text: speechBlocks[i].content, voiceId: selectedVoice }),
+          }
+        );
+
+        if (response.ok) {
+          const audioBlob = await response.blob();
+          const audioUrl = URL.createObjectURL(audioBlob);
+          audioCache.current.set(i, audioUrl);
+        }
+        
+        setCacheProgress(((i + 1) / speechBlocks.length) * 100);
+      }
+      
+      toast({
+        title: "Audio Ready!",
+        description: "All speech blocks have been pre-loaded for instant playback.",
+      });
+    } catch (err) {
+      console.error('Pre-cache error:', err);
+      toast({
+        title: "Caching Error",
+        description: "Some audio blocks couldn't be pre-loaded.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCachingAudio(false);
+    }
+  }, [speechBlocks, selectedVoice]);
+
+  // Trigger pre-caching when audio is enabled
+  useEffect(() => {
+    if (audioEnabled && speechBlocks.length > 0 && audioCache.current.size < speechBlocks.length) {
+      precacheAllAudio();
+    }
+  }, [audioEnabled, speechBlocks.length]);
+
   // Fetch and play TTS audio for current block
   const playBlockAudio = useCallback(async (blockIndex: number) => {
     if (!audioEnabled || !speechBlocks[blockIndex]) return;
@@ -143,10 +206,19 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
       const audio = new Audio(cachedUrl);
       audio.playbackRate = speedMultiplier;
       setCurrentAudio(audio);
+      
+      audio.onended = () => {
+        // Auto-advance if still playing
+        if (isPlaying && blockIndex < speechBlocks.length - 1) {
+          setCurrentBlock(blockIndex + 1);
+        }
+      };
+      
       await audio.play();
       return;
     }
 
+    // Fallback: fetch if not cached
     setIsLoadingAudio(true);
     try {
       const response = await fetch(
@@ -194,7 +266,7 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
     } finally {
       setIsLoadingAudio(false);
     }
-  }, [audioEnabled, speechBlocks, speedMultiplier, isPlaying]);
+  }, [audioEnabled, speechBlocks, speedMultiplier, isPlaying, selectedVoice]);
 
   // Stop current audio
   const stopAudio = useCallback(() => {
@@ -918,7 +990,10 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
             >
               <SpeechCoach 
                 speechBlocks={speechBlocks} 
-                onBack={() => setActiveTab("practice")} 
+                onBack={() => setActiveTab("practice")}
+                idea={data.idea}
+                track={data.track}
+                duration={data.duration}
               />
             </motion.div>
           )}
