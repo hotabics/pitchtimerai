@@ -34,8 +34,17 @@ export const Step5Solution = ({ idea, onNext, onBack }: Step5SolutionProps) => {
 
         if (error) throw error;
         
-        if (data?.result) {
-          setPitches(data.result);
+        console.log('AI pitches response:', data);
+        
+        if (data?.result && Array.isArray(data.result)) {
+          const validPitches = data.result.map((p: any, i: number) => ({
+            id: String(p.id || i + 1),
+            title: p.title || `Option ${i + 1}`,
+            pitch: p.pitch || ''
+          }));
+          setPitches(validPitches);
+        } else {
+          throw new Error('Invalid response format');
         }
       } catch (error) {
         console.error('Failed to generate pitches:', error);

@@ -37,8 +37,18 @@ export const Step3Problem = ({ idea, onNext, onBack }: Step3ProblemProps) => {
 
         if (error) throw error;
         
-        if (data?.result) {
-          setProblems(data.result);
+        console.log('AI response:', data);
+        
+        if (data?.result && Array.isArray(data.result)) {
+          // Ensure each item has required fields
+          const validProblems = data.result.map((p: any, i: number) => ({
+            id: String(p.id || i + 1),
+            title: p.title || `Option ${i + 1}`,
+            description: p.description || p.text || ''
+          }));
+          setProblems(validProblems);
+        } else {
+          throw new Error('Invalid response format');
         }
       } catch (error) {
         console.error('Failed to generate problems:', error);
