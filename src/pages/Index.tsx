@@ -124,7 +124,8 @@ const Index = () => {
 
   return (
     <>
-      <TimeCounter targetMinutes={timeSteps[step]} />
+      {/* Only show TimeCounter after Step 1 (landing page has its own) */}
+      {step > 0 && <TimeCounter targetMinutes={timeSteps[step]} />}
       {step > 0 && (
         <div className="fixed top-16 left-0 right-0 z-40">
           <ProgressIndicator currentStep={step} totalSteps={7} />
