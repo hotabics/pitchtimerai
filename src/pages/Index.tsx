@@ -5,7 +5,6 @@ import { WizardLayout } from "@/components/WizardLayout";
 import { BriefData } from "@/components/ProjectBrief";
 import { Step1Hook } from "@/components/steps/Step1Hook";
 import { Step2Audience } from "@/components/steps/Step2Audience";
-import { Step3Demo } from "@/components/steps/Step3Demo";
 import { Step4Problem } from "@/components/steps/Step4Problem";
 import { Step5Solution } from "@/components/steps/Step5Solution";
 import { Step6Business } from "@/components/steps/Step6Business";
@@ -13,20 +12,11 @@ import { Step7Generation } from "@/components/steps/Step7Generation";
 import { Dashboard } from "@/components/Dashboard";
 import { toast } from "@/hooks/use-toast";
 
-interface DemoInfo {
-  hasDemo: boolean;
-  demoType?: string;
-  demoUrl?: string;
-  demoDescription?: string;
-}
-
 interface PitchData {
   idea: string;
   duration: number;
   audience: string;
   audienceLabel: string;
-  demo: DemoInfo;
-  demoLabel: string;
   problem: string;
   persona: { description: string; keywords: string[] };
   pitch: string;
@@ -36,18 +26,17 @@ interface PitchData {
 }
 
 // Time calculation based on step progress - starts from Manual Grind time (5h 15m)
-const calculatePrepTime = (step: number, demoType?: string): number => {
+const calculatePrepTime = (step: number): number => {
   const baseTime = 315; // 5h 15m in minutes (Manual Grind time from landing page)
   
-  // Time at each step, decreasing from 5h 15m to 30m
+  // Time at each step, decreasing from 5h 15m to 30m (now 6 steps instead of 7)
   const timeAtStep: Record<number, number> = {
     0: 315,    // Step 0 (Landing): 5h 15m
-    1: 270,    // Step 1 (Audience): 4h 30m
-    2: 210,    // Step 2 (Demo): 3h 30m
-    3: 150,    // Step 3 (Problem): 2h 30m
-    4: 90,     // Step 4 (Solution): 1h 30m
-    5: 50,     // Step 5 (Business): 0h 50m
-    6: 30,     // Step 6 (Generation): 0h 30m (Final)
+    1: 250,    // Step 1 (Audience): 4h 10m
+    2: 180,    // Step 2 (Problem): 3h 00m
+    3: 110,    // Step 3 (Solution): 1h 50m
+    4: 60,     // Step 4 (Business): 1h 00m
+    5: 30,     // Step 5 (Generation): 0h 30m (Final)
   };
 
   return timeAtStep[step] ?? baseTime;
@@ -77,7 +66,7 @@ const Index = () => {
     });
   };
 
-  // Step 2: Audience selection
+  // Step 2: Audience selection -> goes directly to Problem
   const handleStep2 = (audience: string, audienceLabel: string) => {
     setData({ ...data, audience, audienceLabel });
     setStep(2);
@@ -87,52 +76,38 @@ const Index = () => {
     });
   };
 
-  // Step 3: Demo strategy
-  const handleStep3 = (demoType: string, demoLabel: string) => {
-    const demo: DemoInfo = {
-      hasDemo: demoType !== "none",
-      demoType: demoType !== "none" ? demoType : undefined,
-    };
-    setData({ ...data, demo, demoLabel });
-    setStep(3);
-    toast({
-      title: "Demo Strategy Set!",
-      description: `Using ${demoLabel} approach`,
-    });
-  };
-
-  // Step 4: Problem selection
-  const handleStep4 = (problem: string) => {
+  // Step 3: Problem selection
+  const handleStep3 = (problem: string) => {
     setData({ ...data, problem });
-    setStep(4);
+    setStep(3);
     toast({
       title: "Problem Defined!",
       description: "Core pain point identified",
     });
   };
 
-  // Step 5: Solution pitch
-  const handleStep5 = (pitch: string, solutionDescription?: string) => {
+  // Step 4: Solution pitch
+  const handleStep4 = (pitch: string, solutionDescription?: string) => {
     setData({ ...data, pitch, solutionDescription });
-    setStep(5);
+    setStep(4);
     toast({
       title: "Pitch Locked!",
       description: "Elevator pitch ready",
     });
   };
 
-  // Step 6: Business model
-  const handleStep6 = (models: string[]) => {
+  // Step 5: Business model
+  const handleStep5 = (models: string[]) => {
     setData({ ...data, models });
-    setStep(6);
+    setStep(5);
     toast({
       title: "Monetization Set!",
       description: `${models.length} revenue model(s) selected`,
     });
   };
 
-  // Step 7: Generation tier and generate
-  const handleStep7 = (tier: string, tierLabel: string) => {
+  // Step 6: Generation tier and generate
+  const handleStep6 = (tier: string, tierLabel: string) => {
     setData({ ...data, generationTier: tier });
     setShowDashboard(true);
     toast({
@@ -145,12 +120,11 @@ const Index = () => {
   const briefData: BriefData = {
     projectName: data.idea,
     audienceLabel: data.audienceLabel,
-    demoLabel: data.demoLabel,
     problem: data.problem,
     solution: data.pitch,
     monetization: data.models,
     generationTier: data.generationTier,
-    prepTime: calculatePrepTime(step, data.demo?.demoType),
+    prepTime: calculatePrepTime(step),
   };
 
   // Dashboard view after generation
@@ -165,7 +139,6 @@ const Index = () => {
             problem: data.problem || "",
             pitch: data.pitch || "",
             solutionDescription: data.solutionDescription,
-            demo: data.demo,
           }}
         />
       </>
@@ -177,12 +150,12 @@ const Index = () => {
     return <Step1Hook onNext={handleStep1} />;
   }
 
-  // Wizard steps (1-7)
+  // Wizard steps (1-6)
   return (
     <WizardLayout
       briefData={briefData}
       currentStep={step}
-      totalSteps={7}
+      totalSteps={6}
       onLogoClick={handleLogoClick}
     >
       <AnimatePresence mode="wait">
@@ -194,14 +167,15 @@ const Index = () => {
           />
         )}
         {step === 2 && (
-          <Step3Demo
+          <Step4Problem
             key="step3"
+            idea={data.idea || ""}
             onNext={handleStep3}
             onBack={handleBack}
           />
         )}
         {step === 3 && (
-          <Step4Problem
+          <Step5Solution
             key="step4"
             idea={data.idea || ""}
             onNext={handleStep4}
@@ -209,24 +183,16 @@ const Index = () => {
           />
         )}
         {step === 4 && (
-          <Step5Solution
+          <Step6Business
             key="step5"
-            idea={data.idea || ""}
             onNext={handleStep5}
             onBack={handleBack}
           />
         )}
         {step === 5 && (
-          <Step6Business
+          <Step7Generation
             key="step6"
             onNext={handleStep6}
-            onBack={handleBack}
-          />
-        )}
-        {step === 6 && (
-          <Step7Generation
-            key="step7"
-            onNext={handleStep7}
             onBack={handleBack}
           />
         )}
