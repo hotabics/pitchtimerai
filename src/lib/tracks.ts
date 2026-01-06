@@ -22,9 +22,9 @@ export interface TrackConfig {
 export const trackConfigs: Record<TrackType, TrackConfig> = {
   'hackathon-no-demo': {
     id: 'hackathon-no-demo',
-    name: 'Hackathon (Slides Only)',
-    description: 'Technical jury without live demo - focus on architecture and progress',
-    stepCount: 6,
+    name: 'Hackathon Pitch',
+    description: 'Technical jury - focus on architecture and progress',
+    stepCount: 4, // Pain, Fix, Progress, Feasibility
     baseTime: 280,
     finalTime: 35,
     color: 'from-violet-500 to-violet-600',
@@ -32,19 +32,19 @@ export const trackConfigs: Record<TrackType, TrackConfig> = {
   },
   'hackathon-with-demo': {
     id: 'hackathon-with-demo',
-    name: 'Hackathon (With Demo)',
-    description: 'Technical jury with live demo - high reward, needs choreography',
-    stepCount: 6,
-    baseTime: 360, // High prep time for demo choreography
-    finalTime: 45,
-    color: 'from-red-500 to-red-600',
-    outputStructure: ['Problem', 'Solution', 'DEMO (Central)', 'Work Done', 'Feasibility', 'Target', 'Next Steps', 'Closing'],
+    name: 'Hackathon Pitch',
+    description: 'Technical jury - focus on architecture and progress',
+    stepCount: 4, // Same as no-demo now
+    baseTime: 280,
+    finalTime: 35,
+    color: 'from-violet-500 to-violet-600',
+    outputStructure: ['Problem', 'Solution', 'Work Done', 'Feasibility', 'Target', 'Next Steps', 'Closing'],
   },
   'investor': {
     id: 'investor',
     name: 'Investor Pitch',
     description: 'VCs and investors - focus on market, traction, and the ask',
-    stepCount: 7,
+    stepCount: 5, // Opportunity, Market, Traction, Business Model, Ask
     baseTime: 340,
     finalTime: 40,
     color: 'from-emerald-500 to-emerald-600',
@@ -54,8 +54,8 @@ export const trackConfigs: Record<TrackType, TrackConfig> = {
     id: 'academic',
     name: 'Academic Defense',
     description: 'Thesis defense - strict structure, data-driven arguments',
-    stepCount: 7,
-    baseTime: 420, // Very high prep time for accuracy
+    stepCount: 5, // Topic, Research Frame, Methodology, Results, Conclusions
+    baseTime: 420,
     finalTime: 50,
     color: 'from-blue-500 to-blue-600',
     outputStructure: ['Intro', 'Problem', 'Goal', 'Methodology', 'Results', 'Conclusions', 'Proposals', 'Novelty'],
@@ -64,8 +64,8 @@ export const trackConfigs: Record<TrackType, TrackConfig> = {
     id: 'grandma',
     name: 'Simple Explanation',
     description: 'Non-technical audience - emotional, relatable, simple',
-    stepCount: 6,
-    baseTime: 180, // Low prep time for simplicity
+    stepCount: 5, // Connection, Pain, Analogy, Benefits, Safety
+    baseTime: 180,
     finalTime: 20,
     color: 'from-amber-500 to-amber-600',
     outputStructure: ['Why', 'Problem', 'What Is It', 'Benefits', 'Usage', 'Safety', 'Care'],
@@ -74,16 +74,16 @@ export const trackConfigs: Record<TrackType, TrackConfig> = {
     id: 'peers',
     name: 'Peers & Friends',
     description: 'Casual pitch to classmates, friends, or student clubs - authentic and no-BS',
-    stepCount: 8,
-    baseTime: 120, // Low prep time - casual but structured
+    stepCount: 8, // Hook, Struggle, Thing, WhyCare, HowTo, Comparison, AuthenticWhy, CTA
+    baseTime: 120,
     finalTime: 15,
     color: 'from-fuchsia-500 to-purple-600',
     outputStructure: ['Hook', 'Relatable Problem', 'Definition', 'Benefits', 'How-to', 'Comparison', 'Personal Story', 'Chill CTA'],
   },
 };
 
-// Determine track based on audience and demo selections
-export function determineTrack(audience: string, demoType: string): TrackType {
+// Determine track based on audience selection
+export function determineTrack(audience: string, _demoType?: string): TrackType {
   // Academic track
   if (audience === 'academic') {
     return 'academic';
@@ -104,17 +104,12 @@ export function determineTrack(audience: string, demoType: string): TrackType {
     return 'investor';
   }
   
-  // Hackathon tracks (Jury/Judges)
+  // Hackathon tracks (Jury/Judges/Users)
   if (audience === 'judges' || audience === 'users') {
-    // With demo: prototype or video
-    if (demoType === 'prototype' || demoType === 'video') {
-      return 'hackathon-with-demo';
-    }
-    // No demo: slides only
     return 'hackathon-no-demo';
   }
   
-  // Default to hackathon no demo
+  // Default to hackathon
   return 'hackathon-no-demo';
 }
 

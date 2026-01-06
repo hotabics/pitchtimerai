@@ -5,55 +5,134 @@ import { WizardLayout } from "@/components/WizardLayout";
 import { BriefData } from "@/components/ProjectBrief";
 import { Step1Hook } from "@/components/steps/Step1Hook";
 import { Step2Audience } from "@/components/steps/Step2Audience";
-import { Step4Problem } from "@/components/steps/Step4Problem";
-import { Step5Solution } from "@/components/steps/Step5Solution";
-import { Step6Business } from "@/components/steps/Step6Business";
 import { Step7Generation } from "@/components/steps/Step7Generation";
 import { Dashboard } from "@/components/Dashboard";
 import { toast } from "@/hooks/use-toast";
 
-interface PitchData {
-  idea: string;
-  duration: number;
-  audience: string;
-  audienceLabel: string;
-  problem: string;
-  persona: { description: string; keywords: string[] };
-  pitch: string;
-  solutionDescription?: string;
-  models: string[];
-  generationTier: string;
+// Track-specific step imports
+import { 
+  HackathonPainStep, 
+  HackathonFixStep, 
+  HackathonProgressStep, 
+  HackathonFeasibilityStep 
+} from "@/components/steps/tracks/HackathonNoDemoSteps";
+
+import {
+  InvestorOpportunityStep,
+  InvestorMarketStep,
+  InvestorTractionStep,
+  InvestorBusinessModelStep,
+  InvestorAskStep,
+} from "@/components/steps/tracks/InvestorSteps";
+
+import {
+  AcademicTopicStep,
+  AcademicResearchFrameStep,
+  AcademicMethodologyStep,
+  AcademicResultsStep,
+  AcademicConclusionsStep,
+} from "@/components/steps/tracks/AcademicSteps";
+
+import {
+  GrandmaConnectionStep,
+  GrandmaPainStep,
+  GrandmaAnalogyStep,
+  GrandmaBenefitsStep,
+  GrandmaSafetyStep,
+} from "@/components/steps/tracks/GrandmaSteps";
+
+import {
+  PeersHookStep,
+  PeersStruggleStep,
+  PeersThingStep,
+  PeersWhyCareStep,
+  PeersHowToStep,
+  PeersComparisonStep,
+  PeersAuthenticWhyStep,
+  PeersCTAStep,
+} from "@/components/steps/tracks/PeersSteps";
+
+import { TrackType, trackConfigs, determineTrack, calculateTrackPrepTime } from "@/lib/tracks";
+
+// Track-specific data interfaces
+interface HackathonData {
+  pain?: string;
+  fix?: string;
+  progress?: string;
+  feasibility?: string;
 }
 
-// Time calculation based on step progress - starts from Manual Grind time (5h 15m)
-const calculatePrepTime = (step: number): number => {
-  const baseTime = 315; // 5h 15m in minutes (Manual Grind time from landing page)
-  
-  // Time at each step, decreasing from 5h 15m to 30m (now 6 steps instead of 7)
-  const timeAtStep: Record<number, number> = {
-    0: 315,    // Step 0 (Landing): 5h 15m
-    1: 250,    // Step 1 (Audience): 4h 10m
-    2: 180,    // Step 2 (Problem): 3h 00m
-    3: 110,    // Step 3 (Solution): 1h 50m
-    4: 60,     // Step 4 (Business): 1h 00m
-    5: 30,     // Step 5 (Generation): 0h 30m (Final)
-  };
+interface InvestorData {
+  opportunity?: string;
+  market?: string;
+  traction?: string;
+  businessModel?: string;
+  ask?: string;
+}
 
-  return timeAtStep[step] ?? baseTime;
-};
+interface AcademicData {
+  topic?: string;
+  researchFrame?: string;
+  methodology?: string;
+  results?: string;
+  conclusions?: string;
+}
+
+interface GrandmaData {
+  connection?: string;
+  pain?: string;
+  analogy?: string;
+  benefits?: string;
+  safety?: string;
+}
+
+interface PeersData {
+  hook?: string;
+  struggle?: string;
+  thing?: string;
+  whyCare?: string[];
+  howTo?: string;
+  comparison?: string;
+  authenticWhy?: string;
+  cta?: string;
+}
+
+interface PitchData {
+  idea: string;
+  audience: string;
+  audienceLabel: string;
+  track: TrackType;
+  trackData: HackathonData | InvestorData | AcademicData | GrandmaData | PeersData;
+  generationTier: string;
+}
 
 const Index = () => {
   const [step, setStep] = useState(0);
   const [showDashboard, setShowDashboard] = useState(false);
   const [data, setData] = useState<Partial<PitchData>>({});
+  const [trackStep, setTrackStep] = useState(0); // Step within the track
+
+  const currentTrack = data.track;
+  const trackConfig = currentTrack ? trackConfigs[currentTrack] : null;
+  const totalSteps = trackConfig ? trackConfig.stepCount + 2 : 6; // +2 for Audience and Generation
 
   const handleBack = () => {
-    if (step > 0) setStep(step - 1);
+    if (trackStep > 0) {
+      setTrackStep(trackStep - 1);
+    } else if (step > 0) {
+      setStep(step - 1);
+      // Reset track when going back to audience selection
+      if (step === 2) {
+        setData({ ...data, track: undefined, trackData: {} });
+      }
+    }
   };
 
   const handleLogoClick = () => {
     setStep(0);
+    setTrackStep(0);
     setShowDashboard(false);
+    setData({});
   };
 
   // Step 1: Landing with idea input
@@ -66,48 +145,36 @@ const Index = () => {
     });
   };
 
-  // Step 2: Audience selection -> goes directly to Problem
+  // Step 2: Audience selection -> determines track
   const handleStep2 = (audience: string, audienceLabel: string) => {
-    setData({ ...data, audience, audienceLabel });
+    const track = determineTrack(audience, "none"); // No demo selection anymore
+    setData({ ...data, audience, audienceLabel, track, trackData: {} });
     setStep(2);
+    setTrackStep(0);
     toast({
-      title: "Audience Selected!",
-      description: `Tailoring pitch for ${audienceLabel}`,
+      title: "Track Selected!",
+      description: `${trackConfigs[track].name} mode activated`,
     });
   };
 
-  // Step 3: Problem selection
-  const handleStep3 = (problem: string) => {
-    setData({ ...data, problem });
-    setStep(3);
-    toast({
-      title: "Problem Defined!",
-      description: "Core pain point identified",
+  // Generic handler for track step progression
+  const handleTrackStepNext = (fieldName: string, value: unknown) => {
+    setData({
+      ...data,
+      trackData: { ...(data.trackData || {}), [fieldName]: value },
     });
+    
+    const maxTrackSteps = trackConfig?.stepCount || 4;
+    if (trackStep + 1 >= maxTrackSteps) {
+      // Move to generation step
+      setStep(3);
+    } else {
+      setTrackStep(trackStep + 1);
+    }
   };
 
-  // Step 4: Solution pitch
-  const handleStep4 = (pitch: string, solutionDescription?: string) => {
-    setData({ ...data, pitch, solutionDescription });
-    setStep(4);
-    toast({
-      title: "Pitch Locked!",
-      description: "Elevator pitch ready",
-    });
-  };
-
-  // Step 5: Business model
-  const handleStep5 = (models: string[]) => {
-    setData({ ...data, models });
-    setStep(5);
-    toast({
-      title: "Monetization Set!",
-      description: `${models.length} revenue model(s) selected`,
-    });
-  };
-
-  // Step 6: Generation tier and generate
-  const handleStep6 = (tier: string, tierLabel: string) => {
+  // Generation step
+  const handleGeneration = (tier: string, tierLabel: string) => {
     setData({ ...data, generationTier: tier });
     setShowDashboard(true);
     toast({
@@ -116,29 +183,90 @@ const Index = () => {
     });
   };
 
-  // Build brief data for sidebar
-  const briefData: BriefData = {
-    projectName: data.idea,
-    audienceLabel: data.audienceLabel,
-    problem: data.problem,
-    solution: data.pitch,
-    monetization: data.models,
-    generationTier: data.generationTier,
-    prepTime: calculatePrepTime(step),
+  // Calculate current progress for sidebar
+  const currentProgress = step === 0 ? 0 : step === 1 ? 1 : step === 2 ? 2 + trackStep : totalSteps;
+  const prepTime = currentTrack 
+    ? calculateTrackPrepTime(currentTrack, currentProgress, totalSteps)
+    : 315 - (step * 50);
+
+  // Build brief data for sidebar with track-specific fields
+  const buildBriefData = (): BriefData => {
+    const base: BriefData = {
+      projectName: data.idea,
+      audienceLabel: data.audienceLabel,
+      prepTime,
+    };
+
+    if (!currentTrack || !data.trackData) return base;
+
+    const td = data.trackData;
+
+    switch (currentTrack) {
+      case 'hackathon-no-demo': {
+        const hd = td as HackathonData;
+        return {
+          ...base,
+          problem: hd.pain,
+          solution: hd.fix,
+          description: hd.progress ? `Work: ${hd.progress.slice(0, 50)}...` : undefined,
+        };
+      }
+      case 'investor': {
+        const id = td as InvestorData;
+        return {
+          ...base,
+          problem: id.opportunity,
+          solution: id.businessModel,
+          description: id.ask ? `Ask: ${id.ask.slice(0, 50)}...` : undefined,
+        };
+      }
+      case 'academic': {
+        const ad = td as AcademicData;
+        return {
+          ...base,
+          problem: ad.topic,
+          solution: ad.methodology,
+          description: ad.conclusions ? `Conclusions: ${ad.conclusions.slice(0, 50)}...` : undefined,
+        };
+      }
+      case 'grandma': {
+        const gd = td as GrandmaData;
+        return {
+          ...base,
+          problem: gd.pain,
+          solution: gd.analogy,
+          description: gd.benefits,
+        };
+      }
+      case 'peers': {
+        const pd = td as PeersData;
+        return {
+          ...base,
+          problem: pd.struggle,
+          solution: pd.thing,
+          description: pd.hook ? `Hook: ${pd.hook}` : undefined,
+        };
+      }
+      default:
+        return base;
+    }
   };
+
+  const briefData = buildBriefData();
 
   // Dashboard view after generation
   if (showDashboard) {
+    const td = data.trackData || {};
     return (
       <>
         <Header onLogoClick={handleLogoClick} />
         <Dashboard
           data={{
             idea: data.idea || "",
-            duration: data.duration || 3,
-            problem: data.problem || "",
-            pitch: data.pitch || "",
-            solutionDescription: data.solutionDescription,
+            duration: 3,
+            problem: (td as HackathonData).pain || (td as InvestorData).opportunity || (td as AcademicData).topic || (td as GrandmaData).pain || (td as PeersData).struggle || "",
+            pitch: (td as HackathonData).fix || (td as InvestorData).businessModel || (td as GrandmaData).analogy || (td as PeersData).thing || "",
+            solutionDescription: (td as HackathonData).progress || (td as AcademicData).conclusions || (td as PeersData).authenticWhy,
           }}
         />
       </>
@@ -150,49 +278,129 @@ const Index = () => {
     return <Step1Hook onNext={handleStep1} />;
   }
 
-  // Wizard steps (1-6)
+  // Render track-specific steps
+  const renderTrackSteps = () => {
+    if (!currentTrack) return null;
+    const td = (data.trackData || {}) as Record<string, unknown>;
+
+    switch (currentTrack) {
+      case 'hackathon-no-demo':
+        switch (trackStep) {
+          case 0:
+            return <HackathonPainStep key="pain" onNext={(v) => handleTrackStepNext('pain', v)} onBack={handleBack} initialValue={td.pain as string} />;
+          case 1:
+            return <HackathonFixStep key="fix" onNext={(v) => handleTrackStepNext('fix', v)} onBack={handleBack} initialValue={td.fix as string} />;
+          case 2:
+            return <HackathonProgressStep key="progress" onNext={(v) => handleTrackStepNext('progress', v)} onBack={handleBack} initialValue={td.progress as string} />;
+          case 3:
+            return <HackathonFeasibilityStep key="feasibility" onNext={(v) => handleTrackStepNext('feasibility', v)} onBack={handleBack} initialValue={td.feasibility as string} />;
+        }
+        break;
+
+      case 'investor':
+        switch (trackStep) {
+          case 0:
+            return <InvestorOpportunityStep key="opportunity" onNext={(v) => handleTrackStepNext('opportunity', v)} onBack={handleBack} initialValue={td.opportunity as string} />;
+          case 1:
+            return <InvestorMarketStep key="market" onNext={(v) => handleTrackStepNext('market', v)} onBack={handleBack} initialValue={td.market as string} />;
+          case 2:
+            return <InvestorTractionStep key="traction" onNext={(v) => handleTrackStepNext('traction', v)} onBack={handleBack} initialValue={td.traction as string} />;
+          case 3:
+            return <InvestorBusinessModelStep key="businessModel" onNext={(v) => handleTrackStepNext('businessModel', v)} onBack={handleBack} initialValue={td.businessModel as string} />;
+          case 4:
+            return <InvestorAskStep key="ask" onNext={(v) => handleTrackStepNext('ask', v)} onBack={handleBack} initialValue={td.ask as string} />;
+        }
+        break;
+
+      case 'academic':
+        switch (trackStep) {
+          case 0:
+            return <AcademicTopicStep key="topic" onNext={(v) => handleTrackStepNext('topic', v)} onBack={handleBack} initialValue={td.topic as string} />;
+          case 1:
+            return <AcademicResearchFrameStep key="frame" onNext={(v) => handleTrackStepNext('researchFrame', v)} onBack={handleBack} initialValue={td.researchFrame as string} />;
+          case 2:
+            return <AcademicMethodologyStep key="methodology" onNext={(v) => handleTrackStepNext('methodology', v)} onBack={handleBack} initialValue={td.methodology as string} />;
+          case 3:
+            return <AcademicResultsStep key="results" onNext={(v) => handleTrackStepNext('results', v)} onBack={handleBack} initialValue={td.results as string} />;
+          case 4:
+            return <AcademicConclusionsStep key="conclusions" onNext={(v) => handleTrackStepNext('conclusions', v)} onBack={handleBack} initialValue={td.conclusions as string} />;
+        }
+        break;
+
+      case 'grandma':
+        switch (trackStep) {
+          case 0:
+            return <GrandmaConnectionStep key="connection" onNext={(v) => handleTrackStepNext('connection', v)} onBack={handleBack} initialValue={td.connection as string} />;
+          case 1:
+            return <GrandmaPainStep key="pain" onNext={(v) => handleTrackStepNext('pain', v)} onBack={handleBack} initialValue={td.pain as string} />;
+          case 2:
+            return <GrandmaAnalogyStep key="analogy" onNext={(v) => handleTrackStepNext('analogy', v)} onBack={handleBack} initialValue={td.analogy as string} />;
+          case 3:
+            return <GrandmaBenefitsStep key="benefits" onNext={(v) => handleTrackStepNext('benefits', v)} onBack={handleBack} initialValue={td.benefits as string} />;
+          case 4:
+            return <GrandmaSafetyStep key="safety" onNext={(v) => handleTrackStepNext('safety', v)} onBack={handleBack} initialValue={td.safety as string} />;
+        }
+        break;
+
+      case 'peers':
+        switch (trackStep) {
+          case 0:
+            return <PeersHookStep key="hook" onNext={(v) => handleTrackStepNext('hook', v)} onBack={handleBack} initialValue={td.hook as string} />;
+          case 1:
+            return <PeersStruggleStep key="struggle" onNext={(v) => handleTrackStepNext('struggle', v)} onBack={handleBack} initialValue={td.struggle as string} />;
+          case 2:
+            return <PeersThingStep key="thing" onNext={(v) => handleTrackStepNext('thing', v)} onBack={handleBack} initialValue={td.thing as string} />;
+          case 3:
+            return <PeersWhyCareStep key="whyCare" onNext={(v) => handleTrackStepNext('whyCare', v)} onBack={handleBack} initialValue={td.whyCare as string[]} />;
+          case 4:
+            return <PeersHowToStep key="howTo" onNext={(v) => handleTrackStepNext('howTo', v)} onBack={handleBack} initialValue={td.howTo as string} />;
+          case 5:
+            return <PeersComparisonStep key="comparison" onNext={(v) => handleTrackStepNext('comparison', v)} onBack={handleBack} initialValue={td.comparison as string} />;
+          case 6:
+            return <PeersAuthenticWhyStep key="authenticWhy" onNext={(v) => handleTrackStepNext('authenticWhy', v)} onBack={handleBack} initialValue={td.authenticWhy as string} />;
+          case 7:
+            return <PeersCTAStep key="cta" onNext={(v) => handleTrackStepNext('cta', v)} onBack={handleBack} initialValue={td.cta as string} />;
+        }
+        break;
+
+      // hackathon-with-demo falls through to hackathon-no-demo for now
+      case 'hackathon-with-demo':
+        switch (trackStep) {
+          case 0:
+            return <HackathonPainStep key="pain" onNext={(v) => handleTrackStepNext('pain', v)} onBack={handleBack} initialValue={td.pain as string} />;
+          case 1:
+            return <HackathonFixStep key="fix" onNext={(v) => handleTrackStepNext('fix', v)} onBack={handleBack} initialValue={td.fix as string} />;
+          case 2:
+            return <HackathonProgressStep key="progress" onNext={(v) => handleTrackStepNext('progress', v)} onBack={handleBack} initialValue={td.progress as string} />;
+          case 3:
+            return <HackathonFeasibilityStep key="feasibility" onNext={(v) => handleTrackStepNext('feasibility', v)} onBack={handleBack} initialValue={td.feasibility as string} />;
+        }
+        break;
+    }
+    return null;
+  };
+
+  // Wizard steps
   return (
     <WizardLayout
       briefData={briefData}
-      currentStep={step}
-      totalSteps={6}
+      currentStep={currentProgress}
+      totalSteps={totalSteps}
       onLogoClick={handleLogoClick}
     >
       <AnimatePresence mode="wait">
         {step === 1 && (
           <Step2Audience
-            key="step2"
+            key="audience"
             onNext={handleStep2}
             onBack={handleBack}
           />
         )}
-        {step === 2 && (
-          <Step4Problem
-            key="step3"
-            idea={data.idea || ""}
-            onNext={handleStep3}
-            onBack={handleBack}
-          />
-        )}
+        {step === 2 && renderTrackSteps()}
         {step === 3 && (
-          <Step5Solution
-            key="step4"
-            idea={data.idea || ""}
-            onNext={handleStep4}
-            onBack={handleBack}
-          />
-        )}
-        {step === 4 && (
-          <Step6Business
-            key="step5"
-            onNext={handleStep5}
-            onBack={handleBack}
-          />
-        )}
-        {step === 5 && (
           <Step7Generation
-            key="step6"
-            onNext={handleStep6}
+            key="generation"
+            onNext={handleGeneration}
             onBack={handleBack}
           />
         )}
