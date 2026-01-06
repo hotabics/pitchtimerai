@@ -1,355 +1,500 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Rocket, Clock, Zap } from "lucide-react";
+import { Sparkles, Rocket, Clock, Zap, ChevronDown, Info, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 interface TimeEaterProps {
   onSubmit: (idea: string) => void;
 }
 
-interface TaskBar {
+interface TaskBreakdown {
   id: string;
   label: string;
-  hours: number;
-  color: string;
-  collapsedColor: string;
-  collapses: boolean;
-  highlight?: string;
+  sublabel: string;
+  manualMinutes: number;
+  aiMinutes: number;
+  manualColor: string;
+  aiColor: string;
+  isFixed?: boolean;
 }
 
-const tasks: TaskBar[] = [
-  { 
-    id: "structuring", 
-    label: "Structuring", 
-    hours: 2, 
-    color: "bg-slate-400", 
-    collapsedColor: "bg-emerald-500",
-    collapses: true 
-  },
-  { 
-    id: "slides", 
-    label: "Slide Design", 
-    hours: 6, 
-    color: "bg-red-400", 
-    collapsedColor: "bg-emerald-500",
-    collapses: true,
-    highlight: "Biggest Time Sink"
-  },
-  { 
-    id: "script", 
-    label: "Scriptwriting", 
-    hours: 3, 
-    color: "bg-orange-400", 
-    collapsedColor: "bg-emerald-500",
-    collapses: true 
-  },
-  { 
-    id: "demo", 
-    label: "Demo Prep", 
-    hours: 2, 
-    color: "bg-yellow-400", 
-    collapsedColor: "bg-emerald-500",
-    collapses: true 
-  },
-  { 
-    id: "rehearse", 
-    label: "Rehearsing", 
-    hours: 4, 
-    color: "bg-blue-400", 
-    collapsedColor: "bg-blue-400",
-    collapses: false 
-  },
-];
+// Formula: Total = (Pitch_Min * 50m) + 90m (Tech/Demo) + 45m (Practice)
+const getTasksForDuration = (pitchMinutes: number): TaskBreakdown[] => {
+  const storyMinutes = 45; // ~45min solving the "Why"
+  const slideMinutes = pitchMinutes * 30; // 5 slides x 30min for 3 min pitch = 150min
+  const demoMinutes = 90; // Tech & Fallbacks
+  const rehearsalMinutes = 45; // Stress Run
 
-const TOTAL_MANUAL_HOURS = 17;
-const TOTAL_AI_MINUTES = 30;
+  return [
+    {
+      id: "story",
+      label: "Story Structure",
+      sublabel: "Solving the 'Why'",
+      manualMinutes: storyMinutes,
+      aiMinutes: 5,
+      manualColor: "bg-slate-400",
+      aiColor: "bg-emerald-500",
+    },
+    {
+      id: "slides",
+      label: "Slides",
+      sublabel: `${Math.ceil(pitchMinutes * 1.5)} slides × 30min`,
+      manualMinutes: slideMinutes,
+      aiMinutes: 5,
+      manualColor: "bg-red-400",
+      aiColor: "bg-emerald-500",
+    },
+    {
+      id: "demo",
+      label: "Demo Prep",
+      sublabel: "Tech & Fallbacks",
+      manualMinutes: demoMinutes,
+      aiMinutes: 30,
+      manualColor: "bg-orange-400",
+      aiColor: "bg-emerald-500",
+    },
+    {
+      id: "rehearsal",
+      label: "Rehearsal",
+      sublabel: "Stress Run",
+      manualMinutes: rehearsalMinutes,
+      aiMinutes: 45,
+      manualColor: "bg-blue-400",
+      aiColor: "bg-blue-400",
+      isFixed: true,
+    },
+  ];
+};
+
+const formatTime = (minutes: number): string => {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours === 0) return `${mins}m`;
+  if (mins === 0) return `${hours}h`;
+  return `${hours}h ${mins}m`;
+};
 
 export const TimeEater = ({ onSubmit }: TimeEaterProps) => {
-  const [idea, setIdea] = useState("");
+  const [projectName, setProjectName] = useState("");
+  const [pitchDuration, setPitchDuration] = useState("3");
   const [isFocused, setIsFocused] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
-  const [showSavedBadge, setShowSavedBadge] = useState(false);
+  const [showVisualization, setShowVisualization] = useState(false);
+  const [animateBars, setAnimateBars] = useState(false);
+
+  const tasks = getTasksForDuration(parseInt(pitchDuration));
+  const totalManual = tasks.reduce((sum, t) => sum + t.manualMinutes, 0);
+  const totalAI = tasks.reduce((sum, t) => sum + t.aiMinutes, 0);
+  const timeSaved = totalManual - totalAI;
+  const maxManualMinutes = Math.max(...tasks.map((t) => t.manualMinutes));
 
   useEffect(() => {
-    if (idea.length > 0 && !isTyping) {
-      setIsTyping(true);
-      // Show the saved badge after animation completes
-      const timer = setTimeout(() => {
-        setShowSavedBadge(true);
-      }, 800);
-      return () => clearTimeout(timer);
-    } else if (idea.length === 0) {
-      setIsTyping(false);
-      setShowSavedBadge(false);
+    if (projectName.length > 3 && !showVisualization) {
+      setShowVisualization(true);
+      setTimeout(() => setAnimateBars(true), 300);
+    } else if (projectName.length <= 3) {
+      setShowVisualization(false);
+      setAnimateBars(false);
     }
-  }, [idea, isTyping]);
+  }, [projectName, showVisualization]);
 
   const handleSubmit = () => {
-    if (idea.trim()) {
-      onSubmit(idea.trim());
+    if (projectName.trim()) {
+      onSubmit(projectName.trim());
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && idea.trim()) {
+    if (e.key === "Enter" && projectName.trim()) {
       handleSubmit();
     }
   };
 
-  const maxHours = Math.max(...tasks.map(t => t.hours));
-
   return (
     <div className="w-full max-w-5xl mx-auto px-4">
-      <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-center">
-        {/* Left side - Time Card */}
-        <motion.div
-          initial={{ opacity: 0, x: -30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          className="w-full lg:w-1/2"
-        >
-          <div className="glass-premium rounded-2xl p-6 border border-white/10 relative overflow-hidden">
-            {/* Background glow */}
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
-            
-            {/* Header */}
-            <div className="relative flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground font-medium">
-                  {isTyping ? "With PitchDeck AI" : "The Manual Way"}
-                </span>
-              </div>
-              
-              {/* Time Counter */}
-              <motion.div 
-                className="flex items-baseline gap-1"
-                key={isTyping ? "ai" : "manual"}
-              >
-                <motion.span
-                  initial={{ opacity: 0, scale: 0.5 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className={`text-3xl font-mono font-bold tracking-tight ${
-                    isTyping ? "text-emerald-400" : "text-red-400"
-                  }`}
-                >
-                  {isTyping ? TOTAL_AI_MINUTES : TOTAL_MANUAL_HOURS}
-                </motion.span>
-                <span className={`text-lg font-mono ${
-                  isTyping ? "text-emerald-400/70" : "text-red-400/70"
-                }`}>
-                  {isTyping ? "m" : "h"}
-                </span>
-              </motion.div>
-            </div>
+      {/* Hero Input Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="mb-12"
+      >
+        <div className="max-w-2xl mx-auto">
+          {/* Input with floating label effect */}
+          <div className="relative mb-4">
+            <motion.div
+              className="absolute inset-0 rounded-2xl bg-primary/20 blur-xl -z-10"
+              animate={{
+                opacity: isFocused ? 0.5 : 0.2,
+                scale: isFocused ? 1.02 : 1,
+              }}
+              transition={{ duration: 0.3 }}
+            />
 
-            {/* Task Bars */}
-            <div className="space-y-3 relative">
-              {tasks.map((task, index) => {
-                const widthPercent = (task.hours / maxHours) * 100;
-                const isCollapsed = isTyping && task.collapses;
-                
-                return (
-                  <motion.div
-                    key={task.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.4 + index * 0.1 }}
-                    className="relative"
-                  >
-                    <div className="flex items-center gap-3">
-                      {/* Task label */}
-                      <div className="w-24 flex-shrink-0">
-                        <span className="text-xs text-muted-foreground font-medium">
-                          {task.label}
-                        </span>
-                      </div>
-                      
-                      {/* Bar container */}
-                      <div className="flex-1 h-6 bg-white/5 rounded-md overflow-hidden relative">
-                        <motion.div
-                          className={`h-full rounded-md ${isCollapsed ? task.collapsedColor : task.color}`}
-                          initial={{ width: `${widthPercent}%` }}
-                          animate={{ 
-                            width: isCollapsed ? "5%" : `${widthPercent}%`,
-                            opacity: isCollapsed ? 0.7 : 1
-                          }}
-                          transition={{ 
-                            duration: 0.5, 
-                            delay: isCollapsed ? index * 0.05 : 0,
-                            ease: "easeOut"
-                          }}
-                          style={{
-                            animation: !isTyping ? `pulse 2s ease-in-out infinite ${index * 0.2}s` : "none"
-                          }}
-                        />
-                        
-                        {/* Zap icon for collapsed items */}
-                        <AnimatePresence>
-                          {isCollapsed && (
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              exit={{ opacity: 0, scale: 0 }}
-                              transition={{ delay: 0.3 + index * 0.05 }}
-                              className="absolute left-2 top-1/2 -translate-y-1/2"
-                            >
-                              <Zap className="w-3 h-3 text-emerald-300" />
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                      
-                      {/* Hours label */}
-                      <motion.div 
-                        className="w-12 text-right"
-                        animate={{ 
-                          opacity: isCollapsed ? 0.5 : 1 
-                        }}
-                      >
-                        <span className={`text-xs font-mono ${
-                          isCollapsed ? "text-emerald-400 line-through" : "text-muted-foreground"
-                        }`}>
-                          {task.hours}h
-                        </span>
-                      </motion.div>
-                    </div>
-                    
-                    {/* Highlight label */}
-                    {task.highlight && !isTyping && (
-                      <motion.span
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.8 }}
-                        className="absolute -right-2 top-0 text-[10px] text-red-400 font-medium bg-red-400/10 px-2 py-0.5 rounded-full"
-                      >
-                        {task.highlight}
-                      </motion.span>
-                    )}
-                  </motion.div>
-                );
-              })}
-            </div>
-
-            {/* Saved Badge */}
-            <AnimatePresence>
-              {showSavedBadge && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20, scale: 0.9 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -10, scale: 0.9 }}
-                  transition={{ type: "spring", damping: 15 }}
-                  className="mt-6 flex justify-center"
-                >
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400">
-                    <Sparkles className="w-4 h-4" />
-                    <span className="text-sm font-medium">
-                      You just saved 16.5 hours of prep time
-                    </span>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </motion.div>
-
-        {/* Right side - Input */}
-        <motion.div
-          initial={{ opacity: 0, x: 30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6, delay: 0.5 }}
-          className="w-full lg:w-1/2"
-        >
-          <div className="space-y-6">
-            {/* Headline */}
-            <div className="text-center lg:text-left">
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-2">
-                Start typing to see the{" "}
-                <span className="bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent">
-                  magic
-                </span>
-              </h2>
-              <p className="text-muted-foreground">
-                Watch your prep time vanish as our AI takes over
-              </p>
-            </div>
-
-            {/* Input */}
-            <div className="relative">
-              {/* Glow effect */}
-              <motion.div
-                className="absolute inset-0 rounded-2xl bg-primary/20 blur-xl"
-                animate={{
-                  opacity: isFocused ? 0.6 : 0.3,
-                  scale: isFocused ? 1.02 : 1,
-                }}
-                transition={{ duration: 0.3 }}
-              />
-
-              {/* Input container */}
-              <div
-                className={`
-                  relative glass-premium rounded-2xl p-2 
-                  transition-all duration-300
-                  ${isFocused ? "ring-2 ring-primary/50 shadow-lg shadow-primary/10" : ""}
-                `}
-              >
-                <div className="flex flex-col gap-2">
-                  <div className="relative">
-                    <Sparkles className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/50" />
-                    <input
-                      type="text"
-                      value={idea}
-                      onChange={(e) => setIdea(e.target.value)}
-                      onFocus={() => setIsFocused(true)}
-                      onBlur={() => setIsFocused(false)}
-                      onKeyDown={handleKeyDown}
-                      placeholder="What's your project idea?"
-                      className="
-                        w-full h-14 pl-12 pr-4 
-                        bg-transparent text-foreground text-base
-                        placeholder:text-muted-foreground/60
-                        focus:outline-none
-                        rounded-xl
-                      "
-                    />
-                  </div>
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={!idea.trim()}
-                    size="lg"
+            <div
+              className={`
+                glass-premium rounded-2xl p-1.5 border transition-all duration-300
+                ${isFocused ? "border-primary/50 shadow-lg shadow-primary/10" : "border-white/10"}
+              `}
+            >
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="relative flex-1">
+                  <Sparkles className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/60" />
+                  <input
+                    type="text"
+                    value={projectName}
+                    onChange={(e) => setProjectName(e.target.value)}
+                    onFocus={() => setIsFocused(true)}
+                    onBlur={() => setIsFocused(false)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="What is your project name? (e.g. EcoTrash AI)"
                     className="
-                      h-14 rounded-xl
-                      bg-primary text-primary-foreground
-                      hover:bg-primary/90
-                      shadow-lg shadow-primary/25
-                      disabled:opacity-50 disabled:cursor-not-allowed
-                      group
-                      transition-all duration-300
+                      w-full h-14 pl-12 pr-4 
+                      bg-transparent text-foreground text-base
+                      placeholder:text-muted-foreground/50
+                      focus:outline-none
+                      rounded-xl
                     "
-                  >
-                    <Rocket className="w-5 h-5 mr-2 group-hover:animate-float" />
-                    <span className="font-semibold">Optimise My Pitch</span>
-                  </Button>
+                  />
+                </div>
+
+                {/* Pitch Duration Selector */}
+                <div className="flex items-center gap-2 px-2">
+                  <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:inline">
+                    Pitch:
+                  </span>
+                  <Select value={pitchDuration} onValueChange={setPitchDuration}>
+                    <SelectTrigger className="w-24 h-10 bg-white/5 border-white/10 text-foreground rounded-lg">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="3">3 min</SelectItem>
+                      <SelectItem value="5">5 min</SelectItem>
+                      <SelectItem value="7">7 min</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
-
-            {/* Helper text */}
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1 }}
-              className="text-center lg:text-left text-xs text-muted-foreground"
-            >
-              <span className="inline-flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                No signup required to start
-              </span>
-            </motion.p>
           </div>
+
+          <p className="text-center text-sm text-muted-foreground">
+            Type your project name to see how much time you'll save
+          </p>
+        </div>
+      </motion.div>
+
+      {/* Time Breakdown Visualization */}
+      <AnimatePresence>
+        {showVisualization && (
+          <motion.div
+            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+          >
+            {/* Comparison Columns */}
+            <div className="grid md:grid-cols-2 gap-6 mb-8">
+              {/* Manual Column */}
+              <motion.div
+                initial={{ opacity: 0, x: -30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+                className="glass-premium rounded-2xl p-6 border border-white/10 relative overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent pointer-events-none" />
+
+                <div className="relative">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-red-400" />
+                      <span className="text-sm font-medium text-muted-foreground">
+                        The Manual Grind
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-3xl font-mono font-bold text-red-400">
+                        ~{formatTime(totalManual)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    {tasks.map((task, index) => {
+                      const widthPercent = (task.manualMinutes / maxManualMinutes) * 100;
+
+                      return (
+                        <motion.div
+                          key={task.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.3 + index * 0.1 }}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm text-foreground font-medium">
+                              {task.label}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {task.sublabel}
+                            </span>
+                          </div>
+                          <div className="h-8 bg-white/5 rounded-lg overflow-hidden">
+                            <motion.div
+                              className={`h-full ${task.manualColor} rounded-lg flex items-center justify-end pr-3`}
+                              initial={{ width: 0 }}
+                              animate={{ width: animateBars ? `${widthPercent}%` : 0 }}
+                              transition={{
+                                duration: 0.6,
+                                delay: 0.4 + index * 0.1,
+                                ease: "easeOut",
+                              }}
+                              style={{
+                                animation: animateBars
+                                  ? `pulse 3s ease-in-out infinite ${index * 0.3}s`
+                                  : "none",
+                              }}
+                            >
+                              <span className="text-xs font-mono font-semibold text-white/90">
+                                {formatTime(task.manualMinutes)}
+                              </span>
+                            </motion.div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* AI Column */}
+              <motion.div
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 }}
+                className="glass-premium rounded-2xl p-6 border border-emerald-500/20 relative overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent pointer-events-none" />
+
+                <div className="relative">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-emerald-400" />
+                      <span className="text-sm font-medium text-muted-foreground">
+                        With PitchDeck AI
+                      </span>
+                    </div>
+                    <motion.div
+                      className="text-right"
+                      animate={{
+                        scale: [1, 1.05, 1],
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      }}
+                    >
+                      <span className="text-3xl font-mono font-bold text-emerald-400">
+                        ~{formatTime(totalAI)}
+                      </span>
+                    </motion.div>
+                  </div>
+
+                  <div className="space-y-4">
+                    {tasks.map((task, index) => {
+                      const widthPercent = (task.aiMinutes / maxManualMinutes) * 100;
+
+                      return (
+                        <motion.div
+                          key={task.id}
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.4 + index * 0.1 }}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-foreground font-medium">
+                                {task.label}
+                              </span>
+                              {!task.isFixed && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-medium">
+                                  {task.id === "story"
+                                    ? "AI Generated"
+                                    : task.id === "slides"
+                                    ? "Auto-Layout"
+                                    : "AI Scripted"}
+                                </span>
+                              )}
+                              {task.isFixed && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-medium">
+                                  Unchanged
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="h-8 bg-white/5 rounded-lg overflow-hidden">
+                            <motion.div
+                              className={`h-full ${task.aiColor} rounded-lg flex items-center justify-end pr-3`}
+                              initial={{ width: 0 }}
+                              animate={{
+                                width: animateBars ? `${Math.max(widthPercent, 8)}%` : 0,
+                              }}
+                              transition={{
+                                duration: 0.6,
+                                delay: 0.5 + index * 0.1,
+                                ease: "easeOut",
+                              }}
+                            >
+                              <span className="text-xs font-mono font-semibold text-white/90">
+                                {formatTime(task.aiMinutes)}
+                              </span>
+                            </motion.div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+
+            {/* Time Saved Badge */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.8, type: "spring", damping: 15 }}
+              className="flex justify-center mb-8"
+            >
+              <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full glass-premium border border-emerald-500/30">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Time Saved:</span>
+                  <span className="text-2xl font-mono font-bold text-emerald-400">
+                    ~{formatTime(timeSaved)}
+                  </span>
+                </div>
+                <div className="w-px h-6 bg-white/20" />
+                <Sparkles className="w-5 h-5 text-emerald-400 animate-pulse" />
+              </div>
+            </motion.div>
+
+            {/* Pro Tip Accordion */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1 }}
+              className="max-w-2xl mx-auto mb-10"
+            >
+              <Accordion type="single" collapsible className="glass-premium rounded-xl border border-white/10">
+                <AccordionItem value="formula" className="border-none">
+                  <AccordionTrigger className="px-5 py-4 hover:no-underline">
+                    <div className="flex items-center gap-2 text-left">
+                      <Info className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-medium text-foreground">
+                        How we calculate this?
+                      </span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-5 pb-4">
+                    <div className="space-y-3 text-sm text-muted-foreground">
+                      <p className="text-foreground font-medium">
+                        The Hackathon Rule-of-Thumb:
+                      </p>
+                      <p className="font-mono text-xs bg-white/5 rounded-lg px-3 py-2 text-primary">
+                        1 minute of pitch = 50 minutes of prep + Tech Setup + Rehearsal
+                      </p>
+                      <p className="text-yellow-400/80 text-xs italic">
+                        💡 Pro tip: Don't make the mistake of starting with slides. Start
+                        with the Story.
+                      </p>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </motion.div>
+
+            {/* CTA Button */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.1 }}
+              className="flex flex-col items-center gap-4"
+            >
+              <div className="flex items-center gap-3">
+                <motion.div
+                  animate={{ x: [0, 8, 0] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                >
+                  <ArrowRight className="w-5 h-5 text-emerald-400" />
+                </motion.div>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!projectName.trim()}
+                  size="lg"
+                  className="
+                    h-14 px-8 rounded-xl
+                    bg-emerald-500 text-white
+                    hover:bg-emerald-600
+                    shadow-lg shadow-emerald-500/30
+                    disabled:opacity-50 disabled:cursor-not-allowed
+                    group text-base
+                    transition-all duration-300
+                  "
+                >
+                  <Rocket className="w-5 h-5 mr-2 group-hover:animate-float" />
+                  <span className="font-semibold">Start the 1-Hour Process Now</span>
+                </Button>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  No signup required
+                </span>
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Show CTA even before typing if needed */}
+      {!showVisualization && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8 }}
+          className="flex justify-center"
+        >
+          <Button
+            onClick={handleSubmit}
+            disabled={projectName.length <= 3}
+            size="lg"
+            className="
+              h-14 px-8 rounded-xl
+              bg-primary text-primary-foreground
+              hover:bg-primary/90
+              shadow-lg shadow-primary/25
+              disabled:opacity-50 disabled:cursor-not-allowed
+              group text-base
+              transition-all duration-300
+            "
+          >
+            <Rocket className="w-5 h-5 mr-2 group-hover:animate-float" />
+            <span className="font-semibold">Optimise My Pitch</span>
+          </Button>
         </motion.div>
-      </div>
+      )}
     </div>
   );
 };
