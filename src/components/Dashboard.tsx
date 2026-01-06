@@ -3,10 +3,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   FileText, Video, BarChart3, Play, Pause, RotateCcw, Monitor, 
   Smartphone, Presentation, RefreshCw, Download, Clock, Minus, 
-  Smile, Zap, ChevronRight, Timer, SkipForward
+  Smile, Zap, ChevronRight, Timer, SkipForward, Volume2, VolumeX,
+  Gauge
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -58,11 +60,12 @@ const getVisualIcon = (visualCue?: string, isDemo?: boolean) => {
   return Monitor;
 };
 
-// Calculate reading time in milliseconds based on word count
-const calculateBlockDuration = (content: string): number => {
+// Calculate reading time in milliseconds based on word count and speed
+const calculateBlockDuration = (content: string, speedMultiplier: number = 1): number => {
   const wordCount = content.split(/\s+/).filter(w => w.length > 0).length;
   const minutes = wordCount / SPEAKING_RATE;
-  return Math.max(minutes * 60 * 1000, 3000); // Minimum 3 seconds
+  const baseMs = Math.max(minutes * 60 * 1000, 3000); // Minimum 3 seconds
+  return baseMs / speedMultiplier; // Faster speed = shorter duration
 };
 
 // Format time in mm:ss
@@ -88,18 +91,121 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
   const [totalElapsedTime, setTotalElapsedTime] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const blockStartTimeRef = useRef<number>(0);
+  
+  // Speed control and audio state
+  const [speedMultiplier, setSpeedMultiplier] = useState(1);
+  const [audioEnabled, setAudioEnabled] = useState(false);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
+  const audioCache = useRef<Map<number, string>>(new Map());
 
   const trackConfig = trackConfigs[data.track];
 
-  // Calculate total speech duration
+  // Calculate total speech duration (with speed)
   const totalDuration = speechBlocks.reduce((acc, block) => {
-    return acc + calculateBlockDuration(block.content);
+    return acc + calculateBlockDuration(block.content, speedMultiplier);
   }, 0);
 
-  // Get current block duration
+  // Get current block duration (with speed)
   const currentBlockDuration = speechBlocks[currentBlock] 
-    ? calculateBlockDuration(speechBlocks[currentBlock].content)
+    ? calculateBlockDuration(speechBlocks[currentBlock].content, speedMultiplier)
     : 0;
+
+  // Fetch and play TTS audio for current block
+  const playBlockAudio = useCallback(async (blockIndex: number) => {
+    if (!audioEnabled || !speechBlocks[blockIndex]) return;
+    
+    // Check cache first
+    const cachedUrl = audioCache.current.get(blockIndex);
+    if (cachedUrl) {
+      const audio = new Audio(cachedUrl);
+      audio.playbackRate = speedMultiplier;
+      setCurrentAudio(audio);
+      await audio.play();
+      return;
+    }
+
+    setIsLoadingAudio(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ text: speechBlocks[blockIndex].content }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('TTS request failed');
+      }
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      
+      // Cache for reuse
+      audioCache.current.set(blockIndex, audioUrl);
+      
+      const audio = new Audio(audioUrl);
+      audio.playbackRate = speedMultiplier;
+      setCurrentAudio(audio);
+      
+      audio.onended = () => {
+        // Auto-advance if still playing
+        if (isPlaying && blockIndex < speechBlocks.length - 1) {
+          setCurrentBlock(blockIndex + 1);
+        }
+      };
+      
+      await audio.play();
+    } catch (err) {
+      console.error('TTS error:', err);
+      toast({
+        title: "Audio Error",
+        description: "Failed to generate audio. Using timer mode.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingAudio(false);
+    }
+  }, [audioEnabled, speechBlocks, speedMultiplier, isPlaying]);
+
+  // Stop current audio
+  const stopAudio = useCallback(() => {
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+      setCurrentAudio(null);
+    }
+  }, [currentAudio]);
+
+  // Update audio playback rate when speed changes
+  useEffect(() => {
+    if (currentAudio) {
+      currentAudio.playbackRate = speedMultiplier;
+    }
+  }, [speedMultiplier, currentAudio]);
+
+  // Play audio when block changes (if audio enabled)
+  useEffect(() => {
+    if (isPlaying && audioEnabled && activeTab === "practice") {
+      stopAudio();
+      playBlockAudio(currentBlock);
+    }
+  }, [currentBlock, isPlaying, audioEnabled, activeTab]);
+
+  // Clean up audio on unmount
+  useEffect(() => {
+    return () => {
+      stopAudio();
+      // Revoke cached URLs
+      audioCache.current.forEach(url => URL.revokeObjectURL(url));
+    };
+  }, []);
 
   // Auto-advance logic for practice mode
   useEffect(() => {
@@ -134,7 +240,7 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
         // Update total elapsed time
         const previousBlocksTime = speechBlocks
           .slice(0, currentBlock)
-          .reduce((acc, block) => acc + calculateBlockDuration(block.content), 0);
+          .reduce((acc, block) => acc + calculateBlockDuration(block.content, speedMultiplier), 0);
         setTotalElapsedTime(previousBlocksTime + elapsed);
       }, 100);
 
@@ -148,7 +254,7 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
         clearInterval(timerRef.current);
       }
     }
-  }, [isPlaying, activeTab, currentBlock, currentBlockDuration, speechBlocks]);
+  }, [isPlaying, activeTab, currentBlock, currentBlockDuration, speechBlocks, speedMultiplier, audioEnabled]);
 
   // Reset timer when block changes manually
   const handleBlockChange = useCallback((index: number) => {
@@ -157,12 +263,15 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
     setBlockProgress(0);
     blockStartTimeRef.current = Date.now();
     
+    // Stop current audio
+    stopAudio();
+    
     // Update total elapsed time
     const previousBlocksTime = speechBlocks
       .slice(0, index)
-      .reduce((acc, block) => acc + calculateBlockDuration(block.content), 0);
+      .reduce((acc, block) => acc + calculateBlockDuration(block.content, speedMultiplier), 0);
     setTotalElapsedTime(previousBlocksTime);
-  }, [speechBlocks]);
+  }, [speechBlocks, speedMultiplier, stopAudio]);
 
   const handleRestart = useCallback(() => {
     setCurrentBlock(0);
@@ -171,7 +280,8 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
     setTotalElapsedTime(0);
     setIsPlaying(false);
     blockStartTimeRef.current = Date.now();
-  }, []);
+    stopAudio();
+  }, [stopAudio]);
 
   const handleSkipBlock = useCallback(() => {
     if (currentBlock < speechBlocks.length - 1) {
@@ -585,6 +695,44 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
+              {/* Speed & Audio Controls */}
+              <div className="flex flex-col gap-4 p-4 rounded-xl bg-muted/50 border border-border">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Gauge className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Speed: {speedMultiplier.toFixed(1)}x</span>
+                  </div>
+                  <Button
+                    variant={audioEnabled ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setAudioEnabled(!audioEnabled);
+                      if (audioEnabled) {
+                        stopAudio();
+                      }
+                    }}
+                    className="gap-2"
+                    disabled={isLoadingAudio}
+                  >
+                    {audioEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+                    {isLoadingAudio ? "Loading..." : audioEnabled ? "Audio On" : "Audio Off"}
+                  </Button>
+                </div>
+                <Slider
+                  value={[speedMultiplier]}
+                  onValueChange={(value) => setSpeedMultiplier(value[0])}
+                  min={0.5}
+                  max={2}
+                  step={0.1}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>0.5x (Slow)</span>
+                  <span>1x</span>
+                  <span>2x (Fast)</span>
+                </div>
+              </div>
+
               {/* Timer Display */}
               <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
