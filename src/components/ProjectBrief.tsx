@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Clock, FileText, Users, Presentation, AlertCircle, Lightbulb, DollarSign, Package, ChevronUp, ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export interface BriefData {
@@ -16,6 +16,40 @@ export interface BriefData {
   generationTier?: string;
   prepTime?: number;
 }
+
+// Hook for smooth counting animation
+const useCountUp = (target: number, duration: number = 1000) => {
+  const [current, setCurrent] = useState(target);
+  const prevTarget = useRef(target);
+
+  useEffect(() => {
+    if (prevTarget.current === target) return;
+    
+    const startValue = prevTarget.current;
+    const startTime = Date.now();
+    
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // Ease out cubic
+      const easeOut = 1 - Math.pow(1 - progress, 3);
+      const newValue = Math.round(startValue + (target - startValue) * easeOut);
+      
+      setCurrent(newValue);
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        prevTarget.current = target;
+      }
+    };
+    
+    requestAnimationFrame(animate);
+  }, [target, duration]);
+
+  return current;
+};
 
 interface ProjectBriefProps {
   data: BriefData;
@@ -64,7 +98,9 @@ export const ProjectBrief = ({ data, currentStep }: ProjectBriefProps) => {
   const isMobile = useIsMobile();
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const prepTime = data.prepTime || 900; // Default 15h
+  const prepTime = data.prepTime || 315; // Default 5h 15m (Manual Grind time)
+  const animatedPrepTime = useCountUp(prepTime, 800);
+  const isFinalTime = prepTime <= 30;
   const hasData = data.projectName || data.audience || data.demoStyle || data.problem || data.solution;
 
   const briefItems = [
@@ -91,12 +127,20 @@ export const ProjectBrief = ({ data, currentStep }: ProjectBriefProps) => {
             className="w-full px-4 py-3 flex items-center justify-between"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-primary" />
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-500 ${
+                isFinalTime 
+                  ? 'bg-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.4)]' 
+                  : 'bg-gradient-to-br from-primary/20 to-primary/10'
+              }`}>
+                <Clock className={`w-5 h-5 transition-colors duration-500 ${isFinalTime ? 'text-emerald-400' : 'text-primary'}`} />
               </div>
               <div className="text-left">
                 <p className="text-xs text-muted-foreground">Prep Time</p>
-                <p className="text-lg font-bold text-time-low">{formatTime(prepTime)}</p>
+                <p className={`text-lg font-bold tabular-nums transition-all duration-500 ${
+                  isFinalTime 
+                    ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.6)]' 
+                    : 'text-time-low'
+                }`}>{formatTime(animatedPrepTime)}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -167,21 +211,33 @@ export const ProjectBrief = ({ data, currentStep }: ProjectBriefProps) => {
           {/* Time Counter Card */}
           <motion.div
             layout
-            className="p-4 rounded-xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20"
+            className={`p-4 rounded-xl border transition-all duration-500 ${
+              isFinalTime 
+                ? 'bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-transparent border-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.3)]' 
+                : 'bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-primary/20'
+            }`}
           >
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Clock className="w-6 h-6 text-primary" />
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-500 ${
+                isFinalTime 
+                  ? 'bg-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.4)]' 
+                  : 'bg-primary/10'
+              }`}>
+                <Clock className={`w-6 h-6 transition-colors duration-500 ${isFinalTime ? 'text-emerald-400' : 'text-primary'}`} />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground font-medium">Prep Time</p>
                 <motion.p
-                  key={prepTime}
-                  initial={{ scale: 1.2, opacity: 0 }}
+                  key={animatedPrepTime}
+                  initial={{ scale: 1.1, opacity: 0.8 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  className="text-2xl font-bold text-time-low tabular-nums"
+                  className={`text-2xl font-bold tabular-nums transition-all duration-500 ${
+                    isFinalTime 
+                      ? 'text-emerald-400 drop-shadow-[0_0_12px_rgba(16,185,129,0.7)]' 
+                      : 'text-time-low'
+                  }`}
                 >
-                  {formatTime(prepTime)}
+                  {formatTime(animatedPrepTime)}
                 </motion.p>
               </div>
             </div>
