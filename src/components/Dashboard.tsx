@@ -4,8 +4,9 @@ import {
   FileText, Video, Play, Pause, RotateCcw, Monitor, 
   Smartphone, Presentation, RefreshCw, Download, Clock, Minus, 
   Smile, Zap, Timer, SkipForward, Volume2, VolumeX,
-  Gauge, Mic
+  Gauge, Mic, Pencil, Check, X
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
@@ -120,7 +121,49 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
   const audioCache = useRef<Map<number, string>>(new Map());
   const [selectedVoice, setSelectedVoice] = useState(voiceOptions[0].id);
 
+  // Editing state
+  const [editingBlockIndex, setEditingBlockIndex] = useState<number | null>(null);
+  const [editingContent, setEditingContent] = useState("");
+
   const trackConfig = trackConfigs[data.track];
+
+  // Handle edit start
+  const handleStartEdit = (index: number) => {
+    setEditingBlockIndex(index);
+    setEditingContent(speechBlocks[index].content);
+  };
+
+  // Handle edit save
+  const handleSaveEdit = () => {
+    if (editingBlockIndex === null) return;
+    
+    setSpeechBlocks(prev => prev.map((block, index) => 
+      index === editingBlockIndex 
+        ? { ...block, content: editingContent.trim() || block.content }
+        : block
+    ));
+    
+    // Clear cached audio for this block since content changed
+    const cachedUrl = audioCache.current.get(editingBlockIndex);
+    if (cachedUrl) {
+      URL.revokeObjectURL(cachedUrl);
+      audioCache.current.delete(editingBlockIndex);
+    }
+    
+    setEditingBlockIndex(null);
+    setEditingContent("");
+    
+    toast({
+      title: "Block Updated",
+      description: "Your changes have been saved.",
+    });
+  };
+
+  // Handle edit cancel
+  const handleCancelEdit = () => {
+    setEditingBlockIndex(null);
+    setEditingContent("");
+  };
 
   // Calculate total speech duration (with speed)
   const totalDuration = speechBlocks.reduce((acc, block) => {
@@ -699,17 +742,62 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
 
                     {/* Middle Column: Content */}
                     <div className="flex-1">
-                      <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
-                        {block.title}
-                        {block.isDemo && (
-                          <span className="text-xs px-2 py-0.5 bg-time-low/20 text-time-low rounded">
-                            DEMO
-                          </span>
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                          {block.title}
+                          {block.isDemo && (
+                            <span className="text-xs px-2 py-0.5 bg-time-low/20 text-time-low rounded">
+                              DEMO
+                            </span>
+                          )}
+                        </h3>
+                        {editingBlockIndex !== index && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleStartEdit(index)}
+                            className="h-7 px-2 gap-1 text-muted-foreground hover:text-foreground"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                            <span className="text-xs">Edit</span>
+                          </Button>
                         )}
-                      </h3>
-                      <p className="text-base text-foreground leading-relaxed">
-                        {block.content}
-                      </p>
+                      </div>
+                      
+                      {editingBlockIndex === index ? (
+                        <div className="space-y-2">
+                          <Textarea
+                            value={editingContent}
+                            onChange={(e) => setEditingContent(e.target.value)}
+                            className="min-h-[120px] text-base leading-relaxed resize-none"
+                            autoFocus
+                          />
+                          <div className="flex items-center gap-2 justify-end">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={handleCancelEdit}
+                              className="h-8 px-3 gap-1"
+                            >
+                              <X className="w-4 h-4" />
+                              Cancel
+                            </Button>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={handleSaveEdit}
+                              className="h-8 px-3 gap-1"
+                            >
+                              <Check className="w-4 h-4" />
+                              Save
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-base text-foreground leading-relaxed">
+                          {block.content}
+                        </p>
+                      )}
                     </div>
 
                     {/* Right Column: Visual Cues */}
