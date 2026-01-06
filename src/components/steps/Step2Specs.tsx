@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Clock, Users, Briefcase, Heart, ArrowRight } from "lucide-react";
+import { Clock, Users, Briefcase, Heart, ArrowRight, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { SelectionCard } from "@/components/SelectionCard";
@@ -8,6 +8,7 @@ import { useState } from "react";
 
 interface Step2SpecsProps {
   onNext: (specs: { duration: number; audience: string }) => void;
+  onBack: () => void;
 }
 
 const audiences = [
@@ -16,7 +17,7 @@ const audiences = [
   { id: "nontech", label: "Non-Technical Audience", description: "Investors, users, and general public", icon: <Heart className="w-5 h-5" /> },
 ];
 
-export const Step2Specs = ({ onNext }: Step2SpecsProps) => {
+export const Step2Specs = ({ onNext, onBack }: Step2SpecsProps) => {
   const [duration, setDuration] = useState([3]);
   const [audience, setAudience] = useState("");
 
@@ -85,12 +86,12 @@ export const Step2Specs = ({ onNext }: Step2SpecsProps) => {
           </div>
         </motion.div>
 
-        {/* Next Button */}
+        {/* Buttons */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="mt-6"
+          className="mt-6 space-y-3"
         >
           <Button
             variant="default"
@@ -101,6 +102,14 @@ export const Step2Specs = ({ onNext }: Step2SpecsProps) => {
           >
             Next
             <ArrowRight className="w-5 h-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={onBack}
+            className="w-full"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
           </Button>
         </motion.div>
       </div>
