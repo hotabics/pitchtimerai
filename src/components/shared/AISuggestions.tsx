@@ -18,6 +18,9 @@ interface AISuggestionsProps {
   onRegenerate: () => void;
   accentColor?: "pink" | "amber" | "fuchsia" | "cyan" | "emerald" | "blue" | "purple";
   label?: string;
+  isRateLimited?: boolean;
+  remainingAttempts?: number;
+  cooldownSeconds?: number;
 }
 
 const colorClasses = {
@@ -73,6 +76,9 @@ export const AISuggestions = ({
   onRegenerate,
   accentColor = "fuchsia",
   label = "AI Suggestions (select any that apply)",
+  isRateLimited = false,
+  remainingAttempts,
+  cooldownSeconds = 0,
 }: AISuggestionsProps) => {
   const colors = colorClasses[accentColor];
 
@@ -88,16 +94,28 @@ export const AISuggestions = ({
           <Sparkles className={`w-4 h-4 ${colors.icon}`} />
           <Label className="text-sm text-muted-foreground">{label}</Label>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onRegenerate}
-          disabled={isLoading}
-          className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
-        >
-          <RefreshCw className={`w-3 h-3 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
-          Regenerate
-        </Button>
+        <div className="flex items-center gap-2">
+          {remainingAttempts !== undefined && remainingAttempts > 0 && !isRateLimited && (
+            <span className="text-xs text-muted-foreground">
+              {remainingAttempts} left
+            </span>
+          )}
+          {isRateLimited && cooldownSeconds > 0 && (
+            <span className="text-xs text-destructive">
+              Wait {cooldownSeconds}s
+            </span>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onRegenerate}
+            disabled={isLoading || isRateLimited}
+            className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <RefreshCw className={`w-3 h-3 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
+            Regenerate
+          </Button>
+        </div>
       </div>
       
       {isLoading ? (
@@ -132,7 +150,7 @@ export const AISuggestions = ({
 };
 
 // Helper hook for managing AI suggestions state
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -142,6 +160,11 @@ interface UseSuggestionsOptions {
   context?: Record<string, unknown>;
   fallbackSuggestions: string[];
 }
+
+// Rate limiting constants
+const MAX_REGENERATIONS = 5;
+const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
+const COOLDOWN_MS = 30000; // 30 seconds
 
 // Track suggestion selection for analytics
 const trackSuggestionSelection = async (type: string, text: string, selected: boolean) => {
@@ -161,9 +184,75 @@ export const useSuggestions = ({ type, idea, context, fallbackSuggestions }: Use
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Rate limiting state
+  const [isRateLimited, setIsRateLimited] = useState(false);
+  const [remainingAttempts, setRemainingAttempts] = useState(MAX_REGENERATIONS);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+  const attemptsRef = useRef<number[]>([]);
+  const cooldownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchSuggestions = useCallback(async () => {
+  // Cleanup cooldown interval on unmount
+  useEffect(() => {
+    return () => {
+      if (cooldownIntervalRef.current) {
+        clearInterval(cooldownIntervalRef.current);
+      }
+    };
+  }, []);
+
+  const checkRateLimit = useCallback((): boolean => {
+    const now = Date.now();
+    
+    // Clean up old attempts outside the window
+    attemptsRef.current = attemptsRef.current.filter(
+      (timestamp) => now - timestamp < RATE_LIMIT_WINDOW_MS
+    );
+
+    // Check if we're at the limit
+    if (attemptsRef.current.length >= MAX_REGENERATIONS) {
+      setIsRateLimited(true);
+      setCooldownSeconds(Math.ceil(COOLDOWN_MS / 1000));
+      
+      // Start countdown
+      cooldownIntervalRef.current = setInterval(() => {
+        setCooldownSeconds((prev) => {
+          if (prev <= 1) {
+            setIsRateLimited(false);
+            attemptsRef.current = [];
+            setRemainingAttempts(MAX_REGENERATIONS);
+            if (cooldownIntervalRef.current) {
+              clearInterval(cooldownIntervalRef.current);
+            }
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      
+      toast({
+        title: "Rate limit reached",
+        description: `Please wait ${Math.ceil(COOLDOWN_MS / 1000)} seconds before regenerating again.`,
+        variant: "destructive",
+      });
+      
+      return false;
+    }
+
+    // Record this attempt
+    attemptsRef.current.push(now);
+    setRemainingAttempts(MAX_REGENERATIONS - attemptsRef.current.length);
+    
+    return true;
+  }, []);
+
+  const fetchSuggestions = useCallback(async (isInitialLoad = false) => {
     if (!idea) return;
+    
+    // Skip rate limit check for initial load
+    if (!isInitialLoad && !checkRateLimit()) {
+      return;
+    }
     
     setIsLoading(true);
     try {
@@ -204,11 +293,11 @@ export const useSuggestions = ({ type, idea, context, fallbackSuggestions }: Use
     } finally {
       setIsLoading(false);
     }
-  }, [idea, type, context, fallbackSuggestions]);
+  }, [idea, type, context, fallbackSuggestions, checkRateLimit]);
 
   useEffect(() => {
-    if (idea) fetchSuggestions();
-  }, [idea, fetchSuggestions]);
+    if (idea) fetchSuggestions(true);
+  }, [idea]);
 
   const toggleSuggestion = (id: string) => {
     const suggestion = suggestions.find((s) => s.id === id);
@@ -226,7 +315,7 @@ export const useSuggestions = ({ type, idea, context, fallbackSuggestions }: Use
 
   const regenerate = () => {
     setSelectedSuggestions([]);
-    fetchSuggestions();
+    fetchSuggestions(false);
   };
 
   const getSelectedTexts = () => {
@@ -249,5 +338,8 @@ export const useSuggestions = ({ type, idea, context, fallbackSuggestions }: Use
     getSelectedTexts,
     getCombinedValue,
     hasSelection: selectedSuggestions.length > 0,
+    isRateLimited,
+    remainingAttempts,
+    cooldownSeconds,
   };
 };

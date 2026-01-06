@@ -33,6 +33,9 @@ export const HackathonPainStep = ({ onNext, onBack, initialValue = "", idea = ""
     regenerate,
     getCombinedValue,
     hasSelection,
+    isRateLimited,
+    remainingAttempts,
+    cooldownSeconds,
   } = useSuggestions({
     type: "pain-suggestions",
     idea,
@@ -101,6 +104,9 @@ export const HackathonPainStep = ({ onNext, onBack, initialValue = "", idea = ""
             onToggle={toggleSuggestion}
             onRegenerate={regenerate}
             accentColor="purple"
+            isRateLimited={isRateLimited}
+            remainingAttempts={remainingAttempts}
+            cooldownSeconds={cooldownSeconds}
           />
         </motion.div>
 
