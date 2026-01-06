@@ -106,8 +106,8 @@ export function determineTrack(audience: string, demoType: string): TrackType {
   
   // Hackathon tracks (Jury/Judges)
   if (audience === 'judges' || audience === 'users') {
-    // With demo: live, prototype, or video
-    if (demoType === 'live' || demoType === 'prototype' || demoType === 'video') {
+    // With demo: prototype or video
+    if (demoType === 'prototype' || demoType === 'video') {
       return 'hackathon-with-demo';
     }
     // No demo: slides only
