@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.get-analytics]
 verify_jwt = false
+
+[functions.structure-script]
+verify_jwt = false
