@@ -1,8 +1,7 @@
 import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
-import { TimeSlicer } from "@/components/landing/TimeSlicer";
+import { TimeEater } from "@/components/landing/TimeEater";
 import { BentoGrid } from "@/components/landing/BentoGrid";
-import { HeroInput } from "@/components/landing/HeroInput";
 
 interface Step1HookProps {
   onNext: (idea: string) => void;
@@ -12,13 +11,13 @@ export const Step1Hook = ({ onNext }: Step1HookProps) => {
   return (
     <div className="min-h-screen hero-gradient overflow-x-hidden">
       {/* Hero Section */}
-      <section className="min-h-screen flex flex-col items-center justify-center px-4 py-8 relative">
+      <section className="min-h-screen flex flex-col items-center justify-center px-4 py-12 relative">
         {/* Floating badge */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="mb-4"
+          className="mb-6"
         >
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-premium text-xs font-medium text-primary border border-primary/20">
             <Sparkles className="w-3.5 h-3.5" />
@@ -31,12 +30,12 @@ export const Step1Hook = ({ onNext }: Step1HookProps) => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
-          className="text-center max-w-3xl mx-auto mb-6"
+          className="text-center max-w-3xl mx-auto mb-10"
         >
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tighter text-foreground mb-3">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tighter text-foreground mb-4">
             Stop prompting.
             <br />
-            <span className="bg-gradient-to-r from-primary via-primary to-time-low bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-primary via-primary to-emerald-400 bg-clip-text text-transparent">
               Start performing.
             </span>
           </h1>
@@ -47,18 +46,8 @@ export const Step1Hook = ({ onNext }: Step1HookProps) => {
           </p>
         </motion.div>
 
-        {/* Time Slicer */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="mb-8"
-        >
-          <TimeSlicer />
-        </motion.div>
-
-        {/* Hero Input */}
-        <HeroInput onSubmit={onNext} />
+        {/* Time Eater Component */}
+        <TimeEater onSubmit={onNext} />
 
         {/* Scroll indicator */}
         <motion.div
