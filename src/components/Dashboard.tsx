@@ -4,15 +4,23 @@ import {
   FileText, Video, BarChart3, Play, Pause, RotateCcw, Monitor, 
   Smartphone, Presentation, RefreshCw, Download, Clock, Minus, 
   Smile, Zap, ChevronRight, Timer, SkipForward, Volume2, VolumeX,
-  Gauge
+  Gauge, Mic, ChevronDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { TrackType, trackConfigs } from "@/lib/tracks";
+import { SpeechCoach } from "./SpeechCoach";
 import jsPDF from "jspdf";
 
 interface SpeechBlock {
@@ -37,9 +45,22 @@ interface DashboardProps {
 
 const SPEAKING_RATE = 130; // words per minute
 
+// ElevenLabs voice options
+const voiceOptions = [
+  { id: "JBFqnCBsd6RMkjVDRZzb", name: "George", description: "Deep & confident" },
+  { id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah", description: "Warm & friendly" },
+  { id: "TX3LPaxmHKxFdv7VOQHJ", name: "Liam", description: "Clear & energetic" },
+  { id: "Xb7hH8MSUJpSbSDYk0k2", name: "Alice", description: "Professional" },
+  { id: "XrExE9yKIg1WjnnlVkGX", name: "Matilda", description: "Bright & cheerful" },
+  { id: "pFZP5JQG7iQjIQuC4Bku", name: "Lily", description: "Soft & soothing" },
+  { id: "onwK4e9ZLuTAKqWW03F9", name: "Daniel", description: "Authoritative" },
+  { id: "nPczCjzI2devNBz1zQrb", name: "Brian", description: "Casual & relaxed" },
+];
+
 const tabs = [
   { id: "script", label: "Speech", icon: FileText },
   { id: "practice", label: "Practice", icon: Video },
+  { id: "coach", label: "AI Coach", icon: Mic },
   { id: "analysis", label: "Analysis", icon: BarChart3 },
 ];
 
@@ -98,6 +119,7 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   const audioCache = useRef<Map<number, string>>(new Map());
+  const [selectedVoice, setSelectedVoice] = useState(voiceOptions[0].id);
 
   const trackConfig = trackConfigs[data.track];
 
@@ -136,7 +158,7 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
             apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ text: speechBlocks[blockIndex].content }),
+          body: JSON.stringify({ text: speechBlocks[blockIndex].content, voiceId: selectedVoice }),
         }
       );
 
@@ -697,26 +719,50 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
             >
               {/* Speed & Audio Controls */}
               <div className="flex flex-col gap-4 p-4 rounded-xl bg-muted/50 border border-border">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-3">
                     <Gauge className="w-4 h-4 text-muted-foreground" />
                     <span className="text-sm font-medium">Speed: {speedMultiplier.toFixed(1)}x</span>
                   </div>
-                  <Button
-                    variant={audioEnabled ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => {
-                      setAudioEnabled(!audioEnabled);
-                      if (audioEnabled) {
-                        stopAudio();
-                      }
-                    }}
-                    className="gap-2"
-                    disabled={isLoadingAudio}
-                  >
-                    {audioEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-                    {isLoadingAudio ? "Loading..." : audioEnabled ? "Audio On" : "Audio Off"}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {/* Voice Selection */}
+                    <Select value={selectedVoice} onValueChange={(value) => {
+                      setSelectedVoice(value);
+                      // Clear cache when voice changes
+                      audioCache.current.forEach(url => URL.revokeObjectURL(url));
+                      audioCache.current.clear();
+                    }}>
+                      <SelectTrigger className="w-[140px] h-9">
+                        <Volume2 className="w-4 h-4 mr-2" />
+                        <SelectValue placeholder="Voice" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {voiceOptions.map((voice) => (
+                          <SelectItem key={voice.id} value={voice.id}>
+                            <div className="flex flex-col">
+                              <span>{voice.name}</span>
+                              <span className="text-xs text-muted-foreground">{voice.description}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant={audioEnabled ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        setAudioEnabled(!audioEnabled);
+                        if (audioEnabled) {
+                          stopAudio();
+                        }
+                      }}
+                      className="gap-2"
+                      disabled={isLoadingAudio}
+                    >
+                      {audioEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+                      {isLoadingAudio ? "Loading..." : audioEnabled ? "Audio On" : "Audio Off"}
+                    </Button>
+                  </div>
                 </div>
                 <Slider
                   value={[speedMultiplier]}
@@ -860,6 +906,20 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
                 </div>
                 <Progress value={(totalElapsedTime / totalDuration) * 100} className="h-2" />
               </div>
+            </motion.div>
+          )}
+
+          {activeTab === "coach" && (
+            <motion.div
+              key="coach"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+            >
+              <SpeechCoach 
+                speechBlocks={speechBlocks} 
+                onBack={() => setActiveTab("practice")} 
+              />
             </motion.div>
           )}
 
