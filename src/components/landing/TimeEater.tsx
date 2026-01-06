@@ -322,10 +322,9 @@ export const TimeEater = ({
                   ease: "easeInOut"
                 }}>
                       <span className="text-3xl font-mono font-bold text-emerald-400">
-                        ~{formatTime(animatedTimeSaved)}
+                        ~{formatTime(useCountUp(totalAI, 1500, animateBars))}
                       </span>
                       <div className="flex items-center justify-end gap-1">
-                        <span className="text-xs text-emerald-400/70">saved</span>
                         <span className="text-xs font-bold text-emerald-300 bg-emerald-500/20 px-1.5 py-0.5 rounded">
                           {animatedPercentage}% faster
                         </span>
