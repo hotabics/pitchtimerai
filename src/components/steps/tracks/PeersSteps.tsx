@@ -40,6 +40,9 @@ export const PeersHookStep = ({ onNext, onBack, initialValue = "", idea = "" }: 
     regenerate,
     getCombinedValue,
     hasSelection,
+    isRateLimited,
+    remainingAttempts,
+    cooldownSeconds,
   } = useSuggestions({
     type: "peers-hook-suggestions",
     idea,
@@ -110,6 +113,9 @@ export const PeersHookStep = ({ onNext, onBack, initialValue = "", idea = "" }: 
             onToggle={toggleSuggestion}
             onRegenerate={regenerate}
             accentColor="fuchsia"
+            isRateLimited={isRateLimited}
+            remainingAttempts={remainingAttempts}
+            cooldownSeconds={cooldownSeconds}
           />
         </motion.div>
 

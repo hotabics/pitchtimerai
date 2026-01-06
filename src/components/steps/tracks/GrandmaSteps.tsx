@@ -32,6 +32,9 @@ export const GrandmaConnectionStep = ({ onNext, onBack, initialValue = "", idea 
     regenerate,
     getCombinedValue,
     hasSelection,
+    isRateLimited,
+    remainingAttempts,
+    cooldownSeconds,
   } = useSuggestions({
     type: "grandma-connection-suggestions",
     idea,
@@ -81,6 +84,9 @@ export const GrandmaConnectionStep = ({ onNext, onBack, initialValue = "", idea 
             onToggle={toggleSuggestion}
             onRegenerate={regenerate}
             accentColor="pink"
+            isRateLimited={isRateLimited}
+            remainingAttempts={remainingAttempts}
+            cooldownSeconds={cooldownSeconds}
           />
         </motion.div>
 
