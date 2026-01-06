@@ -1,9 +1,44 @@
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence, useInView } from "framer-motion";
 import { Sparkles, Rocket, Clock, Zap, ChevronDown, Info, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+
+// Custom hook for counting animation
+const useCountUp = (end: number, duration: number = 1500, start: boolean = false) => {
+  const [count, setCount] = useState(0);
+  
+  useEffect(() => {
+    if (!start) {
+      setCount(0);
+      return;
+    }
+    
+    let startTime: number;
+    let animationFrame: number;
+    
+    const animate = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      
+      // Easing function for smooth animation
+      const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+      setCount(Math.floor(easeOutQuart * end));
+      
+      if (progress < 1) {
+        animationFrame = requestAnimationFrame(animate);
+      }
+    };
+    
+    animationFrame = requestAnimationFrame(animate);
+    
+    return () => cancelAnimationFrame(animationFrame);
+  }, [end, duration, start]);
+  
+  return count;
+};
+
 interface TimeEaterProps {
   onSubmit: (idea: string) => void;
 }
@@ -79,7 +114,12 @@ export const TimeEater = ({
   const totalManual = tasks.reduce((sum, t) => sum + t.manualMinutes, 0);
   const totalAI = tasks.reduce((sum, t) => sum + t.aiMinutes, 0);
   const timeSaved = totalManual - totalAI;
+  const percentageSaved = Math.round((timeSaved / totalManual) * 100);
   const maxManualMinutes = Math.max(...tasks.map(t => t.manualMinutes));
+  
+  // Counting animations
+  const animatedTimeSaved = useCountUp(timeSaved, 1500, animateBars);
+  const animatedPercentage = useCountUp(percentageSaved, 1500, animateBars);
   useEffect(() => {
     if (projectName.length > 3 && !showVisualization) {
       setShowVisualization(true);
@@ -282,9 +322,14 @@ export const TimeEater = ({
                   ease: "easeInOut"
                 }}>
                       <span className="text-3xl font-mono font-bold text-emerald-400">
-                        ~{formatTime(timeSaved)}
+                        ~{formatTime(animatedTimeSaved)}
                       </span>
-                      <span className="text-xs text-emerald-400/70 block">saved</span>
+                      <div className="flex items-center justify-end gap-1">
+                        <span className="text-xs text-emerald-400/70">saved</span>
+                        <span className="text-xs font-bold text-emerald-300 bg-emerald-500/20 px-1.5 py-0.5 rounded">
+                          {animatedPercentage}% faster
+                        </span>
+                      </div>
                     </motion.div>
                   </div>
 
@@ -351,11 +396,16 @@ export const TimeEater = ({
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">Time Saved:</span>
                   <span className="text-2xl font-mono font-bold text-emerald-400">
-                    ~{formatTime(timeSaved)}
+                    ~{formatTime(animatedTimeSaved)}
                   </span>
                 </div>
                 <div className="w-px h-6 bg-white/20" />
-                <Sparkles className="w-5 h-5 text-emerald-400 animate-pulse" />
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-bold text-emerald-300">
+                    {animatedPercentage}% faster
+                  </span>
+                  <Sparkles className="w-5 h-5 text-emerald-400 animate-pulse" />
+                </div>
               </div>
             </motion.div>
 
