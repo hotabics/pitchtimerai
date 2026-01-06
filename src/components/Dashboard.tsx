@@ -17,6 +17,7 @@ interface DashboardProps {
     duration: number;
     problem: string;
     pitch: string;
+    solutionDescription?: string;
     demo?: DemoInfo;
   };
 }
@@ -61,6 +62,7 @@ const getDemoActions = (demo?: DemoInfo) => {
 
 const generateScript = (data: DashboardProps["data"]) => {
   const hasDemo = data.demo?.hasDemo;
+  const solutionDetails = data.solutionDescription || "";
   
   const blocks = [
     {
@@ -84,10 +86,14 @@ const generateScript = (data: DashboardProps["data"]) => {
   ];
   
   if (hasDemo) {
+    const demoContent = solutionDetails 
+      ? `Let me show you how this works. ${solutionDetails} [DEMO: ${data.demo?.demoDescription || "Show core functionality"}]`
+      : `Let me show you how this works in action. [DEMO: ${data.demo?.demoDescription || "Show core functionality"}]`;
+    
     blocks.push({
       time: "1:30 - 2:30",
       title: "🖥️ Live Demo",
-      content: `Let me show you how this works in action. [DEMO: ${data.demo?.demoDescription || "Show core functionality"}]`,
+      content: demoContent,
       isDemo: true,
     });
     blocks.push({
@@ -97,10 +103,14 @@ const generateScript = (data: DashboardProps["data"]) => {
       isDemo: false,
     });
   } else {
+    const howItWorksContent = solutionDetails 
+      ? solutionDetails
+      : `Our platform leverages AI to transform ${data.idea} into a seamless experience. Users simply connect, customize, and launch.`;
+    
     blocks.push({
       time: "1:30 - 2:30",
       title: "How It Works",
-      content: `Our platform leverages AI to transform ${data.idea} into a seamless experience. Users simply connect, customize, and launch.`,
+      content: howItWorksContent,
       isDemo: false,
     });
     blocks.push({

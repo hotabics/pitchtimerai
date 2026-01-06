@@ -114,6 +114,7 @@ const Index = () => {
             duration: data.duration || 3,
             problem: data.problem || "",
             pitch: data.pitch || "",
+            solutionDescription: data.solutionDescription,
             demo: data.demo,
           }}
         />
