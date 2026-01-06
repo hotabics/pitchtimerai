@@ -330,36 +330,36 @@ const Index = () => {
       case 'grandma':
         switch (trackStep) {
           case 0:
-            return <GrandmaConnectionStep key="connection" onNext={(v) => handleTrackStepNext('connection', v)} onBack={handleBack} initialValue={td.connection as string} />;
+            return <GrandmaConnectionStep key="connection" onNext={(v) => handleTrackStepNext('connection', v)} onBack={handleBack} initialValue={td.connection as string} idea={data.idea} />;
           case 1:
-            return <GrandmaPainStep key="pain" onNext={(v) => handleTrackStepNext('pain', v)} onBack={handleBack} initialValue={td.pain as string} />;
+            return <GrandmaPainStep key="pain" onNext={(v) => handleTrackStepNext('pain', v)} onBack={handleBack} initialValue={td.pain as string} idea={data.idea} />;
           case 2:
-            return <GrandmaAnalogyStep key="analogy" onNext={(v) => handleTrackStepNext('analogy', v)} onBack={handleBack} initialValue={td.analogy as string} />;
+            return <GrandmaAnalogyStep key="analogy" onNext={(v) => handleTrackStepNext('analogy', v)} onBack={handleBack} initialValue={td.analogy as string} idea={data.idea} />;
           case 3:
-            return <GrandmaBenefitsStep key="benefits" onNext={(v) => handleTrackStepNext('benefits', v)} onBack={handleBack} initialValue={td.benefits as string} />;
+            return <GrandmaBenefitsStep key="benefits" onNext={(v) => handleTrackStepNext('benefits', v)} onBack={handleBack} initialValue={td.benefits as string} idea={data.idea} />;
           case 4:
-            return <GrandmaSafetyStep key="safety" onNext={(v) => handleTrackStepNext('safety', v)} onBack={handleBack} initialValue={td.safety as string} />;
+            return <GrandmaSafetyStep key="safety" onNext={(v) => handleTrackStepNext('safety', v)} onBack={handleBack} initialValue={td.safety as string} idea={data.idea} />;
         }
         break;
 
       case 'peers':
         switch (trackStep) {
           case 0:
-            return <PeersHookStep key="hook" onNext={(v) => handleTrackStepNext('hook', v)} onBack={handleBack} initialValue={td.hook as string} />;
+            return <PeersHookStep key="hook" onNext={(v) => handleTrackStepNext('hook', v)} onBack={handleBack} initialValue={td.hook as string} idea={data.idea} />;
           case 1:
             return <PeersStruggleStep key="struggle" onNext={(v) => handleTrackStepNext('struggle', v)} onBack={handleBack} initialValue={td.struggle as string} />;
           case 2:
-            return <PeersThingStep key="thing" onNext={(v) => handleTrackStepNext('thing', v)} onBack={handleBack} initialValue={td.thing as string} />;
+            return <PeersThingStep key="thing" onNext={(v) => handleTrackStepNext('thing', v)} onBack={handleBack} initialValue={td.thing as string} idea={data.idea} />;
           case 3:
-            return <PeersWhyCareStep key="whyCare" onNext={(v) => handleTrackStepNext('whyCare', v)} onBack={handleBack} initialValue={td.whyCare as string[]} />;
+            return <PeersWhyCareStep key="whyCare" onNext={(v) => handleTrackStepNext('whyCare', v)} onBack={handleBack} initialValue={td.whyCare as string[]} idea={data.idea} />;
           case 4:
-            return <PeersHowToStep key="howTo" onNext={(v) => handleTrackStepNext('howTo', v)} onBack={handleBack} initialValue={td.howTo as string} />;
+            return <PeersHowToStep key="howTo" onNext={(v) => handleTrackStepNext('howTo', v)} onBack={handleBack} initialValue={td.howTo as string} idea={data.idea} />;
           case 5:
-            return <PeersComparisonStep key="comparison" onNext={(v) => handleTrackStepNext('comparison', v)} onBack={handleBack} initialValue={td.comparison as string} />;
+            return <PeersComparisonStep key="comparison" onNext={(v) => handleTrackStepNext('comparison', v)} onBack={handleBack} initialValue={td.comparison as string} idea={data.idea} />;
           case 6:
-            return <PeersAuthenticWhyStep key="authenticWhy" onNext={(v) => handleTrackStepNext('authenticWhy', v)} onBack={handleBack} initialValue={td.authenticWhy as string} />;
+            return <PeersAuthenticWhyStep key="authenticWhy" onNext={(v) => handleTrackStepNext('authenticWhy', v)} onBack={handleBack} initialValue={td.authenticWhy as string} idea={data.idea} />;
           case 7:
-            return <PeersCTAStep key="cta" onNext={(v) => handleTrackStepNext('cta', v)} onBack={handleBack} initialValue={td.cta as string} />;
+            return <PeersCTAStep key="cta" onNext={(v) => handleTrackStepNext('cta', v)} onBack={handleBack} initialValue={td.cta as string} idea={data.idea} />;
         }
         break;
 
