@@ -41,6 +41,11 @@ const Index = () => {
     if (step > 0) setStep(step - 1);
   };
 
+  const handleLogoClick = () => {
+    setStep(0);
+    setShowDashboard(false);
+  };
+
   const handleStep1 = (idea: string) => {
     setData({ ...data, idea });
     setStep(1);
@@ -106,7 +111,7 @@ const Index = () => {
   if (showDashboard) {
     return (
       <>
-        <Header />
+        <Header onLogoClick={handleLogoClick} />
         <Dashboard
           data={{
             idea: data.idea || "",
@@ -123,7 +128,7 @@ const Index = () => {
 
   return (
     <>
-      {step > 0 && <Header showProgress currentStep={step} totalSteps={7} />}
+      {step > 0 && <Header showProgress currentStep={step} totalSteps={7} onLogoClick={handleLogoClick} />}
       <AnimatePresence mode="wait">
         {step === 0 && <Step1Hook key="step1" onNext={handleStep1} />}
         {step === 1 && <Step2Specs key="step2" onNext={handleStep2} onBack={handleBack} />}

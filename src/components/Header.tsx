@@ -1,13 +1,22 @@
 import { motion } from "framer-motion";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
+import { Button } from "@/components/ui/button";
 
 interface HeaderProps {
   showProgress?: boolean;
   currentStep?: number;
   totalSteps?: number;
+  onLogoClick?: () => void;
 }
 
-export const Header = ({ showProgress, currentStep = 0, totalSteps = 7 }: HeaderProps) => {
+export const Header = ({ showProgress, currentStep = 0, totalSteps = 7, onLogoClick }: HeaderProps) => {
+  const { theme, setTheme } = useTheme();
+
+  const toggleTheme = () => {
+    setTheme(theme === "dark" ? "light" : "dark");
+  };
+
   return (
     <motion.header
       initial={{ opacity: 0, y: -20 }}
@@ -16,30 +25,46 @@ export const Header = ({ showProgress, currentStep = 0, totalSteps = 7 }: Header
     >
       <div className="max-w-lg mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <button
+            onClick={onLogoClick}
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+          >
             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-primary" />
             </div>
             <span className="font-bold text-lg tracking-tight">
               PitchDeck<span className="text-primary">AI</span>
             </span>
-          </div>
+          </button>
 
-          {showProgress && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
-                Step {currentStep} of {totalSteps}
-              </span>
-              <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-                <motion.div
-                  className="h-full bg-primary rounded-full"
-                  initial={{ width: "0%" }}
-                  animate={{ width: `${(currentStep / totalSteps) * 100}%` }}
-                  transition={{ duration: 0.3 }}
-                />
+          <div className="flex items-center gap-3">
+            {showProgress && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  Step {currentStep} of {totalSteps}
+                </span>
+                <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-primary rounded-full"
+                    initial={{ width: "0%" }}
+                    animate={{ width: `${(currentStep / totalSteps) * 100}%` }}
+                    transition={{ duration: 0.3 }}
+                  />
+                </div>
               </div>
-            </div>
-          )}
+            )}
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleTheme}
+              className="h-8 w-8"
+            >
+              <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+              <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+              <span className="sr-only">Toggle theme</span>
+            </Button>
+          </div>
         </div>
       </div>
     </motion.header>
