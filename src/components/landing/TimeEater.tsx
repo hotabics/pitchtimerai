@@ -162,11 +162,11 @@ export const TimeEater = ({ onSubmit }: TimeEaterProps) => {
                     placeholder="What is your project name? (e.g. EcoTrash AI)"
                     className="
                       w-full h-14 pl-12 pr-4 
-                      bg-background/50 text-foreground text-base
-                      placeholder:text-muted-foreground/50
+                      bg-background text-foreground text-base
+                      placeholder:text-muted-foreground/60
                       focus:outline-none
                       rounded-xl
-                      border-2 border-border/50 focus:border-primary/50
+                      border-2 border-foreground/30 focus:border-primary
                       transition-colors duration-200
                     "
                   />
