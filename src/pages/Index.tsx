@@ -28,6 +28,10 @@ const Index = () => {
   const [showDashboard, setShowDashboard] = useState(false);
   const [data, setData] = useState<Partial<PitchData>>({});
 
+  const handleBack = () => {
+    if (step > 0) setStep(step - 1);
+  };
+
   const handleStep1 = (idea: string) => {
     setData({ ...data, idea });
     setStep(1);
@@ -111,16 +115,17 @@ const Index = () => {
       <TimeCounter targetMinutes={timeSteps[step]} />
       <AnimatePresence mode="wait">
         {step === 0 && <Step1Hook key="step1" onNext={handleStep1} />}
-        {step === 1 && <Step2Specs key="step2" onNext={handleStep2} />}
-        {step === 2 && <Step3Problem key="step3" idea={data.idea || ""} onNext={handleStep3} />}
-        {step === 3 && <Step4Audience key="step4" idea={data.idea || ""} onNext={handleStep4} />}
-        {step === 4 && <Step5Solution key="step5" idea={data.idea || ""} onNext={handleStep5} />}
-        {step === 5 && <Step6Business key="step6" onNext={handleStep6} />}
+        {step === 1 && <Step2Specs key="step2" onNext={handleStep2} onBack={handleBack} />}
+        {step === 2 && <Step3Problem key="step3" idea={data.idea || ""} onNext={handleStep3} onBack={handleBack} />}
+        {step === 3 && <Step4Audience key="step4" idea={data.idea || ""} onNext={handleStep4} onBack={handleBack} />}
+        {step === 4 && <Step5Solution key="step5" idea={data.idea || ""} onNext={handleStep5} onBack={handleBack} />}
+        {step === 5 && <Step6Business key="step6" onNext={handleStep6} onBack={handleBack} />}
         {step === 6 && (
           <Step7Summary
             key="step7"
             data={data as PitchData}
             onGenerate={handleGenerate}
+            onBack={handleBack}
           />
         )}
       </AnimatePresence>

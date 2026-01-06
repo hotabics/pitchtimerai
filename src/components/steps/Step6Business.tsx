@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowRight, DollarSign } from "lucide-react";
+import { ArrowRight, ArrowLeft, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/Chip";
 import { StepWrapper } from "@/components/StepWrapper";
@@ -7,6 +7,7 @@ import { useState } from "react";
 
 interface Step6BusinessProps {
   onNext: (models: string[]) => void;
+  onBack: () => void;
 }
 
 const businessModels = [
@@ -18,7 +19,7 @@ const businessModels = [
   { id: "marketplace", label: "Marketplace", emoji: "🏪" },
 ];
 
-export const Step6Business = ({ onNext }: Step6BusinessProps) => {
+export const Step6Business = ({ onNext, onBack }: Step6BusinessProps) => {
   const [selected, setSelected] = useState<string[]>([]);
 
   const toggleModel = (id: string) => {
@@ -76,7 +77,7 @@ export const Step6Business = ({ onNext }: Step6BusinessProps) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="mt-6"
+          className="mt-6 space-y-3"
         >
           <Button
             variant="default"
@@ -87,6 +88,14 @@ export const Step6Business = ({ onNext }: Step6BusinessProps) => {
           >
             Finalize Strategy
             <ArrowRight className="w-5 h-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={onBack}
+            className="w-full"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
           </Button>
         </motion.div>
       </div>

@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, ArrowLeft, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SelectionCard } from "@/components/SelectionCard";
 import { StepWrapper } from "@/components/StepWrapper";
@@ -8,6 +8,7 @@ import { useState } from "react";
 interface Step5SolutionProps {
   idea: string;
   onNext: (pitch: string) => void;
+  onBack: () => void;
 }
 
 const generatePitches = (idea: string) => [
@@ -28,7 +29,7 @@ const generatePitches = (idea: string) => [
   },
 ];
 
-export const Step5Solution = ({ idea, onNext }: Step5SolutionProps) => {
+export const Step5Solution = ({ idea, onNext, onBack }: Step5SolutionProps) => {
   const [selected, setSelected] = useState("");
   const pitches = generatePitches(idea);
 
@@ -70,7 +71,7 @@ export const Step5Solution = ({ idea, onNext }: Step5SolutionProps) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="mt-6"
+          className="mt-6 space-y-3"
         >
           <Button
             variant="default"
@@ -81,6 +82,14 @@ export const Step5Solution = ({ idea, onNext }: Step5SolutionProps) => {
           >
             Lock In Pitch
             <ArrowRight className="w-5 h-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={onBack}
+            className="w-full"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
           </Button>
         </motion.div>
       </div>

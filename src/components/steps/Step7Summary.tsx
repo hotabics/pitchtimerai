@@ -1,7 +1,9 @@
 import { motion } from "framer-motion";
-import { Sparkles, Check, Clock } from "lucide-react";
+import { Sparkles, Check, Clock, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StepWrapper } from "@/components/StepWrapper";
+import { useEffect } from "react";
+import confetti from "canvas-confetti";
 
 interface Step7SummaryProps {
   data: {
@@ -14,9 +16,38 @@ interface Step7SummaryProps {
     models: string[];
   };
   onGenerate: () => void;
+  onBack: () => void;
 }
 
-export const Step7Summary = ({ data, onGenerate }: Step7SummaryProps) => {
+export const Step7Summary = ({ data, onGenerate, onBack }: Step7SummaryProps) => {
+  useEffect(() => {
+    // Fire confetti when component mounts
+    const duration = 2000;
+    const end = Date.now() + duration;
+
+    const frame = () => {
+      confetti({
+        particleCount: 3,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0, y: 0.7 },
+        colors: ["#10b981", "#6366f1", "#f59e0b"],
+      });
+      confetti({
+        particleCount: 3,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1, y: 0.7 },
+        colors: ["#10b981", "#6366f1", "#f59e0b"],
+      });
+
+      if (Date.now() < end) {
+        requestAnimationFrame(frame);
+      }
+    };
+    frame();
+  }, []);
+
   const summaryItems = [
     { label: "Idea", value: data.idea },
     { label: "Duration", value: `${data.duration} minutes` },
@@ -36,7 +67,7 @@ export const Step7Summary = ({ data, onGenerate }: Step7SummaryProps) => {
           className="flex items-center justify-center gap-8 mb-8"
         >
           <div className="text-center">
-            <p className="text-sm text-muted-foreground mb-1">Without AI</p>
+            <p className="text-sm text-muted-foreground mb-1">Started at</p>
             <p className="text-3xl font-bold text-time-high line-through opacity-60">15h 00m</p>
           </div>
           <motion.div
@@ -48,7 +79,7 @@ export const Step7Summary = ({ data, onGenerate }: Step7SummaryProps) => {
             <Clock className="w-6 h-6 text-success" />
           </motion.div>
           <div className="text-center">
-            <p className="text-sm text-muted-foreground mb-1">With PitchDeck AI</p>
+            <p className="text-sm text-muted-foreground mb-1">Now only</p>
             <motion.p
               initial={{ scale: 0.8 }}
               animate={{ scale: 1 }}
@@ -89,11 +120,12 @@ export const Step7Summary = ({ data, onGenerate }: Step7SummaryProps) => {
           </div>
         </motion.div>
 
-        {/* Generate Button */}
+        {/* Buttons */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
+          className="space-y-3"
         >
           <Button
             variant="time"
@@ -103,6 +135,14 @@ export const Step7Summary = ({ data, onGenerate }: Step7SummaryProps) => {
           >
             <Sparkles className="w-5 h-5" />
             Generate Winning Pitch
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={onBack}
+            className="w-full"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Edit
           </Button>
         </motion.div>
       </div>

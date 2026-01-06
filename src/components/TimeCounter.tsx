@@ -8,18 +8,19 @@ interface TimeCounterProps {
 }
 
 export const TimeCounter = ({ targetMinutes, isComplete = false }: TimeCounterProps) => {
-  const [displayMinutes, setDisplayMinutes] = useState(900); // Start at 15h = 900min
+  const [displayMinutes, setDisplayMinutes] = useState(900);
   const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
     if (displayMinutes === targetMinutes) return;
 
     setIsAnimating(true);
-    const diff = displayMinutes - targetMinutes;
-    const duration = Math.min(1500, Math.max(500, diff * 2));
-    const steps = Math.min(60, Math.max(20, diff));
+    const diff = Math.abs(displayMinutes - targetMinutes);
+    const duration = Math.min(600, Math.max(200, diff)); // Much faster
+    const steps = Math.min(25, Math.max(8, Math.floor(diff / 15)));
     const stepDuration = duration / steps;
     const stepSize = diff / steps;
+    const direction = displayMinutes > targetMinutes ? -1 : 1;
 
     let currentStep = 0;
     const interval = setInterval(() => {
@@ -29,7 +30,7 @@ export const TimeCounter = ({ targetMinutes, isComplete = false }: TimeCounterPr
         setIsAnimating(false);
         clearInterval(interval);
       } else {
-        setDisplayMinutes(Math.round(displayMinutes - stepSize * currentStep));
+        setDisplayMinutes(Math.round(displayMinutes + direction * stepSize * currentStep));
       }
     }, stepDuration);
 
@@ -61,7 +62,7 @@ export const TimeCounter = ({ targetMinutes, isComplete = false }: TimeCounterPr
           <div className="flex items-center gap-2">
             <motion.div
               animate={isAnimating ? { rotate: 360 } : { rotate: 0 }}
-              transition={{ duration: 0.5, repeat: isAnimating ? Infinity : 0, ease: "linear" }}
+              transition={{ duration: 0.2, repeat: isAnimating ? Infinity : 0, ease: "linear" }}
             >
               {isComplete ? (
                 <Zap className="w-5 h-5 text-success fill-success" />
@@ -70,17 +71,17 @@ export const TimeCounter = ({ targetMinutes, isComplete = false }: TimeCounterPr
               )}
             </motion.div>
             <span className="text-sm font-medium text-muted-foreground">
-              {isComplete ? "Time Saved" : "Estimated Time"}
+              {isComplete ? "Time to Complete" : "Time Remaining"}
             </span>
           </div>
 
           <AnimatePresence mode="wait">
             <motion.div
               key={displayMinutes}
-              initial={{ scale: 1.2, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              initial={{ scale: 1.4, opacity: 0, y: -8 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.6, opacity: 0, y: 8 }}
+              transition={{ type: "spring", stiffness: 500, damping: 20 }}
               className={`font-bold text-2xl tabular-nums ${getTimeColor()} ${
                 isComplete ? "pulse-success rounded-full px-3 py-1" : ""
               }`}
@@ -101,7 +102,7 @@ export const TimeCounter = ({ targetMinutes, isComplete = false }: TimeCounterPr
               className="h-full gradient-time-saved rounded-full"
               initial={{ width: "0%" }}
               animate={{ width: `${((900 - displayMinutes) / 870) * 100}%` }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
             />
           </motion.div>
         )}

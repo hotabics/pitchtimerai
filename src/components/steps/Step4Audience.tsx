@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowRight, User, X } from "lucide-react";
+import { ArrowRight, ArrowLeft, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StepWrapper } from "@/components/StepWrapper";
 import { useState } from "react";
@@ -7,6 +7,7 @@ import { useState } from "react";
 interface Step4AudienceProps {
   idea: string;
   onNext: (persona: { description: string; keywords: string[] }) => void;
+  onBack: () => void;
 }
 
 const generatePersona = (idea: string) => ({
@@ -14,7 +15,7 @@ const generatePersona = (idea: string) => ({
   keywords: ["Time-constrained", "Tech-savvy", "Decision makers", "Innovation seekers", "ROI-focused"],
 });
 
-export const Step4Audience = ({ idea, onNext }: Step4AudienceProps) => {
+export const Step4Audience = ({ idea, onNext, onBack }: Step4AudienceProps) => {
   const initialPersona = generatePersona(idea);
   const [keywords, setKeywords] = useState(initialPersona.keywords);
 
@@ -85,7 +86,7 @@ export const Step4Audience = ({ idea, onNext }: Step4AudienceProps) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="mt-6"
+          className="mt-6 space-y-3"
         >
           <Button
             variant="default"
@@ -95,6 +96,14 @@ export const Step4Audience = ({ idea, onNext }: Step4AudienceProps) => {
           >
             Confirm Audience
             <ArrowRight className="w-5 h-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={onBack}
+            className="w-full"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
           </Button>
         </motion.div>
       </div>

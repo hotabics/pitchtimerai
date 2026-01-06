@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowRight, Edit2, Lightbulb } from "lucide-react";
+import { ArrowRight, ArrowLeft, Edit2, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SelectionCard } from "@/components/SelectionCard";
@@ -9,6 +9,7 @@ import { useState } from "react";
 interface Step3ProblemProps {
   idea: string;
   onNext: (problem: string) => void;
+  onBack: () => void;
 }
 
 const generateProblems = (idea: string) => [
@@ -26,7 +27,7 @@ const generateProblems = (idea: string) => [
   },
 ];
 
-export const Step3Problem = ({ idea, onNext }: Step3ProblemProps) => {
+export const Step3Problem = ({ idea, onNext, onBack }: Step3ProblemProps) => {
   const [selected, setSelected] = useState("");
   const [customMode, setCustomMode] = useState(false);
   const [customProblem, setCustomProblem] = useState("");
@@ -109,7 +110,7 @@ export const Step3Problem = ({ idea, onNext }: Step3ProblemProps) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="mt-6"
+          className="mt-6 space-y-3"
         >
           <Button
             variant="default"
@@ -120,6 +121,14 @@ export const Step3Problem = ({ idea, onNext }: Step3ProblemProps) => {
           >
             Confirm Problem
             <ArrowRight className="w-5 h-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={onBack}
+            className="w-full"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
           </Button>
         </motion.div>
       </div>
