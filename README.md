@@ -1,73 +1,137 @@
-# Welcome to your Lovable project
+# PitchDeck AI
 
-## Project info
+A mobile-first web app that gamifies the process of creating and practicing hackathon pitches. Built with React, TypeScript, and Tailwind CSS.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+🔗 **Live Demo**: [pitchdeckai.lovable.app](https://pitchdeckai.lovable.app)
 
-## How can I edit this code?
+> ⚠️ **Public Demo Notice**: This is a public demo. All practice sessions and data are visible to everyone.
 
-There are several ways of editing your application.
+---
 
-**Use Lovable**
+## Features
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+### 🎯 Smart Onboarding Wizard
 
-Changes made via Lovable will be committed automatically to this repo.
+**Dynamic Branching Logic** - The app adapts questions based on your audience selection:
 
-**Use your preferred IDE**
+| Track | Target Audience | Focus Areas |
+|-------|-----------------|-------------|
+| **Hackathon (The Jury)** | Tech & business judges | Innovation, technical merit, business model |
+| **Hackathon (With Demo)** | Demo-focused presentations | Live demonstration flow, tech stack |
+| **Investor Pitch** | VCs and angel investors | Market size, traction, financials |
+| **Academic Defense** | Thesis committees | Methodology, literature, contributions |
+| **Grandma Test** | Non-technical audience | Simple analogies, everyday benefits |
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### ⏱️ Time-Slicer Technology
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- **Sticky "Time Saved" counter** showing real-time savings vs manual prep
+- **Precision timing engine** (130 WPM baseline) for accurate speech duration
+- **Dynamic section weighting** based on track requirements
 
-Follow these steps:
+### 📝 AI-Powered Script Generation
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+- **Track-optimized prompts** for different audience types
+- **Structured speech blocks** with timing markers
+- **Visual cue suggestions** for slides and demos
+- **One-click regeneration** with style modifiers (shorter, more technical, etc.)
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### 🎙️ Practice Dashboard
 
-# Step 3: Install the necessary dependencies.
-npm i
+Three integrated tabs for complete pitch preparation:
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+1. **Script View**
+   - Time-blocked sections with visual cues
+   - PDF export functionality
+   - Voice selection for TTS playback
+
+2. **Practice Mode (Teleprompter)**
+   - Auto-scrolling teleprompter
+   - Real-time progress tracking
+   - Block-by-block navigation
+   - Text-to-speech with ElevenLabs voices
+
+3. **AI Speech Coach**
+   - Voice recording with live waveform visualization
+   - Speech-to-text transcription analysis
+   - Accuracy scoring with highlighted matches/misses
+   - Filler word detection and breakdown
+   - WPM and pacing feedback
+   - Tone analysis (confident, nervous, rushed, etc.)
+   - Practice history with trend charts
+
+---
+
+## Tech Stack
+
+- **Frontend**: React 18, TypeScript, Vite
+- **Styling**: Tailwind CSS, shadcn/ui components
+- **Animation**: Framer Motion
+- **Backend**: Supabase (Lovable Cloud)
+- **AI/Voice**: ElevenLabs TTS/STT, Lovable AI
+- **Charts**: Recharts
+- **PDF**: jsPDF
+
+---
+
+## Project Structure
+
+```
+src/
+├── components/
+│   ├── Dashboard.tsx        # Main post-generation dashboard
+│   ├── SpeechCoach.tsx      # AI recording & analysis
+│   ├── steps/               # Wizard step components
+│   │   ├── Step1Hook.tsx    # Landing page
+│   │   ├── Step2Audience.tsx # Audience selection
+│   │   ├── Step7Generation.tsx # Final generation
+│   │   └── tracks/          # Track-specific steps
+│   ├── landing/             # Landing page components
+│   └── ui/                  # shadcn/ui components
+├── pages/
+│   └── Index.tsx            # Main wizard orchestrator
+├── lib/
+│   └── tracks.ts            # Track configuration
+└── hooks/                   # Custom React hooks
+
+supabase/functions/
+├── generate-speech/         # AI script generation
+├── elevenlabs-tts/          # Text-to-speech
+├── elevenlabs-stt/          # Speech-to-text
+└── generate-pitch/          # Pitch generation
+```
+
+---
+
+## Getting Started
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+---
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Database Schema
 
-**Use GitHub Codespaces**
+### `practice_sessions`
+Stores AI coach practice recordings with:
+- Transcription and accuracy scores
+- Filler word counts and breakdown
+- WPM and tone analysis
+- Session grouping for trend tracking
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### `suggestion_analytics`
+Tracks user interactions with AI suggestions for optimization.
 
-## What technologies are used for this project?
+---
 
-This project is built with:
+## License
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+MIT
 
-## How can I deploy this project?
+---
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Built with ❤️ using [Lovable](https://lovable.dev)
