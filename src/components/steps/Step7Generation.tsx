@@ -12,39 +12,41 @@ interface Step7GenerationProps {
 const generationTiers = [
   {
     id: "script",
-    label: "Script Only",
+    label: "Speech Only",
     description: "AI-generated speech script with timing cues and transitions.",
     price: "Free",
     icon: FileText,
     features: ["Full speech script", "Timing markers", "Transition cues"],
     color: "from-slate-500/20 to-slate-600/10",
     iconColor: "text-slate-500",
+    available: true,
   },
   {
     id: "deck",
     label: "Script + Deck",
     description: "Complete script with auto-generated slide layouts and content.",
-    price: "Pro",
+    price: "Coming Soon",
     icon: Presentation,
-    features: ["Everything in Script", "Slide outlines", "Visual suggestions"],
+    features: ["Everything in Speech", "Slide outlines", "Visual suggestions"],
     color: "from-blue-500/20 to-blue-600/10",
     iconColor: "text-blue-500",
-    popular: true,
+    available: false,
   },
   {
     id: "showstopper",
     label: "The Showstopper",
     description: "Full pitch package with script, slides, demo choreography, and practice mode.",
-    price: "Premium",
+    price: "Coming Soon",
     icon: Sparkles,
     features: ["Everything in Deck", "Demo choreography", "Practice teleprompter", "Stage directions"],
     color: "from-amber-500/20 to-amber-600/10",
     iconColor: "text-amber-500",
+    available: false,
   },
 ];
 
 export const Step7Generation = ({ onNext, onBack }: Step7GenerationProps) => {
-  const [selected, setSelected] = useState("deck");
+  const [selected, setSelected] = useState("script");
 
   const handleNext = () => {
     const tier = generationTiers.find((t) => t.id === selected);
@@ -79,10 +81,9 @@ export const Step7Generation = ({ onNext, onBack }: Step7GenerationProps) => {
                     : "border-border bg-card hover:border-primary/50"
                 }`}
               >
-                {tier.popular && (
-                  <div className="absolute -top-3 left-4 px-3 py-1 bg-primary text-primary-foreground text-xs font-medium rounded-full flex items-center gap-1">
-                    <Star className="w-3 h-3" />
-                    Most Popular
+                {!tier.available && (
+                  <div className="absolute -top-3 left-4 px-3 py-1 bg-muted text-muted-foreground text-xs font-medium rounded-full">
+                    Coming Soon
                   </div>
                 )}
 
@@ -110,9 +111,7 @@ export const Step7Generation = ({ onNext, onBack }: Step7GenerationProps) => {
                         className={`text-sm font-medium ${
                           tier.price === "Free"
                             ? "text-success"
-                            : tier.price === "Pro"
-                            ? "text-blue-500"
-                            : "text-amber-500"
+                            : "text-muted-foreground"
                         }`}
                       >
                         {tier.price}
@@ -173,6 +172,7 @@ export const Step7Generation = ({ onNext, onBack }: Step7GenerationProps) => {
             size="xl"
             onClick={handleNext}
             className="w-full"
+            disabled={selected !== "script"}
           >
             <Sparkles className="w-5 h-5" />
             Generate My Pitch
