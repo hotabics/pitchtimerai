@@ -12,7 +12,7 @@ interface Step2AudienceProps {
 const audienceOptions = [
   {
     id: "judges",
-    label: "The Jury (Tech & Biz)",
+    label: "Hackathon (The Jury)",
     description: "Innovation & Business Model focus. Industry experts evaluating technical merit.",
     icon: Gavel,
     color: "from-violet-500/20 to-violet-600/10",
