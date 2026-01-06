@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { TimeCounter } from "@/components/TimeCounter";
+import { ProgressIndicator } from "@/components/ProgressIndicator";
 import { Step1Hook } from "@/components/steps/Step1Hook";
 import { Step2Specs } from "@/components/steps/Step2Specs";
 import { Step3Problem } from "@/components/steps/Step3Problem";
@@ -113,6 +114,11 @@ const Index = () => {
   return (
     <>
       <TimeCounter targetMinutes={timeSteps[step]} />
+      {step > 0 && (
+        <div className="fixed top-14 left-0 right-0 z-40 bg-background/80 backdrop-blur-sm border-b border-border/50">
+          <ProgressIndicator currentStep={step} totalSteps={7} />
+        </div>
+      )}
       <AnimatePresence mode="wait">
         {step === 0 && <Step1Hook key="step1" onNext={handleStep1} />}
         {step === 1 && <Step2Specs key="step2" onNext={handleStep2} onBack={handleBack} />}
