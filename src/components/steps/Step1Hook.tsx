@@ -33,16 +33,15 @@ export const Step1Hook = ({ onNext }: Step1HookProps) => {
           className="text-center max-w-3xl mx-auto mb-10"
         >
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tighter text-foreground mb-4">
-            Stop prompting.
-            <br />
+            Hackathons are won with{" "}
             <span className="bg-gradient-to-r from-primary via-primary to-emerald-400 bg-clip-text text-transparent">
-              Start performing.
+              stories
             </span>
+            , not just code.
           </h1>
           <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
-            Generic AI gives you text. We give you a{" "}
-            <span className="text-foreground font-medium">choreographed winning strategy</span>{" "}
-            in 30 minutes.
+            See exactly how much prep time you'll save with our{" "}
+            <span className="text-foreground font-medium">AI-powered pitch builder</span>.
           </p>
         </motion.div>
 
