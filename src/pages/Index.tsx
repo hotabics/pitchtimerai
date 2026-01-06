@@ -264,9 +264,9 @@ const Index = () => {
           data={{
             idea: data.idea || "",
             duration: 3,
-            problem: (td as HackathonData).pain || (td as InvestorData).opportunity || (td as AcademicData).topic || (td as GrandmaData).pain || (td as PeersData).struggle || "",
-            pitch: (td as HackathonData).fix || (td as InvestorData).businessModel || (td as GrandmaData).analogy || (td as PeersData).thing || "",
-            solutionDescription: (td as HackathonData).progress || (td as AcademicData).conclusions || (td as PeersData).authenticWhy,
+            track: data.track || 'hackathon-no-demo',
+            trackData: td as Record<string, unknown>,
+            audienceLabel: data.audienceLabel,
           }}
         />
       </>
