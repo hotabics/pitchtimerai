@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowRight, ArrowLeft, Users, Zap, Code, CheckCircle, HelpCircle, Sparkles, Loader2 } from "lucide-react";
+import { ArrowRight, ArrowLeft, Users, Zap, Code, CheckCircle, HelpCircle, Sparkles, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -150,9 +150,24 @@ export const HackathonPainStep = ({ onNext, onBack, initialValue = "", idea = ""
             transition={{ delay: 0.2 }}
             className="space-y-3"
           >
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-violet-500" />
-              <Label className="text-sm text-muted-foreground">AI Suggestions (select any that apply)</Label>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-violet-500" />
+                <Label className="text-sm text-muted-foreground">AI Suggestions (select any that apply)</Label>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSelectedSuggestions([]);
+                  fetchSuggestions();
+                }}
+                disabled={isLoading}
+                className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <RefreshCw className={`w-3 h-3 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
+                Regenerate
+              </Button>
             </div>
             
             {isLoading ? (
@@ -221,10 +236,81 @@ interface FixStepProps {
   onNext: (fix: string) => void;
   onBack: () => void;
   initialValue?: string;
+  idea?: string;
+  pain?: string;
 }
 
-export const HackathonFixStep = ({ onNext, onBack, initialValue = "" }: FixStepProps) => {
+interface FixSuggestion {
+  id: string;
+  text: string;
+}
+
+export const HackathonFixStep = ({ onNext, onBack, initialValue = "", idea = "", pain = "" }: FixStepProps) => {
   const [fix, setFix] = useState(initialValue);
+  const [suggestions, setSuggestions] = useState<FixSuggestion[]>([]);
+  const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (idea) {
+      fetchSuggestions();
+    }
+  }, [idea]);
+
+  const fetchSuggestions = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-pitch", {
+        body: {
+          type: "fix-suggestions",
+          idea,
+          context: { pain },
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.suggestions && Array.isArray(data.suggestions)) {
+        setSuggestions(
+          data.suggestions.map((text: string, index: number) => ({
+            id: `suggestion-${index}`,
+            text,
+          }))
+        );
+      }
+    } catch (error) {
+      console.error("Failed to fetch fix suggestions:", error);
+      // Fallback suggestions
+      setSuggestions([
+        { id: "s1", text: "Automates the entire workflow with AI-powered assistance" },
+        { id: "s2", text: "Provides a unified dashboard for real-time tracking" },
+        { id: "s3", text: "Uses smart notifications to keep users informed" },
+        { id: "s4", text: "Integrates with existing tools for seamless adoption" },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const toggleSuggestion = (id: string) => {
+    setSelectedSuggestions((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+    );
+  };
+
+  const getCombinedFix = () => {
+    const selectedTexts = suggestions
+      .filter((s) => selectedSuggestions.includes(s.id))
+      .map((s) => s.text);
+    
+    const parts = [...selectedTexts];
+    if (fix.trim()) {
+      parts.push(fix.trim());
+    }
+    return parts.join(". ");
+  };
+
+  const hasContent = fix.trim() || selectedSuggestions.length > 0;
 
   return (
     <WizardStep
@@ -273,6 +359,65 @@ export const HackathonFixStep = ({ onNext, onBack, initialValue = "" }: FixStepP
               className="h-12"
             />
           </div>
+
+          {/* AI Suggestions */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="space-y-3"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-500" />
+                <Label className="text-sm text-muted-foreground">AI Suggestions (select any that apply)</Label>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSelectedSuggestions([]);
+                  fetchSuggestions();
+                }}
+                disabled={isLoading}
+                className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <RefreshCw className={`w-3 h-3 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
+                Regenerate
+              </Button>
+            </div>
+            
+            {isLoading ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="w-5 h-5 animate-spin text-emerald-500" />
+                <span className="ml-2 text-sm text-muted-foreground">Generating suggestions...</span>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {suggestions.map((suggestion, index) => (
+                  <motion.div
+                    key={suggestion.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.25 + index * 0.05 }}
+                    className={`flex items-start gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
+                      selectedSuggestions.includes(suggestion.id)
+                        ? "border-emerald-500 bg-emerald-500/10"
+                        : "border-border hover:border-emerald-500/50 hover:bg-muted/50"
+                    }`}
+                    onClick={() => toggleSuggestion(suggestion.id)}
+                  >
+                    <Checkbox
+                      checked={selectedSuggestions.includes(suggestion.id)}
+                      onCheckedChange={() => toggleSuggestion(suggestion.id)}
+                      className="mt-0.5"
+                    />
+                    <span className="text-sm leading-relaxed">{suggestion.text}</span>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </motion.div>
         </motion.div>
 
         <div className="flex-1" />
@@ -286,8 +431,8 @@ export const HackathonFixStep = ({ onNext, onBack, initialValue = "" }: FixStepP
           <Button
             variant="default"
             size="lg"
-            onClick={() => onNext(fix)}
-            disabled={!fix.trim()}
+            onClick={() => onNext(getCombinedFix())}
+            disabled={!hasContent}
             className="w-full"
           >
             Continue

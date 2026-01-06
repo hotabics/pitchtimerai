@@ -43,6 +43,20 @@ serve(async (req) => {
         Only return valid JSON, no markdown.`;
         break;
 
+      case 'fix-suggestions':
+        systemPrompt = 'You are a startup pitch expert who crafts compelling solution descriptions.';
+        const painContext = context?.pain ? `The pain point being addressed: "${context.pain}"` : '';
+        userPrompt = `For a startup idea about "${idea}"${painContext ? `, ${painContext}` : ''}, generate 4 specific solution/fix suggestions.
+        Each solution should:
+        - Describe HOW the solution works in simple terms
+        - Be action-oriented and concrete
+        - Be concise (1 sentence, max 15 words)
+        
+        Return a JSON object with a "suggestions" array containing 4 strings.
+        Example format: {"suggestions": ["Automatically scans and categorizes receipts using AI", "Sends smart payment reminders before due dates", ...]}
+        Only return valid JSON, no markdown.`;
+        break;
+
       case 'persona':
         systemPrompt = 'You are a market research expert specializing in target audience definition.';
         userPrompt = `For a startup idea about "${idea}", create a primary target persona.
@@ -137,8 +151,8 @@ serve(async (req) => {
       throw new Error('Failed to parse AI response');
     }
 
-    // For pain-suggestions, return the suggestions directly
-    if (type === 'pain-suggestions' && parsed.suggestions) {
+    // For suggestions types, return the suggestions directly
+    if ((type === 'pain-suggestions' || type === 'fix-suggestions') && parsed.suggestions) {
       return new Response(JSON.stringify({ suggestions: parsed.suggestions }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
