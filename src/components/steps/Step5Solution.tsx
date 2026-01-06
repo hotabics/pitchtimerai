@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, ArrowLeft, Sparkles, Loader2, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SelectionCard } from "@/components/SelectionCard";
-import { StepWrapper } from "@/components/StepWrapper";
+import { WizardStep } from "@/components/WizardStep";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -37,8 +37,6 @@ export const Step5Solution = ({ idea, onNext, onBack }: Step5SolutionProps) => {
 
       if (error) throw error;
       
-      console.log('AI pitches response:', data);
-      
       if (data?.result && Array.isArray(data.result)) {
         const validPitches = data.result.map((p: any, i: number) => ({
           id: String(p.id || i + 1),
@@ -57,7 +55,6 @@ export const Step5Solution = ({ idea, onNext, onBack }: Step5SolutionProps) => {
         description: "Using fallback pitches.",
         variant: "destructive"
       });
-      // Fallback pitches
       setPitches([
         { id: "1", title: "The Uber Model", pitch: `Think of it as "Uber for ${idea}" — we connect demand with supply in real-time.` },
         { id: "2", title: "The Airbnb Model", pitch: `We're building "Airbnb for ${idea}" — unlocking unused resources and creating value.` },
@@ -91,7 +88,7 @@ export const Step5Solution = ({ idea, onNext, onBack }: Step5SolutionProps) => {
   };
 
   return (
-    <StepWrapper
+    <WizardStep
       title="Your Elevator Pitch"
       subtitle="Choose the analogy that fits best"
     >
@@ -138,7 +135,6 @@ export const Step5Solution = ({ idea, onNext, onBack }: Step5SolutionProps) => {
               </motion.div>
             ))}
 
-            {/* Optional solution description */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -167,12 +163,9 @@ export const Step5Solution = ({ idea, onNext, onBack }: Step5SolutionProps) => {
                   <Textarea
                     value={solutionDescription}
                     onChange={(e) => setSolutionDescription(e.target.value)}
-                    placeholder="Explain in your own words how the solution works, key features, or what makes it unique. AI will use this to enhance your speech and demo description..."
+                    placeholder="Explain in your own words how the solution works..."
                     className="min-h-[100px] text-sm bg-background/50"
                   />
-                  <p className="text-xs text-muted-foreground mt-2">
-                    This helps AI generate more accurate speech scripts and demo descriptions.
-                  </p>
                 </motion.div>
               )}
             </motion.div>
@@ -205,6 +198,6 @@ export const Step5Solution = ({ idea, onNext, onBack }: Step5SolutionProps) => {
           </Button>
         </motion.div>
       </div>
-    </StepWrapper>
+    </WizardStep>
   );
 };

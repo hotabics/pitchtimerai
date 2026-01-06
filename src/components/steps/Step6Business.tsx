@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, ArrowLeft, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/Chip";
-import { StepWrapper } from "@/components/StepWrapper";
+import { WizardStep } from "@/components/WizardStep";
 import { useState } from "react";
 
 interface Step6BusinessProps {
@@ -31,7 +31,7 @@ export const Step6Business = ({ onNext, onBack }: Step6BusinessProps) => {
   };
 
   return (
-    <StepWrapper
+    <WizardStep
       title="Business Model"
       subtitle="How will you monetize your solution?"
     >
@@ -86,7 +86,7 @@ export const Step6Business = ({ onNext, onBack }: Step6BusinessProps) => {
             disabled={selected.length === 0}
             className="w-full"
           >
-            Finalize Strategy
+            Continue
             <ArrowRight className="w-5 h-5" />
           </Button>
           <Button
@@ -99,6 +99,6 @@ export const Step6Business = ({ onNext, onBack }: Step6BusinessProps) => {
           </Button>
         </motion.div>
       </div>
-    </StepWrapper>
+    </WizardStep>
   );
 };
