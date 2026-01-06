@@ -3,11 +3,13 @@ import { AnimatePresence } from "framer-motion";
 import { Header } from "@/components/Header";
 import { WizardLayout } from "@/components/WizardLayout";
 import { BriefData } from "@/components/ProjectBrief";
-import { Step1Hook } from "@/components/steps/Step1Hook";
+import { Step1Hook, EntryMode } from "@/components/steps/Step1Hook";
 import { Step2Audience } from "@/components/steps/Step2Audience";
 import { Step7Generation } from "@/components/steps/Step7Generation";
+import { CustomScriptStep } from "@/components/steps/CustomScriptStep";
 import { Dashboard } from "@/components/Dashboard";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 // Track-specific step imports
 import { 
@@ -97,6 +99,18 @@ interface PeersData {
   cta?: string;
 }
 
+interface StructuredScriptBlock {
+  label: string;
+  text: string;
+  estimated_seconds: number;
+}
+
+interface StructuredScript {
+  blocks: StructuredScriptBlock[];
+  total_words: number;
+  estimated_total_seconds: number;
+}
+
 interface PitchData {
   idea: string;
   audience: string;
@@ -104,24 +118,34 @@ interface PitchData {
   track: TrackType;
   trackData: HackathonData | InvestorData | AcademicData | GrandmaData | PeersData;
   generationTier: string;
+  entryMode: EntryMode;
+  customScript?: string;
+  structuredScript?: StructuredScript;
 }
 
 const Index = () => {
   const [step, setStep] = useState(0);
   const [showDashboard, setShowDashboard] = useState(false);
-  const [data, setData] = useState<Partial<PitchData>>({});
-  const [trackStep, setTrackStep] = useState(0); // Step within the track
+  const [data, setData] = useState<Partial<PitchData>>({ entryMode: "generate" });
+  const [trackStep, setTrackStep] = useState(0);
+  const [isStructuring, setIsStructuring] = useState(false);
 
   const currentTrack = data.track;
   const trackConfig = currentTrack ? trackConfigs[currentTrack] : null;
-  const totalSteps = trackConfig ? trackConfig.stepCount + 2 : 6; // +2 for Audience and Generation
+  const totalSteps = trackConfig ? trackConfig.stepCount + 2 : 6;
 
   const handleBack = () => {
+    if (data.entryMode === "custom_script" && step === 1) {
+      // Go back to landing from custom script input
+      setStep(0);
+      setData({ entryMode: "generate" });
+      return;
+    }
+    
     if (trackStep > 0) {
       setTrackStep(trackStep - 1);
     } else if (step > 0) {
       setStep(step - 1);
-      // Reset track when going back to audience selection
       if (step === 2) {
         setData({ ...data, track: undefined, trackData: {} });
       }
@@ -132,12 +156,12 @@ const Index = () => {
     setStep(0);
     setTrackStep(0);
     setShowDashboard(false);
-    setData({});
+    setData({ entryMode: "generate" });
   };
 
-  // Step 1: Landing with idea input
+  // Step 1: Landing with idea input (generate mode)
   const handleStep1 = (idea: string) => {
-    setData({ ...data, idea });
+    setData({ ...data, idea, entryMode: "generate" });
     setStep(1);
     toast({
       title: "Idea Captured!",
@@ -145,9 +169,60 @@ const Index = () => {
     });
   };
 
+  // Entry: Practice your own pitch
+  const handlePracticeOwn = () => {
+    setData({ ...data, entryMode: "custom_script" });
+    setStep(1);
+  };
+
+  // Custom script submission
+  const handleCustomScriptSubmit = async (script: string) => {
+    setIsStructuring(true);
+    
+    try {
+      const { data: result, error } = await supabase.functions.invoke('structure-script', {
+        body: { script },
+      });
+
+      if (error) throw error;
+      if (result.error) throw new Error(result.error);
+
+      const structuredScript = result as StructuredScript;
+      
+      // Extract idea from first block or first sentence
+      const firstBlock = structuredScript.blocks[0];
+      const idea = firstBlock?.text.split(/[.!?]/)[0]?.trim() || "My Pitch";
+
+      setData({
+        ...data,
+        customScript: script,
+        structuredScript,
+        idea: idea.length > 50 ? idea.slice(0, 50) + "..." : idea,
+        entryMode: "custom_script",
+      });
+
+      // Go directly to dashboard for custom scripts
+      setShowDashboard(true);
+      
+      toast({
+        title: "Script Structured!",
+        description: `${structuredScript.blocks.length} sections identified. Ready to practice!`,
+      });
+    } catch (err) {
+      console.error("Failed to structure script:", err);
+      toast({
+        title: "Structuring Failed",
+        description: err instanceof Error ? err.message : "Failed to structure script",
+        variant: "destructive",
+      });
+    } finally {
+      setIsStructuring(false);
+    }
+  };
+
   // Step 2: Audience selection -> determines track
   const handleStep2 = (audience: string, audienceLabel: string) => {
-    const track = determineTrack(audience, "none"); // No demo selection anymore
+    const track = determineTrack(audience, "none");
     setData({ ...data, audience, audienceLabel, track, trackData: {} });
     setStep(2);
     setTrackStep(0);
@@ -166,7 +241,6 @@ const Index = () => {
     
     const maxTrackSteps = trackConfig?.stepCount || 4;
     if (trackStep + 1 >= maxTrackSteps) {
-      // Move to generation step
       setStep(3);
     } else {
       setTrackStep(trackStep + 1);
@@ -257,6 +331,28 @@ const Index = () => {
   // Dashboard view after generation
   if (showDashboard) {
     const td = data.trackData || {};
+    
+    // For custom scripts, pass the structured data
+    if (data.entryMode === "custom_script" && data.structuredScript) {
+      return (
+        <>
+          <Header onLogoClick={handleLogoClick} />
+          <Dashboard
+            data={{
+              idea: data.idea || "My Pitch",
+              duration: 3,
+              track: 'hackathon-no-demo', // Default track for custom scripts
+              trackData: {},
+              audienceLabel: "Custom Script",
+              entryMode: "custom_script",
+              structuredScript: data.structuredScript,
+              originalScriptText: data.customScript,
+            }}
+          />
+        </>
+      );
+    }
+
     return (
       <>
         <Header onLogoClick={handleLogoClick} />
@@ -267,6 +363,7 @@ const Index = () => {
             track: data.track || 'hackathon-no-demo',
             trackData: td as Record<string, unknown>,
             audienceLabel: data.audienceLabel,
+            entryMode: "generate",
           }}
         />
       </>
@@ -275,7 +372,34 @@ const Index = () => {
 
   // Landing page (Step 0)
   if (step === 0) {
-    return <Step1Hook onNext={handleStep1} />;
+    return <Step1Hook onNext={handleStep1} onPracticeOwn={handlePracticeOwn} />;
+  }
+
+  // Custom script input (Step 1 for custom_script mode)
+  if (step === 1 && data.entryMode === "custom_script") {
+    return (
+      <WizardLayout
+        briefData={{ projectName: "Your Pitch", prepTime: 85 }}
+        currentStep={1}
+        totalSteps={2}
+        onLogoClick={handleLogoClick}
+      >
+        <CustomScriptStep
+          onNext={handleCustomScriptSubmit}
+          onBack={handleBack}
+          initialValue={data.customScript}
+        />
+        {isStructuring && (
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 mx-auto border-4 border-primary border-t-transparent rounded-full animate-spin" />
+              <p className="text-lg font-medium">Analyzing your script...</p>
+              <p className="text-sm text-muted-foreground">Identifying sections and structure</p>
+            </div>
+          </div>
+        )}
+      </WizardLayout>
+    );
   }
 
   // Render track-specific steps
@@ -363,7 +487,6 @@ const Index = () => {
         }
         break;
 
-      // hackathon-with-demo falls through to hackathon-no-demo for now
       case 'hackathon-with-demo':
         switch (trackStep) {
           case 0:

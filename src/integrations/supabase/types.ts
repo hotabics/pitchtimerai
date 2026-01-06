@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           created_at: string
           duration_minutes: number
+          entry_mode: string | null
           feedback: string[] | null
           filler_breakdown: Json | null
           filler_count: number
@@ -25,9 +26,11 @@ export type Database = {
           idea: string
           missed_sections: string[] | null
           original_script: string | null
+          original_script_text: string | null
           recording_duration_seconds: number
           score: number
           session_group_id: string | null
+          structured_script_json: Json | null
           tone: string | null
           track: string
           transcription: string | null
@@ -37,6 +40,7 @@ export type Database = {
         Insert: {
           created_at?: string
           duration_minutes: number
+          entry_mode?: string | null
           feedback?: string[] | null
           filler_breakdown?: Json | null
           filler_count?: number
@@ -44,9 +48,11 @@ export type Database = {
           idea: string
           missed_sections?: string[] | null
           original_script?: string | null
+          original_script_text?: string | null
           recording_duration_seconds: number
           score?: number
           session_group_id?: string | null
+          structured_script_json?: Json | null
           tone?: string | null
           track: string
           transcription?: string | null
@@ -56,6 +62,7 @@ export type Database = {
         Update: {
           created_at?: string
           duration_minutes?: number
+          entry_mode?: string | null
           feedback?: string[] | null
           filler_breakdown?: Json | null
           filler_count?: number
@@ -63,9 +70,11 @@ export type Database = {
           idea?: string
           missed_sections?: string[] | null
           original_script?: string | null
+          original_script_text?: string | null
           recording_duration_seconds?: number
           score?: number
           session_group_id?: string | null
+          structured_script_json?: Json | null
           tone?: string | null
           track?: string
           transcription?: string | null

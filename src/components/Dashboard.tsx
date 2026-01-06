@@ -33,6 +33,18 @@ interface SpeechBlock {
   visualCue?: string;
 }
 
+interface StructuredScriptBlock {
+  label: string;
+  text: string;
+  estimated_seconds: number;
+}
+
+interface StructuredScript {
+  blocks: StructuredScriptBlock[];
+  total_words: number;
+  estimated_total_seconds: number;
+}
+
 interface DashboardProps {
   data: {
     idea: string;
@@ -40,6 +52,9 @@ interface DashboardProps {
     track: TrackType;
     trackData: Record<string, unknown>;
     audienceLabel?: string;
+    entryMode?: "generate" | "custom_script";
+    structuredScript?: StructuredScript;
+    originalScriptText?: string;
   };
   onBack?: () => void;
 }
@@ -425,9 +440,34 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
     }
   }, [currentBlock, speechBlocks.length, handleBlockChange]);
 
-  // Generate speech on mount
+  // Generate speech on mount (only for generate mode)
   useEffect(() => {
-    generateSpeech();
+    if (data.entryMode === "custom_script" && data.structuredScript) {
+      // Use pre-structured script for custom mode
+      const blocks: SpeechBlock[] = data.structuredScript.blocks.map((block, index, arr) => {
+        const prevSeconds = arr.slice(0, index).reduce((sum, b) => sum + b.estimated_seconds, 0);
+        const startMin = Math.floor(prevSeconds / 60);
+        const startSec = prevSeconds % 60;
+        const endSeconds = prevSeconds + block.estimated_seconds;
+        const endMin = Math.floor(endSeconds / 60);
+        const endSec = endSeconds % 60;
+        
+        return {
+          timeStart: `${startMin}:${startSec.toString().padStart(2, '0')}`,
+          timeEnd: `${endMin}:${endSec.toString().padStart(2, '0')}`,
+          title: block.label,
+          content: block.text,
+        };
+      });
+      setSpeechBlocks(blocks);
+      setMeta({
+        targetWordCount: data.structuredScript.total_words,
+        actualWordCount: data.structuredScript.total_words,
+      });
+      setIsLoading(false);
+    } else {
+      generateSpeech();
+    }
   }, []);
 
   const generateSpeech = async (modifier?: string) => {

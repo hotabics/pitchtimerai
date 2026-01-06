@@ -1,10 +1,15 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, AlertCircle } from "lucide-react";
+import { Sparkles, AlertCircle, Wand2, Mic } from "lucide-react";
 import { TimeEater } from "@/components/landing/TimeEater";
 import { BentoGrid } from "@/components/landing/BentoGrid";
 import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+
+export type EntryMode = "generate" | "custom_script";
+
 interface Step1HookProps {
   onNext: (idea: string) => void;
+  onPracticeOwn: () => void;
 }
 
 const sloganVariations = [
@@ -14,8 +19,9 @@ const sloganVariations = [
   { subject: "Investments", contrast: "features" },
 ];
 
-export const Step1Hook = ({ onNext }: Step1HookProps) => {
+export const Step1Hook = ({ onNext, onPracticeOwn }: Step1HookProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [showOptions, setShowOptions] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -88,13 +94,100 @@ export const Step1Hook = ({ onNext }: Step1HookProps) => {
           </p>
         </motion.div>
 
-        {/* Time Eater Component */}
-        <TimeEater onSubmit={onNext} />
+        {/* Entry Mode Selection or Time Eater */}
+        <AnimatePresence mode="wait">
+          {!showOptions ? (
+            <motion.div
+              key="time-eater"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, y: -20 }}
+            >
+              <TimeEater onSubmit={onNext} />
+              
+              {/* Practice your own pitch link */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.5 }}
+                className="text-center mt-8"
+              >
+                <button
+                  onClick={() => setShowOptions(true)}
+                  className="text-sm text-muted-foreground hover:text-primary transition-colors underline underline-offset-4"
+                >
+                  Or practice your own pitch →
+                </button>
+              </motion.div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="options"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="w-full max-w-2xl mx-auto"
+            >
+              <div className="grid sm:grid-cols-2 gap-4">
+                {/* Generate a pitch */}
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 }}
+                >
+                  <button
+                    onClick={() => setShowOptions(false)}
+                    className="w-full h-full glass-premium rounded-2xl p-6 border border-primary/20 hover:border-primary/40 transition-all text-left group"
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <Wand2 className="w-5 h-5 text-primary" />
+                      </div>
+                      <h3 className="font-semibold text-foreground">Generate a Pitch</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Start from scratch with AI guidance. We'll help you craft the perfect pitch.
+                    </p>
+                  </button>
+                </motion.div>
+
+                {/* Practice your own */}
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <button
+                    onClick={onPracticeOwn}
+                    className="w-full h-full glass-premium rounded-2xl p-6 border border-white/10 hover:border-primary/30 transition-all text-left group"
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
+                        <Mic className="w-5 h-5 text-foreground" />
+                      </div>
+                      <h3 className="font-semibold text-foreground">Practice My Own</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Paste your existing pitch and get AI coaching on delivery.
+                    </p>
+                  </button>
+                </motion.div>
+              </div>
+
+              <button
+                onClick={() => setShowOptions(false)}
+                className="block mx-auto mt-6 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                ← Back to generator
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Scroll indicator */}
         <motion.div
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          animate={{ opacity: showOptions ? 0 : 1 }}
           transition={{ delay: 2 }}
           className="absolute bottom-8 left-1/2 -translate-x-1/2"
         >
