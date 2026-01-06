@@ -1,8 +1,10 @@
 import { motion } from "framer-motion";
-import { ArrowRight, ArrowLeft, User, X } from "lucide-react";
+import { ArrowRight, ArrowLeft, User, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StepWrapper } from "@/components/StepWrapper";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface Step4AudienceProps {
   idea: string;
@@ -10,18 +12,69 @@ interface Step4AudienceProps {
   onBack: () => void;
 }
 
-const generatePersona = (idea: string) => ({
-  description: `Busy professionals aged 25-40 who work in tech-adjacent industries and are looking for efficient solutions to manage "${idea}".`,
-  keywords: ["Time-constrained", "Tech-savvy", "Decision makers", "Innovation seekers", "ROI-focused"],
-});
+interface Persona {
+  description: string;
+  keywords: string[];
+}
 
 export const Step4Audience = ({ idea, onNext, onBack }: Step4AudienceProps) => {
-  const initialPersona = generatePersona(idea);
-  const [keywords, setKeywords] = useState(initialPersona.keywords);
+  const [persona, setPersona] = useState<Persona | null>(null);
+  const [keywords, setKeywords] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchPersona = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('generate-pitch', {
+          body: { type: 'persona', idea }
+        });
+
+        if (error) throw error;
+        
+        if (data?.result) {
+          setPersona(data.result);
+          setKeywords(data.result.keywords || []);
+        }
+      } catch (error) {
+        console.error('Failed to generate persona:', error);
+        toast({
+          title: "AI Generation Failed",
+          description: "Using fallback persona.",
+          variant: "destructive"
+        });
+        // Fallback persona
+        const fallback = {
+          description: `Busy professionals aged 25-40 who work in tech-adjacent industries and are looking for efficient solutions to manage "${idea}".`,
+          keywords: ["Time-constrained", "Tech-savvy", "Decision makers", "Innovation seekers", "ROI-focused"]
+        };
+        setPersona(fallback);
+        setKeywords(fallback.keywords);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPersona();
+  }, [idea, toast]);
 
   const removeKeyword = (keyword: string) => {
     setKeywords(keywords.filter((k) => k !== keyword));
   };
+
+  if (isLoading) {
+    return (
+      <StepWrapper
+        title="Target Audience"
+        subtitle="Who will benefit most from your solution?"
+      >
+        <div className="flex-1 flex flex-col items-center justify-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Identifying your audience...</p>
+        </div>
+      </StepWrapper>
+    );
+  }
 
   return (
     <StepWrapper
@@ -41,7 +94,7 @@ export const Step4Audience = ({ idea, onNext, onBack }: Step4AudienceProps) => {
             <div>
               <h3 className="font-semibold text-foreground mb-2">Primary Persona</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                {initialPersona.description}
+                {persona?.description}
               </p>
             </div>
           </div>
@@ -91,7 +144,7 @@ export const Step4Audience = ({ idea, onNext, onBack }: Step4AudienceProps) => {
           <Button
             variant="default"
             size="lg"
-            onClick={() => onNext({ description: initialPersona.description, keywords })}
+            onClick={() => onNext({ description: persona?.description || '', keywords })}
             className="w-full"
           >
             Confirm Audience
