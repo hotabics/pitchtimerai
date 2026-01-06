@@ -12,10 +12,18 @@ import { Step7Summary } from "@/components/steps/Step7Summary";
 import { Dashboard } from "@/components/Dashboard";
 import { toast } from "@/hooks/use-toast";
 
+interface DemoInfo {
+  hasDemo: boolean;
+  demoType?: string;
+  demoUrl?: string;
+  demoDescription?: string;
+}
+
 interface PitchData {
   idea: string;
   duration: number;
   audience: string;
+  demo: DemoInfo;
   problem: string;
   persona: { description: string; keywords: string[] };
   pitch: string;
@@ -42,12 +50,12 @@ const Index = () => {
     });
   };
 
-  const handleStep2 = (specs: { duration: number; audience: string }) => {
+  const handleStep2 = (specs: { duration: number; audience: string; demo: DemoInfo }) => {
     setData({ ...data, ...specs });
     setStep(2);
     toast({
-      title: "Structure Adapted!",
-      description: "Pitch optimized for your audience",
+      title: specs.demo.hasDemo ? "Demo Planned!" : "Structure Adapted!",
+      description: specs.demo.hasDemo ? "AI will optimize demo timing" : "Pitch optimized for your audience",
     });
   };
 
@@ -105,6 +113,7 @@ const Index = () => {
             duration: data.duration || 3,
             problem: data.problem || "",
             pitch: data.pitch || "",
+            demo: data.demo,
           }}
         />
       </>
