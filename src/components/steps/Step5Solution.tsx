@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowRight, ArrowLeft, Sparkles, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowRight, ArrowLeft, Sparkles, Loader2, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SelectionCard } from "@/components/SelectionCard";
 import { StepWrapper } from "@/components/StepWrapper";
@@ -24,51 +24,66 @@ export const Step5Solution = ({ idea, onNext, onBack }: Step5SolutionProps) => {
   const [selected, setSelected] = useState("");
   const [pitches, setPitches] = useState<Pitch[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const [solutionDescription, setSolutionDescription] = useState("");
   const [showDescription, setShowDescription] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchPitches = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke('generate-pitch', {
-          body: { type: 'pitches', idea }
-        });
+  const fetchPitches = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-pitch', {
+        body: { type: 'pitches', idea }
+      });
 
-        if (error) throw error;
-        
-        console.log('AI pitches response:', data);
-        
-        if (data?.result && Array.isArray(data.result)) {
-          const validPitches = data.result.map((p: any, i: number) => ({
-            id: String(p.id || i + 1),
-            title: p.title || `Option ${i + 1}`,
-            pitch: p.pitch || ''
-          }));
-          setPitches(validPitches);
-        } else {
-          throw new Error('Invalid response format');
-        }
-      } catch (error) {
-        console.error('Failed to generate pitches:', error);
-        toast({
-          title: "AI Generation Failed",
-          description: "Using fallback pitches.",
-          variant: "destructive"
-        });
-        // Fallback pitches
-        setPitches([
-          { id: "1", title: "The Uber Model", pitch: `Think of it as "Uber for ${idea}" — we connect demand with supply in real-time.` },
-          { id: "2", title: "The Airbnb Model", pitch: `We're building "Airbnb for ${idea}" — unlocking unused resources and creating value.` },
-          { id: "3", title: "The Slack Model", pitch: `Imagine "Slack for ${idea}" — a central hub that replaces fragmented tools.` },
-        ]);
-      } finally {
-        setIsLoading(false);
+      if (error) throw error;
+      
+      console.log('AI pitches response:', data);
+      
+      if (data?.result && Array.isArray(data.result)) {
+        const validPitches = data.result.map((p: any, i: number) => ({
+          id: String(p.id || i + 1),
+          title: p.title || `Option ${i + 1}`,
+          pitch: p.pitch || ''
+        }));
+        setPitches(validPitches);
+        setSelected("");
+      } else {
+        throw new Error('Invalid response format');
       }
-    };
+    } catch (error) {
+      console.error('Failed to generate pitches:', error);
+      toast({
+        title: "AI Generation Failed",
+        description: "Using fallback pitches.",
+        variant: "destructive"
+      });
+      // Fallback pitches
+      setPitches([
+        { id: "1", title: "The Uber Model", pitch: `Think of it as "Uber for ${idea}" — we connect demand with supply in real-time.` },
+        { id: "2", title: "The Airbnb Model", pitch: `We're building "Airbnb for ${idea}" — unlocking unused resources and creating value.` },
+        { id: "3", title: "The Slack Model", pitch: `Imagine "Slack for ${idea}" — a central hub that replaces fragmented tools.` },
+      ]);
+    }
+  };
 
-    fetchPitches();
-  }, [idea, toast]);
+  useEffect(() => {
+    const init = async () => {
+      setIsLoading(true);
+      await fetchPitches();
+      setIsLoading(false);
+    };
+    init();
+  }, [idea]);
+
+  const handleRegenerate = async () => {
+    setIsRegenerating(true);
+    await fetchPitches();
+    setIsRegenerating(false);
+    toast({
+      title: "Pitches Regenerated",
+      description: "New pitch options generated."
+    });
+  };
 
   const handleNext = () => {
     const pitch = pitches.find((p) => p.id === selected);
@@ -81,9 +96,23 @@ export const Step5Solution = ({ idea, onNext, onBack }: Step5SolutionProps) => {
       subtitle="Choose the analogy that fits best"
     >
       <div className="flex-1 flex flex-col">
-        <div className="flex items-center gap-2 mb-4 text-sm text-muted-foreground">
-          <Sparkles className="w-4 h-4 text-warning" />
-          <span>AI-crafted pitch variations</span>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Sparkles className="w-4 h-4 text-warning" />
+            <span>AI-crafted pitch variations</span>
+          </div>
+          {!isLoading && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRegenerate}
+              disabled={isRegenerating}
+              className="h-8 px-2 text-muted-foreground hover:text-foreground"
+            >
+              <RefreshCw className={`w-4 h-4 mr-1 ${isRegenerating ? 'animate-spin' : ''}`} />
+              Regenerate
+            </Button>
+          )}
         </div>
 
         {isLoading ? (
