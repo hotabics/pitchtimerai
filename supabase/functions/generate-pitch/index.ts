@@ -57,6 +57,149 @@ serve(async (req) => {
         Only return valid JSON, no markdown.`;
         break;
 
+      case 'progress-suggestions':
+        systemPrompt = 'You are a hackathon mentor who helps teams describe their technical implementation.';
+        userPrompt = `For a hackathon project about "${idea}", generate 4 architecture/tech stack suggestions that describe what was built.
+        Each suggestion should:
+        - Mention specific technologies or frameworks
+        - Describe a key component or feature
+        - Be concise (1 sentence, max 15 words)
+        
+        Return a JSON object with a "suggestions" array containing 4 strings.
+        Example format: {"suggestions": ["Built real-time sync using Supabase Realtime and React hooks", "Implemented AI categorization with OpenAI GPT-4 API", ...]}
+        Only return valid JSON, no markdown.`;
+        break;
+
+      case 'investor-opportunity-suggestions':
+        systemPrompt = 'You are an investor pitch expert who helps quantify market opportunities.';
+        userPrompt = `For a startup idea about "${idea}", generate 4 opportunity/problem cost suggestions.
+        Each suggestion should:
+        - Quantify the problem (cost, time lost, frequency)
+        - Be specific about who is affected
+        - Be concise (1 sentence, max 20 words)
+        
+        Return a JSON object with a "suggestions" array containing 4 strings.
+        Example format: {"suggestions": ["SMBs lose $10K annually to inventory mismanagement, affecting 68% of retailers", ...]}
+        Only return valid JSON, no markdown.`;
+        break;
+
+      case 'investor-market-suggestions':
+        systemPrompt = 'You are a market research expert who helps define TAM/SAM/SOM.';
+        userPrompt = `For a startup idea about "${idea}", generate 4 market size suggestions.
+        Each suggestion should:
+        - Include realistic market size estimates
+        - Reference a specific market segment
+        - Be concise (1 sentence, max 20 words)
+        
+        Return a JSON object with a "suggestions" array containing 4 strings.
+        Example format: {"suggestions": ["Global expense management market: $12B TAM, 15% CAGR through 2028", ...]}
+        Only return valid JSON, no markdown.`;
+        break;
+
+      case 'investor-traction-suggestions':
+        systemPrompt = 'You are a startup advisor who helps founders describe early traction metrics.';
+        userPrompt = `For a startup idea about "${idea}", generate 4 traction/validation suggestions.
+        Each suggestion should:
+        - Describe a realistic early-stage metric
+        - Be specific and measurable
+        - Be concise (1 sentence, max 15 words)
+        
+        Return a JSON object with a "suggestions" array containing 4 strings.
+        Example format: {"suggestions": ["500 beta users with 40% weekly retention rate", "3 enterprise pilots with Fortune 500 companies", ...]}
+        Only return valid JSON, no markdown.`;
+        break;
+
+      case 'investor-business-model-suggestions':
+        systemPrompt = 'You are a business strategy expert who helps define monetization models.';
+        userPrompt = `For a startup idea about "${idea}", generate 4 business model/pricing suggestions.
+        Each suggestion should:
+        - Describe a specific pricing tier or revenue stream
+        - Include example pricing
+        - Be concise (1 sentence, max 15 words)
+        
+        Return a JSON object with a "suggestions" array containing 4 strings.
+        Example format: {"suggestions": ["SaaS subscription: $29/mo starter, $99/mo team, $299/mo enterprise", ...]}
+        Only return valid JSON, no markdown.`;
+        break;
+
+      case 'investor-ask-suggestions':
+        systemPrompt = 'You are a fundraising advisor who helps founders structure investment asks.';
+        userPrompt = `For a startup idea about "${idea}", generate 4 investment ask suggestions.
+        Each suggestion should:
+        - Include funding amount and allocation
+        - Be specific about use of funds
+        - Be concise (1 sentence, max 20 words)
+        
+        Return a JSON object with a "suggestions" array containing 4 strings.
+        Example format: {"suggestions": ["Raising $500K: 50% engineering, 30% sales, 20% operations for 18-month runway", ...]}
+        Only return valid JSON, no markdown.`;
+        break;
+
+      case 'academic-topic-suggestions':
+        systemPrompt = 'You are an academic advisor who helps structure research presentations.';
+        userPrompt = `For a research topic about "${idea}", generate 4 topic relevance suggestions.
+        Each suggestion should:
+        - Explain why this research matters
+        - Reference real-world impact or applications
+        - Be concise (1 sentence, max 20 words)
+        
+        Return a JSON object with a "suggestions" array containing 4 strings.
+        Example format: {"suggestions": ["Addresses critical gap in early disease detection, potentially improving survival rates by 30%", ...]}
+        Only return valid JSON, no markdown.`;
+        break;
+
+      case 'academic-frame-suggestions':
+        systemPrompt = 'You are a research methodology expert who helps define research objectives.';
+        userPrompt = `For a research topic about "${idea}", generate 4 research goal/hypothesis suggestions.
+        Each suggestion should:
+        - Define a clear research objective or hypothesis
+        - Be testable and specific
+        - Be concise (1 sentence, max 20 words)
+        
+        Return a JSON object with a "suggestions" array containing 4 strings.
+        Example format: {"suggestions": ["Hypothesis: The proposed method achieves 95% accuracy while reducing computation time by 50%", ...]}
+        Only return valid JSON, no markdown.`;
+        break;
+
+      case 'academic-methodology-suggestions':
+        systemPrompt = 'You are a research methodology expert who helps describe research approaches.';
+        userPrompt = `For a research topic about "${idea}", generate 4 methodology suggestions.
+        Each suggestion should:
+        - Describe a specific research method or approach
+        - Include data or tools used
+        - Be concise (1 sentence, max 15 words)
+        
+        Return a JSON object with a "suggestions" array containing 4 strings.
+        Example format: {"suggestions": ["Quantitative analysis using 10,000-sample dataset with 5-fold cross-validation", ...]}
+        Only return valid JSON, no markdown.`;
+        break;
+
+      case 'academic-results-suggestions':
+        systemPrompt = 'You are a research presentation expert who helps articulate findings.';
+        userPrompt = `For a research topic about "${idea}", generate 4 key results suggestions.
+        Each suggestion should:
+        - Present a quantifiable finding
+        - Include metrics or statistical significance
+        - Be concise (1 sentence, max 20 words)
+        
+        Return a JSON object with a "suggestions" array containing 4 strings.
+        Example format: {"suggestions": ["Achieved 96.3% accuracy (p < 0.001), exceeding baseline performance by 12%", ...]}
+        Only return valid JSON, no markdown.`;
+        break;
+
+      case 'academic-conclusions-suggestions':
+        systemPrompt = 'You are an academic advisor who helps summarize research contributions.';
+        userPrompt = `For a research topic about "${idea}", generate 4 conclusion/contribution suggestions.
+        Each suggestion should:
+        - Summarize a key contribution or implication
+        - Be suitable for a thesis defense
+        - Be concise (1 sentence, max 20 words)
+        
+        Return a JSON object with a "suggestions" array containing 4 strings.
+        Example format: {"suggestions": ["Novel optimization technique reduces training time by 78% while maintaining accuracy", ...]}
+        Only return valid JSON, no markdown.`;
+        break;
+
       case 'persona':
         systemPrompt = 'You are a market research expert specializing in target audience definition.';
         userPrompt = `For a startup idea about "${idea}", create a primary target persona.
@@ -152,7 +295,15 @@ serve(async (req) => {
     }
 
     // For suggestions types, return the suggestions directly
-    if ((type === 'pain-suggestions' || type === 'fix-suggestions') && parsed.suggestions) {
+    const suggestionTypes = [
+      'pain-suggestions', 'fix-suggestions', 'progress-suggestions',
+      'investor-opportunity-suggestions', 'investor-market-suggestions',
+      'investor-traction-suggestions', 'investor-business-model-suggestions',
+      'investor-ask-suggestions', 'academic-topic-suggestions',
+      'academic-frame-suggestions', 'academic-methodology-suggestions',
+      'academic-results-suggestions', 'academic-conclusions-suggestions'
+    ];
+    if (suggestionTypes.includes(type) && parsed.suggestions) {
       return new Response(JSON.stringify({ suggestions: parsed.suggestions }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
