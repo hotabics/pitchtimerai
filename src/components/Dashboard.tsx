@@ -1,158 +1,244 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, Video, BarChart3, Play, Pause, RotateCcw, Monitor, MousePointer } from "lucide-react";
+import { 
+  FileText, Video, BarChart3, Play, Pause, RotateCcw, Monitor, 
+  Smartphone, Presentation, RefreshCw, Download, Clock, Minus, 
+  Smile, Zap, ChevronRight
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+import { TrackType, trackConfigs } from "@/lib/tracks";
 
-interface DemoInfo {
-  hasDemo: boolean;
-  demoType?: string;
-  demoUrl?: string;
-  demoDescription?: string;
+interface SpeechBlock {
+  timeStart: string;
+  timeEnd: string;
+  title: string;
+  content: string;
+  isDemo?: boolean;
+  visualCue?: string;
 }
 
 interface DashboardProps {
   data: {
     idea: string;
     duration: number;
-    problem: string;
-    pitch: string;
-    solutionDescription?: string;
-    demo?: DemoInfo;
+    track: TrackType;
+    trackData: Record<string, unknown>;
+    audienceLabel?: string;
   };
+  onBack?: () => void;
 }
 
 const tabs = [
-  { id: "script", label: "Script", icon: FileText },
+  { id: "script", label: "Speech", icon: FileText },
   { id: "practice", label: "Practice", icon: Video },
   { id: "analysis", label: "Analysis", icon: BarChart3 },
 ];
 
-const getDemoActions = (demo?: DemoInfo) => {
-  if (!demo?.hasDemo) return [];
-  
-  const actions = [];
-  
-  if (demo.demoType === "website") {
-    actions.push(
-      { action: "Open browser to demo URL", timing: "Before slide 'How It Works'" },
-      { action: "Show landing page and key features", timing: "During explanation" },
-      { action: "Demonstrate user flow", timing: "Highlight the core value" },
-    );
-  } else if (demo.demoType === "mobile") {
-    actions.push(
-      { action: "Ensure device is mirrored to screen", timing: "Before demo section" },
-      { action: "Open app and show home screen", timing: "During 'How It Works'" },
-      { action: "Walk through main user journey", timing: "Keep interactions slow and visible" },
-    );
-  } else if (demo.demoType === "slides") {
-    actions.push(
-      { action: "Queue up video/slides in presenter mode", timing: "Before pitch starts" },
-      { action: "Play pre-recorded demo", timing: "During 'How It Works' section" },
-      { action: "Pause on key moments for emphasis", timing: "Sync with narration" },
-    );
+const regenerateOptions = [
+  { id: "shorter", label: "Make it shorter", icon: Minus },
+  { id: "funnier", label: "Make it funnier", icon: Smile },
+  { id: "tech", label: "Focus more on Tech", icon: Zap },
+];
+
+const getVisualIcon = (visualCue?: string, isDemo?: boolean) => {
+  if (!visualCue && !isDemo) return null;
+  if (visualCue?.toLowerCase().includes("phone") || visualCue?.toLowerCase().includes("mobile")) {
+    return Smartphone;
   }
-  
-  if (demo.demoDescription) {
-    actions.push({ action: demo.demoDescription, timing: "Custom demo focus" });
+  if (visualCue?.toLowerCase().includes("slide")) {
+    return Presentation;
   }
-  
-  return actions;
+  return Monitor;
 };
 
-const generateScript = (data: DashboardProps["data"]) => {
-  const hasDemo = data.demo?.hasDemo;
-  const solutionDetails = data.solutionDescription || "";
-  
-  const blocks = [
-    {
-      time: "0:00 - 0:30",
-      title: "The Hook",
-      content: `Imagine a world where ${data.problem.slice(0, 50)}... That's the reality for millions today.`,
-      isDemo: false,
-    },
-    {
-      time: "0:30 - 1:00",
-      title: "The Problem",
-      content: data.problem,
-      isDemo: false,
-    },
-    {
-      time: "1:00 - 1:30",
-      title: "The Solution",
-      content: data.pitch,
-      isDemo: false,
-    },
-  ];
-  
-  if (hasDemo) {
-    const demoContent = solutionDetails 
-      ? `Let me show you how this works. ${solutionDetails} [DEMO: ${data.demo?.demoDescription || "Show core functionality"}]`
-      : `Let me show you how this works in action. [DEMO: ${data.demo?.demoDescription || "Show core functionality"}]`;
-    
-    blocks.push({
-      time: "1:30 - 2:30",
-      title: "🖥️ Live Demo",
-      content: demoContent,
-      isDemo: true,
-    });
-    blocks.push({
-      time: "2:30 - 3:00",
-      title: "The Ask",
-      content: "As you just saw, our solution works. We're looking for partners who believe in this vision. Join us in making it a reality.",
-      isDemo: false,
-    });
-  } else {
-    const howItWorksContent = solutionDetails 
-      ? solutionDetails
-      : `Our platform leverages AI to transform ${data.idea} into a seamless experience. Users simply connect, customize, and launch.`;
-    
-    blocks.push({
-      time: "1:30 - 2:30",
-      title: "How It Works",
-      content: howItWorksContent,
-      isDemo: false,
-    });
-    blocks.push({
-      time: "2:30 - 3:00",
-      title: "The Ask",
-      content: "We're looking for partners who believe in democratizing innovation. Join us in making this vision a reality.",
-      isDemo: false,
-    });
-  }
-  
-  return blocks;
-};
-
-const analysisData = {
-  score: 85,
-  feedback: [
-    { type: "positive", text: "Strong opening hook that captures attention" },
-    { type: "positive", text: "Clear problem-solution narrative" },
-    { type: "positive", text: "Good pacing throughout the pitch" },
-    { type: "warning", text: "Consider adding specific metrics or traction" },
-    { type: "warning", text: "Missing competitive differentiation" },
-  ],
-};
-
-export const Dashboard = ({ data }: DashboardProps) => {
+export const Dashboard = ({ data, onBack }: DashboardProps) => {
   const [activeTab, setActiveTab] = useState("script");
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentBlock, setCurrentBlock] = useState(0);
+  const [speechBlocks, setSpeechBlocks] = useState<SpeechBlock[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [meta, setMeta] = useState<{ targetWordCount: number; actualWordCount: number } | null>(null);
+  const printRef = useRef<HTMLDivElement>(null);
 
-  const script = generateScript(data);
+  const trackConfig = trackConfigs[data.track];
+
+  // Generate speech on mount
+  useEffect(() => {
+    generateSpeech();
+  }, []);
+
+  const generateSpeech = async (modifier?: string) => {
+    setIsLoading(true);
+    try {
+      const inputs: Record<string, unknown> = {
+        idea: data.idea,
+        ...data.trackData,
+      };
+
+      if (modifier) {
+        inputs.modifier = modifier;
+      }
+
+      const { data: result, error } = await supabase.functions.invoke('generate-speech', {
+        body: {
+          track: data.track,
+          duration: data.duration,
+          inputs,
+          hasDemo: false, // For now, no demo support
+        },
+      });
+
+      if (error) throw error;
+      if (result.error) throw new Error(result.error);
+
+      setSpeechBlocks(result.speech.blocks);
+      setMeta(result.meta);
+      setCurrentBlock(0);
+    } catch (err) {
+      console.error('Failed to generate speech:', err);
+      toast({
+        title: "Generation Failed",
+        description: err instanceof Error ? err.message : "Failed to generate speech",
+        variant: "destructive",
+      });
+      // Fallback to placeholder blocks
+      setSpeechBlocks([
+        {
+          timeStart: "0:00",
+          timeEnd: "0:30",
+          title: "The Hook",
+          content: `Imagine ${data.idea}... That's what we're building.`,
+        },
+        {
+          timeStart: "0:30",
+          timeEnd: "1:00",
+          title: "The Problem",
+          content: data.trackData.pain as string || data.trackData.opportunity as string || "The current solutions just don't cut it.",
+        },
+        {
+          timeStart: "1:00",
+          timeEnd: "2:00",
+          title: "The Solution",
+          content: data.trackData.fix as string || data.trackData.thing as string || "Our approach changes everything.",
+        },
+        {
+          timeStart: "2:00",
+          timeEnd: "3:00",
+          title: "The Closing",
+          content: "Thank you for your time. Any questions?",
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRegenerate = async (option: string) => {
+    setIsRegenerating(true);
+    toast({
+      title: "Regenerating...",
+      description: `Making it ${option === 'shorter' ? 'more concise' : option === 'funnier' ? 'more engaging' : 'more technical'}`,
+    });
+    await generateSpeech(option);
+    setIsRegenerating(false);
+    toast({
+      title: "Speech Updated!",
+      description: "Your new speech is ready",
+    });
+  };
+
+  const handleExportPDF = () => {
+    // Create print-friendly content
+    const content = speechBlocks.map(block => 
+      `[${block.timeStart} - ${block.timeEnd}] ${block.title}\n\n${block.content}\n\n`
+    ).join('---\n\n');
+
+    const blob = new Blob([`Speech: ${data.idea}\n\n${content}`], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `speech-${data.idea.slice(0, 20).replace(/\s+/g, '-')}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Exported!",
+      description: "Your speech has been downloaded",
+    });
+  };
+
+  const analysisData = {
+    score: 85,
+    feedback: [
+      { type: "positive", text: "Strong opening hook that captures attention" },
+      { type: "positive", text: "Clear problem-solution narrative" },
+      { type: "positive", text: "Good pacing throughout the speech" },
+      { type: "warning", text: "Consider adding specific metrics or traction" },
+      { type: "warning", text: "Missing competitive differentiation" },
+    ],
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background pt-20 pb-8 px-4 flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center space-y-4"
+        >
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            className="w-16 h-16 mx-auto border-4 border-primary border-t-transparent rounded-full"
+          />
+          <p className="text-lg font-medium text-foreground">Generating your speech...</p>
+          <p className="text-sm text-muted-foreground">
+            Target: {data.duration} min × 130 wpm = ~{data.duration * 130} words
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pt-20 pb-8 px-4">
-      <div className="max-w-lg mx-auto">
+      <div className="max-w-4xl mx-auto">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-6"
         >
-          <h1 className="text-2xl font-bold text-foreground">Your Pitch is Ready</h1>
-          <p className="text-muted-foreground mt-1">Review, practice, and perfect</p>
+          {/* Project Info Badge */}
+          <div className="flex items-center gap-2 mb-3">
+            <span className={cn(
+              "px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r text-white",
+              trackConfig?.color || "from-primary to-primary"
+            )}>
+              {trackConfig?.name || "Speech"}
+            </span>
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {data.duration} min
+            </span>
+            {meta && (
+              <span className="text-xs text-muted-foreground">
+                • {meta.actualWordCount} words
+              </span>
+            )}
+          </div>
+          
+          <h1 className="text-2xl font-bold text-foreground">Your Speech Is Ready!</h1>
+          <p className="text-muted-foreground mt-1 text-lg font-medium">{data.idea}</p>
+          {data.audienceLabel && (
+            <p className="text-sm text-muted-foreground mt-1">
+              For: {data.audienceLabel}
+            </p>
+          )}
         </motion.div>
 
         {/* Tabs */}
@@ -187,73 +273,108 @@ export const Dashboard = ({ data }: DashboardProps) => {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               className="space-y-4"
+              ref={printRef}
             >
-              {script.map((block, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className={cn(
-                    "glass-card rounded-xl p-4 transition-all",
-                    currentBlock === index && "ring-2 ring-primary",
-                    block.isDemo && "border-2 border-time-low bg-time-low/5"
-                  )}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className={cn(
-                      "text-xs font-medium px-2 py-1 rounded",
-                      block.isDemo ? "bg-time-low/20 text-time-low" : "bg-primary/10 text-primary"
-                    )}>
-                      {block.time}
-                    </span>
-                    <span className="text-sm font-semibold text-foreground">{block.title}</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {block.content}
-                  </p>
-                  {block.isDemo && (
-                    <div className="mt-3 flex items-center gap-2 text-xs text-time-low">
-                      <Monitor className="w-3 h-3" />
-                      <span>Demo segment - practice transitions!</span>
+              {/* Script blocks with 3-column layout */}
+              {speechBlocks.map((block, index) => {
+                const VisualIcon = getVisualIcon(block.visualCue, block.isDemo);
+                
+                return (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className={cn(
+                      "glass-card rounded-xl p-4 transition-all grid gap-4",
+                      block.isDemo ? "border-2 border-time-low bg-time-low/5" : "",
+                      "grid-cols-[80px_1fr_60px] md:grid-cols-[100px_1fr_80px]"
+                    )}
+                  >
+                    {/* Left Column: Time Block */}
+                    <div className="flex flex-col items-center justify-start">
+                      <span className={cn(
+                        "text-xs font-bold px-2 py-1 rounded text-center",
+                        block.isDemo ? "bg-time-low/20 text-time-low" : "bg-primary/10 text-primary"
+                      )}>
+                        {block.timeStart}
+                      </span>
+                      <div className="h-full w-px bg-border my-1" />
+                      <span className="text-xs text-muted-foreground">
+                        {block.timeEnd}
+                      </span>
                     </div>
-                  )}
-                </motion.div>
-              ))}
-              
-              {/* Demo Actions Section */}
-              {data.demo?.hasDemo && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 }}
-                  className="mt-6 p-4 rounded-xl bg-gradient-to-r from-time-low/10 to-primary/10 border border-time-low/30"
-                >
-                  <div className="flex items-center gap-2 mb-3">
-                    <MousePointer className="w-4 h-4 text-time-low" />
-                    <h3 className="font-semibold text-foreground">Recommended Demo Actions</h3>
-                  </div>
-                  <div className="space-y-2">
-                    {getDemoActions(data.demo).map((action, index) => (
-                      <motion.div
-                        key={index}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.6 + index * 0.1 }}
-                        className="flex items-start gap-3 p-2 rounded-lg bg-background/50"
+
+                    {/* Middle Column: Content */}
+                    <div className="flex-1">
+                      <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+                        {block.title}
+                        {block.isDemo && (
+                          <span className="text-xs px-2 py-0.5 bg-time-low/20 text-time-low rounded">
+                            DEMO
+                          </span>
+                        )}
+                      </h3>
+                      <p className="text-base text-foreground leading-relaxed">
+                        {block.content}
+                      </p>
+                    </div>
+
+                    {/* Right Column: Visual Cues */}
+                    <div className="flex flex-col items-center justify-center">
+                      {VisualIcon && (
+                        <div className="flex flex-col items-center gap-1">
+                          <VisualIcon className="w-5 h-5 text-muted-foreground" />
+                          <span className="text-[10px] text-muted-foreground text-center">
+                            {block.visualCue || "Demo"}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+
+              {/* Post-Generation Actions */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="mt-8 space-y-4"
+              >
+                {/* Regenerate Options */}
+                <div className="p-4 rounded-xl bg-muted/50 border border-border">
+                  <p className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                    <RefreshCw className="w-4 h-4" />
+                    Regenerate with adjustments
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {regenerateOptions.map((option) => (
+                      <Button
+                        key={option.id}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRegenerate(option.id)}
+                        disabled={isRegenerating}
+                        className="gap-2"
                       >
-                        <div className="w-5 h-5 rounded-full bg-time-low/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <span className="text-xs font-bold text-time-low">{index + 1}</span>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{action.action}</p>
-                          <p className="text-xs text-muted-foreground">{action.timing}</p>
-                        </div>
-                      </motion.div>
+                        <option.icon className="w-4 h-4" />
+                        {option.label}
+                      </Button>
                     ))}
                   </div>
-                </motion.div>
-              )}
+                </div>
+
+                {/* Export */}
+                <Button
+                  variant="secondary"
+                  className="w-full gap-2"
+                  onClick={handleExportPDF}
+                >
+                  <Download className="w-4 h-4" />
+                  Export to TXT
+                </Button>
+              </motion.div>
             </motion.div>
           )}
 
@@ -267,6 +388,14 @@ export const Dashboard = ({ data }: DashboardProps) => {
             >
               {/* Teleprompter */}
               <div className="glass-card rounded-xl p-6 min-h-[300px] flex flex-col">
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded">
+                    {speechBlocks[currentBlock]?.timeStart} - {speechBlocks[currentBlock]?.timeEnd}
+                  </span>
+                  <span className="text-sm font-semibold text-foreground">
+                    {speechBlocks[currentBlock]?.title}
+                  </span>
+                </div>
                 <div className="flex-1 flex items-center justify-center">
                   <motion.p
                     key={currentBlock}
@@ -274,11 +403,8 @@ export const Dashboard = ({ data }: DashboardProps) => {
                     animate={{ opacity: 1, y: 0 }}
                     className="text-xl font-medium text-foreground text-center leading-relaxed"
                   >
-                    {script[currentBlock]?.content}
+                    {speechBlocks[currentBlock]?.content}
                   </motion.p>
-                </div>
-                <div className="text-center text-sm text-muted-foreground mt-4">
-                  {script[currentBlock]?.time} — {script[currentBlock]?.title}
                 </div>
               </div>
 
@@ -303,19 +429,20 @@ export const Dashboard = ({ data }: DashboardProps) => {
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => setCurrentBlock(Math.min(currentBlock + 1, script.length - 1))}
+                  onClick={() => setCurrentBlock(Math.min(currentBlock + 1, speechBlocks.length - 1))}
                 >
-                  →
+                  <ChevronRight className="w-5 h-5" />
                 </Button>
               </div>
 
               {/* Progress */}
               <div className="flex gap-1">
-                {script.map((_, index) => (
-                  <div
+                {speechBlocks.map((_, index) => (
+                  <button
                     key={index}
+                    onClick={() => setCurrentBlock(index)}
                     className={cn(
-                      "flex-1 h-1 rounded-full transition-all",
+                      "flex-1 h-2 rounded-full transition-all cursor-pointer hover:opacity-80",
                       index <= currentBlock ? "bg-primary" : "bg-muted"
                     )}
                   />
@@ -342,9 +469,9 @@ export const Dashboard = ({ data }: DashboardProps) => {
                 >
                   <span className="text-4xl font-bold text-success">{analysisData.score}</span>
                 </motion.div>
-                <p className="text-lg font-semibold text-foreground">Great Pitch!</p>
+                <p className="text-lg font-semibold text-foreground">Great Speech!</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Your pitch scores above average for hackathon presentations
+                  Your speech scores above average for {trackConfig?.name || "presentations"}
                 </p>
               </div>
 
