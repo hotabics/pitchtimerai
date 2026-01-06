@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowRight, Gavel, TrendingUp, Users, Coffee, ArrowLeft } from "lucide-react";
+import { ArrowRight, Gavel, TrendingUp, Users, Coffee, ArrowLeft, GraduationCap, PartyPopper } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WizardStep } from "@/components/WizardStep";
 import { useState } from "react";
@@ -35,6 +35,22 @@ const audienceOptions = [
     iconColor: "text-blue-500",
   },
   {
+    id: "academic",
+    label: "Academic Commission",
+    description: "Thesis defense. Strict structure, methodology, and data-driven arguments.",
+    icon: GraduationCap,
+    color: "from-indigo-500/20 to-indigo-600/10",
+    iconColor: "text-indigo-500",
+  },
+  {
+    id: "peers",
+    label: "Students / Friends / Peers",
+    description: "Casual pitch. Authentic, relatable, no-BS approach for classmates or clubs.",
+    icon: PartyPopper,
+    color: "from-fuchsia-500/20 to-purple-600/10",
+    iconColor: "text-fuchsia-500",
+  },
+  {
     id: "nontech",
     label: "Non-Tech (Grandma Test)",
     description: "Simplicity focus. Explain like you're talking to someone new to technology.",
@@ -60,7 +76,7 @@ export const Step2Audience = ({ onNext, onBack }: Step2AudienceProps) => {
       subtitle="Select your primary audience to tailor the pitch style"
     >
       <div className="flex-1 flex flex-col">
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {audienceOptions.map((option, index) => {
             const Icon = option.icon;
             const isSelected = selected === option.id;
