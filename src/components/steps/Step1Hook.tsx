@@ -2,7 +2,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import { TimeEater } from "@/components/landing/TimeEater";
 import { BentoGrid } from "@/components/landing/BentoGrid";
-import { PitchGallery } from "@/components/landing/PitchGallery";
 import { useState, useEffect } from "react";
 interface Step1HookProps {
   onNext: (idea: string) => void;
@@ -91,9 +90,6 @@ export const Step1Hook = ({ onNext }: Step1HookProps) => {
 
         {/* Time Eater Component */}
         <TimeEater onSubmit={onNext} />
-
-        {/* Pitch Gallery - Popular pitch elements */}
-        <PitchGallery />
 
         {/* Scroll indicator */}
         <motion.div
