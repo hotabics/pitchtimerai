@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { AnimatePresence } from "framer-motion";
-import { TimeCounter } from "@/components/TimeCounter";
-import { ProgressIndicator } from "@/components/ProgressIndicator";
+import { Header } from "@/components/Header";
 import { Step1Hook } from "@/components/steps/Step1Hook";
 import { Step2Specs } from "@/components/steps/Step2Specs";
 import { Step3Problem } from "@/components/steps/Step3Problem";
@@ -31,7 +30,7 @@ interface PitchData {
   models: string[];
 }
 
-const timeSteps = [900, 750, 600, 480, 360, 180, 30];
+
 
 const Index = () => {
   const [step, setStep] = useState(0);
@@ -107,7 +106,7 @@ const Index = () => {
   if (showDashboard) {
     return (
       <>
-        <TimeCounter targetMinutes={30} isComplete />
+        <Header />
         <Dashboard
           data={{
             idea: data.idea || "",
@@ -124,13 +123,7 @@ const Index = () => {
 
   return (
     <>
-      {/* Only show TimeCounter after Step 1 (landing page has its own) */}
-      {step > 0 && <TimeCounter targetMinutes={timeSteps[step]} />}
-      {step > 0 && (
-        <div className="fixed top-16 left-0 right-0 z-40">
-          <ProgressIndicator currentStep={step} totalSteps={7} />
-        </div>
-      )}
+      {step > 0 && <Header showProgress currentStep={step} totalSteps={7} />}
       <AnimatePresence mode="wait">
         {step === 0 && <Step1Hook key="step1" onNext={handleStep1} />}
         {step === 1 && <Step2Specs key="step2" onNext={handleStep2} onBack={handleBack} />}
