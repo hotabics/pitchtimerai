@@ -1,95 +1,17 @@
 import { motion } from "framer-motion";
-import { ArrowRight, ArrowLeft, Target, BarChart3, TrendingUp, DollarSign, Banknote, HelpCircle, Sparkles, Loader2, RefreshCw } from "lucide-react";
+import { ArrowRight, ArrowLeft, Target, BarChart3, TrendingUp, DollarSign, Banknote, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { WizardStep } from "@/components/WizardStep";
-import { useState, useEffect } from "react";
-import { Checkbox } from "@/components/ui/checkbox";
+import { useState } from "react";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { supabase } from "@/integrations/supabase/client";
-
-interface Suggestion {
-  id: string;
-  text: string;
-}
-
-// Reusable AI Suggestions component
-const AISuggestions = ({
-  suggestions,
-  selectedSuggestions,
-  isLoading,
-  onToggle,
-  onRegenerate,
-  accentColor = "emerald",
-}: {
-  suggestions: Suggestion[];
-  selectedSuggestions: string[];
-  isLoading: boolean;
-  onToggle: (id: string) => void;
-  onRegenerate: () => void;
-  accentColor?: string;
-}) => (
-  <motion.div
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay: 0.2 }}
-    className="space-y-3"
-  >
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <Sparkles className={`w-4 h-4 text-${accentColor}-500`} />
-        <Label className="text-sm text-muted-foreground">AI Suggestions (select any that apply)</Label>
-      </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={onRegenerate}
-        disabled={isLoading}
-        className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
-      >
-        <RefreshCw className={`w-3 h-3 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
-        Regenerate
-      </Button>
-    </div>
-    
-    {isLoading ? (
-      <div className="flex items-center justify-center py-6">
-        <Loader2 className={`w-5 h-5 animate-spin text-${accentColor}-500`} />
-        <span className="ml-2 text-sm text-muted-foreground">Generating suggestions...</span>
-      </div>
-    ) : (
-      <div className="space-y-2">
-        {suggestions.map((suggestion, index) => (
-          <motion.div
-            key={suggestion.id}
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.25 + index * 0.05 }}
-            className={`flex items-start gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
-              selectedSuggestions.includes(suggestion.id)
-                ? `border-${accentColor}-500 bg-${accentColor}-500/10`
-                : `border-border hover:border-${accentColor}-500/50 hover:bg-muted/50`
-            }`}
-            onClick={() => onToggle(suggestion.id)}
-          >
-            <Checkbox
-              checked={selectedSuggestions.includes(suggestion.id)}
-              onCheckedChange={() => onToggle(suggestion.id)}
-              className="mt-0.5"
-            />
-            <span className="text-sm leading-relaxed">{suggestion.text}</span>
-          </motion.div>
-        ))}
-      </div>
-    )}
-  </motion.div>
-);
+import { AISuggestions, useSuggestions } from "@/components/shared/AISuggestions";
 
 // Step 1: The Opportunity
 interface OpportunityStepProps {
@@ -101,49 +23,30 @@ interface OpportunityStepProps {
 
 export const InvestorOpportunityStep = ({ onNext, onBack, initialValue = "", idea = "" }: OpportunityStepProps) => {
   const [opportunity, setOpportunity] = useState(initialValue);
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (idea) fetchSuggestions();
-  }, [idea]);
+  const {
+    suggestions,
+    selectedSuggestions,
+    isLoading,
+    toggleSuggestion,
+    regenerate,
+    getCombinedValue,
+    hasSelection,
+    isRateLimited,
+    remainingAttempts,
+    cooldownSeconds,
+  } = useSuggestions({
+    type: "investor-opportunity-suggestions",
+    idea,
+    fallbackSuggestions: [
+      "SMBs lose $10K annually to inventory mismanagement, affecting 68% of retailers",
+      "Enterprise teams waste 15+ hours weekly on manual reporting tasks",
+      "Customer churn costs SaaS companies 5-25x more than retention",
+      "Security breaches cost SMBs an average of $120K per incident",
+    ],
+  });
 
-  const fetchSuggestions = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-pitch", {
-        body: { type: "investor-opportunity-suggestions", idea },
-      });
-      if (error) throw error;
-      if (data?.suggestions && Array.isArray(data.suggestions)) {
-        setSuggestions(data.suggestions.map((text: string, i: number) => ({ id: `s-${i}`, text })));
-      }
-    } catch (error) {
-      console.error("Failed to fetch suggestions:", error);
-      setSuggestions([
-        { id: "s1", text: "SMBs lose $10K annually to inventory mismanagement, affecting 68% of retailers" },
-        { id: "s2", text: "Enterprise teams waste 15+ hours weekly on manual reporting tasks" },
-        { id: "s3", text: "Customer churn costs SaaS companies 5-25x more than retention" },
-        { id: "s4", text: "Security breaches cost SMBs an average of $120K per incident" },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const toggleSuggestion = (id: string) => {
-    setSelectedSuggestions((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
-  };
-
-  const getCombined = () => {
-    const selected = suggestions.filter((s) => selectedSuggestions.includes(s.id)).map((s) => s.text);
-    const parts = [...selected];
-    if (opportunity.trim()) parts.push(opportunity.trim());
-    return parts.join(". ");
-  };
-
-  const hasContent = opportunity.trim() || selectedSuggestions.length > 0;
+  const hasContent = opportunity.trim() || hasSelection;
 
   return (
     <WizardStep title="The Opportunity" subtitle="Problem cost & frequency - why is this worth solving?">
@@ -179,15 +82,18 @@ export const InvestorOpportunityStep = ({ onNext, onBack, initialValue = "", ide
             selectedSuggestions={selectedSuggestions}
             isLoading={isLoading}
             onToggle={toggleSuggestion}
-            onRegenerate={() => { setSelectedSuggestions([]); fetchSuggestions(); }}
+            onRegenerate={regenerate}
             accentColor="emerald"
+            isRateLimited={isRateLimited}
+            remainingAttempts={remainingAttempts}
+            cooldownSeconds={cooldownSeconds}
           />
         </motion.div>
 
         <div className="flex-1" />
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mt-6 space-y-3">
-          <Button variant="default" size="lg" onClick={() => onNext(getCombined())} disabled={!hasContent} className="w-full">
+          <Button variant="default" size="lg" onClick={() => onNext(getCombinedValue(opportunity))} disabled={!hasContent} className="w-full">
             Continue <ArrowRight className="w-5 h-5" />
           </Button>
           <Button variant="ghost" onClick={onBack} className="w-full"><ArrowLeft className="w-4 h-4" /> Back</Button>
@@ -207,49 +113,30 @@ interface MarketStepProps {
 
 export const InvestorMarketStep = ({ onNext, onBack, initialValue = "", idea = "" }: MarketStepProps) => {
   const [market, setMarket] = useState(initialValue);
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (idea) fetchSuggestions();
-  }, [idea]);
+  const {
+    suggestions,
+    selectedSuggestions,
+    isLoading,
+    toggleSuggestion,
+    regenerate,
+    getCombinedValue,
+    hasSelection,
+    isRateLimited,
+    remainingAttempts,
+    cooldownSeconds,
+  } = useSuggestions({
+    type: "investor-market-suggestions",
+    idea,
+    fallbackSuggestions: [
+      "Global market size: $45B TAM with 12% annual growth rate",
+      "US mid-market segment: $12B SAM, underserved by current solutions",
+      "Target SOM: $300M achievable within 5 years (2.5% market share)",
+      "Enterprise segment growing 20% YoY, driven by digital transformation",
+    ],
+  });
 
-  const fetchSuggestions = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-pitch", {
-        body: { type: "investor-market-suggestions", idea },
-      });
-      if (error) throw error;
-      if (data?.suggestions && Array.isArray(data.suggestions)) {
-        setSuggestions(data.suggestions.map((text: string, i: number) => ({ id: `s-${i}`, text })));
-      }
-    } catch (error) {
-      console.error("Failed to fetch suggestions:", error);
-      setSuggestions([
-        { id: "s1", text: "Global market size: $45B TAM with 12% annual growth rate" },
-        { id: "s2", text: "US mid-market segment: $12B SAM, underserved by current solutions" },
-        { id: "s3", text: "Target SOM: $300M achievable within 5 years (2.5% market share)" },
-        { id: "s4", text: "Enterprise segment growing 20% YoY, driven by digital transformation" },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const toggleSuggestion = (id: string) => {
-    setSelectedSuggestions((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
-  };
-
-  const getCombined = () => {
-    const selected = suggestions.filter((s) => selectedSuggestions.includes(s.id)).map((s) => s.text);
-    const parts = [...selected];
-    if (market.trim()) parts.push(market.trim());
-    return parts.join(". ");
-  };
-
-  const hasContent = market.trim() || selectedSuggestions.length > 0;
+  const hasContent = market.trim() || hasSelection;
 
   return (
     <WizardStep title="Market Size" subtitle="TAM/SAM/SOM or Target Segment">
@@ -285,15 +172,18 @@ export const InvestorMarketStep = ({ onNext, onBack, initialValue = "", idea = "
             selectedSuggestions={selectedSuggestions}
             isLoading={isLoading}
             onToggle={toggleSuggestion}
-            onRegenerate={() => { setSelectedSuggestions([]); fetchSuggestions(); }}
+            onRegenerate={regenerate}
             accentColor="blue"
+            isRateLimited={isRateLimited}
+            remainingAttempts={remainingAttempts}
+            cooldownSeconds={cooldownSeconds}
           />
         </motion.div>
 
         <div className="flex-1" />
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mt-6 space-y-3">
-          <Button variant="default" size="lg" onClick={() => onNext(getCombined())} disabled={!hasContent} className="w-full">
+          <Button variant="default" size="lg" onClick={() => onNext(getCombinedValue(market))} disabled={!hasContent} className="w-full">
             Continue <ArrowRight className="w-5 h-5" />
           </Button>
           <Button variant="ghost" onClick={onBack} className="w-full"><ArrowLeft className="w-4 h-4" /> Back</Button>
@@ -313,49 +203,30 @@ interface TractionStepProps {
 
 export const InvestorTractionStep = ({ onNext, onBack, initialValue = "", idea = "" }: TractionStepProps) => {
   const [traction, setTraction] = useState(initialValue);
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (idea) fetchSuggestions();
-  }, [idea]);
+  const {
+    suggestions,
+    selectedSuggestions,
+    isLoading,
+    toggleSuggestion,
+    regenerate,
+    getCombinedValue,
+    hasSelection,
+    isRateLimited,
+    remainingAttempts,
+    cooldownSeconds,
+  } = useSuggestions({
+    type: "investor-traction-suggestions",
+    idea,
+    fallbackSuggestions: [
+      "2,500 active users with 40% month-over-month growth",
+      "$15K MRR with 90% customer retention rate",
+      "3 enterprise pilots including Fortune 500 companies",
+      "8,000+ waitlist signups from organic marketing",
+    ],
+  });
 
-  const fetchSuggestions = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-pitch", {
-        body: { type: "investor-traction-suggestions", idea },
-      });
-      if (error) throw error;
-      if (data?.suggestions && Array.isArray(data.suggestions)) {
-        setSuggestions(data.suggestions.map((text: string, i: number) => ({ id: `s-${i}`, text })));
-      }
-    } catch (error) {
-      console.error("Failed to fetch suggestions:", error);
-      setSuggestions([
-        { id: "s1", text: "2,500 active users with 40% month-over-month growth" },
-        { id: "s2", text: "$15K MRR with 90% customer retention rate" },
-        { id: "s3", text: "3 enterprise pilots including Fortune 500 companies" },
-        { id: "s4", text: "8,000+ waitlist signups from organic marketing" },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const toggleSuggestion = (id: string) => {
-    setSelectedSuggestions((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
-  };
-
-  const getCombined = () => {
-    const selected = suggestions.filter((s) => selectedSuggestions.includes(s.id)).map((s) => s.text);
-    const parts = [...selected];
-    if (traction.trim()) parts.push(traction.trim());
-    return parts.join(". ");
-  };
-
-  const hasContent = traction.trim() || selectedSuggestions.length > 0;
+  const hasContent = traction.trim() || hasSelection;
 
   return (
     <WizardStep title="Traction" subtitle="Users, Revenue, Pilots, or Waitlist">
@@ -391,15 +262,18 @@ export const InvestorTractionStep = ({ onNext, onBack, initialValue = "", idea =
             selectedSuggestions={selectedSuggestions}
             isLoading={isLoading}
             onToggle={toggleSuggestion}
-            onRegenerate={() => { setSelectedSuggestions([]); fetchSuggestions(); }}
+            onRegenerate={regenerate}
             accentColor="emerald"
+            isRateLimited={isRateLimited}
+            remainingAttempts={remainingAttempts}
+            cooldownSeconds={cooldownSeconds}
           />
         </motion.div>
 
         <div className="flex-1" />
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mt-6 space-y-3">
-          <Button variant="default" size="lg" onClick={() => onNext(getCombined())} disabled={!hasContent} className="w-full">
+          <Button variant="default" size="lg" onClick={() => onNext(getCombinedValue(traction))} disabled={!hasContent} className="w-full">
             Continue <ArrowRight className="w-5 h-5" />
           </Button>
           <Button variant="ghost" onClick={onBack} className="w-full"><ArrowLeft className="w-4 h-4" /> Back</Button>
@@ -419,49 +293,30 @@ interface BusinessModelStepProps {
 
 export const InvestorBusinessModelStep = ({ onNext, onBack, initialValue = "", idea = "" }: BusinessModelStepProps) => {
   const [model, setModel] = useState(initialValue);
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (idea) fetchSuggestions();
-  }, [idea]);
+  const {
+    suggestions,
+    selectedSuggestions,
+    isLoading,
+    toggleSuggestion,
+    regenerate,
+    getCombinedValue,
+    hasSelection,
+    isRateLimited,
+    remainingAttempts,
+    cooldownSeconds,
+  } = useSuggestions({
+    type: "investor-business-model-suggestions",
+    idea,
+    fallbackSuggestions: [
+      "SaaS subscription: $29/mo starter, $99/mo team, $299/mo enterprise",
+      "Freemium model with premium features at $49/mo",
+      "Usage-based pricing: $0.10 per transaction processed",
+      "LTV: $2,400 | CAC: $200 | 12x LTV/CAC ratio",
+    ],
+  });
 
-  const fetchSuggestions = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-pitch", {
-        body: { type: "investor-business-model-suggestions", idea },
-      });
-      if (error) throw error;
-      if (data?.suggestions && Array.isArray(data.suggestions)) {
-        setSuggestions(data.suggestions.map((text: string, i: number) => ({ id: `s-${i}`, text })));
-      }
-    } catch (error) {
-      console.error("Failed to fetch suggestions:", error);
-      setSuggestions([
-        { id: "s1", text: "SaaS subscription: $29/mo starter, $99/mo team, $299/mo enterprise" },
-        { id: "s2", text: "Freemium model with premium features at $49/mo" },
-        { id: "s3", text: "Usage-based pricing: $0.10 per transaction processed" },
-        { id: "s4", text: "LTV: $2,400 | CAC: $200 | 12x LTV/CAC ratio" },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const toggleSuggestion = (id: string) => {
-    setSelectedSuggestions((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
-  };
-
-  const getCombined = () => {
-    const selected = suggestions.filter((s) => selectedSuggestions.includes(s.id)).map((s) => s.text);
-    const parts = [...selected];
-    if (model.trim()) parts.push(model.trim());
-    return parts.join(". ");
-  };
-
-  const hasContent = model.trim() || selectedSuggestions.length > 0;
+  const hasContent = model.trim() || hasSelection;
 
   return (
     <WizardStep title="Business Model" subtitle="Who pays and how much?">
@@ -497,15 +352,18 @@ export const InvestorBusinessModelStep = ({ onNext, onBack, initialValue = "", i
             selectedSuggestions={selectedSuggestions}
             isLoading={isLoading}
             onToggle={toggleSuggestion}
-            onRegenerate={() => { setSelectedSuggestions([]); fetchSuggestions(); }}
+            onRegenerate={regenerate}
             accentColor="amber"
+            isRateLimited={isRateLimited}
+            remainingAttempts={remainingAttempts}
+            cooldownSeconds={cooldownSeconds}
           />
         </motion.div>
 
         <div className="flex-1" />
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mt-6 space-y-3">
-          <Button variant="default" size="lg" onClick={() => onNext(getCombined())} disabled={!hasContent} className="w-full">
+          <Button variant="default" size="lg" onClick={() => onNext(getCombinedValue(model))} disabled={!hasContent} className="w-full">
             Continue <ArrowRight className="w-5 h-5" />
           </Button>
           <Button variant="ghost" onClick={onBack} className="w-full"><ArrowLeft className="w-4 h-4" /> Back</Button>
@@ -525,49 +383,30 @@ interface AskStepProps {
 
 export const InvestorAskStep = ({ onNext, onBack, initialValue = "", idea = "" }: AskStepProps) => {
   const [ask, setAsk] = useState(initialValue);
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (idea) fetchSuggestions();
-  }, [idea]);
+  const {
+    suggestions,
+    selectedSuggestions,
+    isLoading,
+    toggleSuggestion,
+    regenerate,
+    getCombinedValue,
+    hasSelection,
+    isRateLimited,
+    remainingAttempts,
+    cooldownSeconds,
+  } = useSuggestions({
+    type: "investor-ask-suggestions",
+    idea,
+    fallbackSuggestions: [
+      "Raising $500K: 50% engineering, 30% sales, 20% operations for 18-month runway",
+      "Seeking $1M seed to reach $100K MRR and Series A readiness",
+      "Pre-seed of $250K to validate product-market fit with 1,000 users",
+      "Bridge round of $300K for 12-month runway to profitability",
+    ],
+  });
 
-  const fetchSuggestions = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-pitch", {
-        body: { type: "investor-ask-suggestions", idea },
-      });
-      if (error) throw error;
-      if (data?.suggestions && Array.isArray(data.suggestions)) {
-        setSuggestions(data.suggestions.map((text: string, i: number) => ({ id: `s-${i}`, text })));
-      }
-    } catch (error) {
-      console.error("Failed to fetch suggestions:", error);
-      setSuggestions([
-        { id: "s1", text: "Raising $500K: 50% engineering, 30% sales, 20% operations for 18-month runway" },
-        { id: "s2", text: "Seeking $1M seed to reach $100K MRR and Series A readiness" },
-        { id: "s3", text: "Pre-seed of $250K to validate product-market fit with 1,000 users" },
-        { id: "s4", text: "Bridge round of $300K for 12-month runway to profitability" },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const toggleSuggestion = (id: string) => {
-    setSelectedSuggestions((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
-  };
-
-  const getCombined = () => {
-    const selected = suggestions.filter((s) => selectedSuggestions.includes(s.id)).map((s) => s.text);
-    const parts = [...selected];
-    if (ask.trim()) parts.push(ask.trim());
-    return parts.join(". ");
-  };
-
-  const hasContent = ask.trim() || selectedSuggestions.length > 0;
+  const hasContent = ask.trim() || hasSelection;
 
   return (
     <WizardStep title="The Ask" subtitle="Investment amount & use of funds">
@@ -606,15 +445,18 @@ export const InvestorAskStep = ({ onNext, onBack, initialValue = "", idea = "" }
             selectedSuggestions={selectedSuggestions}
             isLoading={isLoading}
             onToggle={toggleSuggestion}
-            onRegenerate={() => { setSelectedSuggestions([]); fetchSuggestions(); }}
+            onRegenerate={regenerate}
             accentColor="emerald"
+            isRateLimited={isRateLimited}
+            remainingAttempts={remainingAttempts}
+            cooldownSeconds={cooldownSeconds}
           />
         </motion.div>
 
         <div className="flex-1" />
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mt-6 space-y-3">
-          <Button variant="default" size="lg" onClick={() => onNext(getCombined())} disabled={!hasContent} className="w-full">
+          <Button variant="default" size="lg" onClick={() => onNext(getCombinedValue(ask))} disabled={!hasContent} className="w-full">
             Continue <ArrowRight className="w-5 h-5" />
           </Button>
           <Button variant="ghost" onClick={onBack} className="w-full"><ArrowLeft className="w-4 h-4" /> Back</Button>
