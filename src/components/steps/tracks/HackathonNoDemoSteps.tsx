@@ -1,24 +1,18 @@
 import { motion } from "framer-motion";
-import { ArrowRight, ArrowLeft, Users, Zap, Code, CheckCircle, HelpCircle, Sparkles, Loader2, RefreshCw } from "lucide-react";
+import { ArrowRight, ArrowLeft, Users, Zap, Code, CheckCircle, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { WizardStep } from "@/components/WizardStep";
-import { useState, useEffect } from "react";
-import { Checkbox } from "@/components/ui/checkbox";
+import { useState } from "react";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { supabase } from "@/integrations/supabase/client";
-
-interface PainSuggestion {
-  id: string;
-  text: string;
-}
+import { AISuggestions, useSuggestions } from "@/components/shared/AISuggestions";
 
 // Step 1: The Pain
 interface PainStepProps {
@@ -30,70 +24,27 @@ interface PainStepProps {
 
 export const HackathonPainStep = ({ onNext, onBack, initialValue = "", idea = "" }: PainStepProps) => {
   const [pain, setPain] = useState(initialValue);
-  const [suggestions, setSuggestions] = useState<PainSuggestion[]>([]);
-  const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  
+  const {
+    suggestions,
+    selectedSuggestions,
+    isLoading,
+    toggleSuggestion,
+    regenerate,
+    getCombinedValue,
+    hasSelection,
+  } = useSuggestions({
+    type: "pain-suggestions",
+    idea,
+    fallbackSuggestions: [
+      "Users spend too much time on repetitive manual tasks",
+      "Existing solutions are too complex or expensive",
+      "Critical information is scattered across multiple tools",
+      "No real-time visibility into key metrics or status",
+    ],
+  });
 
-  useEffect(() => {
-    if (idea) {
-      fetchSuggestions();
-    }
-  }, [idea]);
-
-  const fetchSuggestions = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-pitch", {
-        body: {
-          type: "pain-suggestions",
-          idea,
-        },
-      });
-
-      if (error) throw error;
-
-      if (data?.suggestions && Array.isArray(data.suggestions)) {
-        setSuggestions(
-          data.suggestions.map((text: string, index: number) => ({
-            id: `suggestion-${index}`,
-            text,
-          }))
-        );
-      }
-    } catch (error) {
-      console.error("Failed to fetch suggestions:", error);
-      // Fallback suggestions
-      setSuggestions([
-        { id: "s1", text: "Users spend too much time on repetitive manual tasks" },
-        { id: "s2", text: "Existing solutions are too complex or expensive" },
-        { id: "s3", text: "Critical information is scattered across multiple tools" },
-        { id: "s4", text: "No real-time visibility into key metrics or status" },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const toggleSuggestion = (id: string) => {
-    setSelectedSuggestions((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
-    );
-  };
-
-  // Combine custom input with selected suggestions
-  const getCombinedPain = () => {
-    const selectedTexts = suggestions
-      .filter((s) => selectedSuggestions.includes(s.id))
-      .map((s) => s.text);
-    
-    const parts = [...selectedTexts];
-    if (pain.trim()) {
-      parts.push(pain.trim());
-    }
-    return parts.join(". ");
-  };
-
-  const hasContent = pain.trim() || selectedSuggestions.length > 0;
+  const hasContent = pain.trim() || hasSelection;
 
   return (
     <WizardStep
@@ -143,64 +94,14 @@ export const HackathonPainStep = ({ onNext, onBack, initialValue = "", idea = ""
             />
           </div>
 
-          {/* AI Suggestions */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="space-y-3"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-violet-500" />
-                <Label className="text-sm text-muted-foreground">AI Suggestions (select any that apply)</Label>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setSelectedSuggestions([]);
-                  fetchSuggestions();
-                }}
-                disabled={isLoading}
-                className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
-              >
-                <RefreshCw className={`w-3 h-3 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
-                Regenerate
-              </Button>
-            </div>
-            
-            {isLoading ? (
-              <div className="flex items-center justify-center py-6">
-                <Loader2 className="w-5 h-5 animate-spin text-violet-500" />
-                <span className="ml-2 text-sm text-muted-foreground">Generating suggestions...</span>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {suggestions.map((suggestion, index) => (
-                  <motion.div
-                    key={suggestion.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.25 + index * 0.05 }}
-                    className={`flex items-start gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
-                      selectedSuggestions.includes(suggestion.id)
-                        ? "border-violet-500 bg-violet-500/10"
-                        : "border-border hover:border-violet-500/50 hover:bg-muted/50"
-                    }`}
-                    onClick={() => toggleSuggestion(suggestion.id)}
-                  >
-                    <Checkbox
-                      checked={selectedSuggestions.includes(suggestion.id)}
-                      onCheckedChange={() => toggleSuggestion(suggestion.id)}
-                      className="mt-0.5"
-                    />
-                    <span className="text-sm leading-relaxed">{suggestion.text}</span>
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </motion.div>
+          <AISuggestions
+            suggestions={suggestions}
+            selectedSuggestions={selectedSuggestions}
+            isLoading={isLoading}
+            onToggle={toggleSuggestion}
+            onRegenerate={regenerate}
+            accentColor="purple"
+          />
         </motion.div>
 
         <div className="flex-1" />
@@ -214,7 +115,7 @@ export const HackathonPainStep = ({ onNext, onBack, initialValue = "", idea = ""
           <Button
             variant="default"
             size="lg"
-            onClick={() => onNext(getCombinedPain())}
+            onClick={() => onNext(getCombinedValue(pain))}
             disabled={!hasContent}
             className="w-full"
           >
@@ -240,77 +141,30 @@ interface FixStepProps {
   pain?: string;
 }
 
-interface FixSuggestion {
-  id: string;
-  text: string;
-}
-
 export const HackathonFixStep = ({ onNext, onBack, initialValue = "", idea = "", pain = "" }: FixStepProps) => {
   const [fix, setFix] = useState(initialValue);
-  const [suggestions, setSuggestions] = useState<FixSuggestion[]>([]);
-  const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (idea) {
-      fetchSuggestions();
-    }
-  }, [idea]);
+  const {
+    suggestions,
+    selectedSuggestions,
+    isLoading,
+    toggleSuggestion,
+    regenerate,
+    getCombinedValue,
+    hasSelection,
+  } = useSuggestions({
+    type: "fix-suggestions",
+    idea,
+    context: { pain },
+    fallbackSuggestions: [
+      "Automates the entire workflow with AI-powered assistance",
+      "Provides a unified dashboard for real-time tracking",
+      "Uses smart notifications to keep users informed",
+      "Integrates with existing tools for seamless adoption",
+    ],
+  });
 
-  const fetchSuggestions = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-pitch", {
-        body: {
-          type: "fix-suggestions",
-          idea,
-          context: { pain },
-        },
-      });
-
-      if (error) throw error;
-
-      if (data?.suggestions && Array.isArray(data.suggestions)) {
-        setSuggestions(
-          data.suggestions.map((text: string, index: number) => ({
-            id: `suggestion-${index}`,
-            text,
-          }))
-        );
-      }
-    } catch (error) {
-      console.error("Failed to fetch fix suggestions:", error);
-      // Fallback suggestions
-      setSuggestions([
-        { id: "s1", text: "Automates the entire workflow with AI-powered assistance" },
-        { id: "s2", text: "Provides a unified dashboard for real-time tracking" },
-        { id: "s3", text: "Uses smart notifications to keep users informed" },
-        { id: "s4", text: "Integrates with existing tools for seamless adoption" },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const toggleSuggestion = (id: string) => {
-    setSelectedSuggestions((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
-    );
-  };
-
-  const getCombinedFix = () => {
-    const selectedTexts = suggestions
-      .filter((s) => selectedSuggestions.includes(s.id))
-      .map((s) => s.text);
-    
-    const parts = [...selectedTexts];
-    if (fix.trim()) {
-      parts.push(fix.trim());
-    }
-    return parts.join(". ");
-  };
-
-  const hasContent = fix.trim() || selectedSuggestions.length > 0;
+  const hasContent = fix.trim() || hasSelection;
 
   return (
     <WizardStep
@@ -360,64 +214,14 @@ export const HackathonFixStep = ({ onNext, onBack, initialValue = "", idea = "",
             />
           </div>
 
-          {/* AI Suggestions */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="space-y-3"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-emerald-500" />
-                <Label className="text-sm text-muted-foreground">AI Suggestions (select any that apply)</Label>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setSelectedSuggestions([]);
-                  fetchSuggestions();
-                }}
-                disabled={isLoading}
-                className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
-              >
-                <RefreshCw className={`w-3 h-3 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
-                Regenerate
-              </Button>
-            </div>
-            
-            {isLoading ? (
-              <div className="flex items-center justify-center py-6">
-                <Loader2 className="w-5 h-5 animate-spin text-emerald-500" />
-                <span className="ml-2 text-sm text-muted-foreground">Generating suggestions...</span>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {suggestions.map((suggestion, index) => (
-                  <motion.div
-                    key={suggestion.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.25 + index * 0.05 }}
-                    className={`flex items-start gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
-                      selectedSuggestions.includes(suggestion.id)
-                        ? "border-emerald-500 bg-emerald-500/10"
-                        : "border-border hover:border-emerald-500/50 hover:bg-muted/50"
-                    }`}
-                    onClick={() => toggleSuggestion(suggestion.id)}
-                  >
-                    <Checkbox
-                      checked={selectedSuggestions.includes(suggestion.id)}
-                      onCheckedChange={() => toggleSuggestion(suggestion.id)}
-                      className="mt-0.5"
-                    />
-                    <span className="text-sm leading-relaxed">{suggestion.text}</span>
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </motion.div>
+          <AISuggestions
+            suggestions={suggestions}
+            selectedSuggestions={selectedSuggestions}
+            isLoading={isLoading}
+            onToggle={toggleSuggestion}
+            onRegenerate={regenerate}
+            accentColor="emerald"
+          />
         </motion.div>
 
         <div className="flex-1" />
@@ -431,7 +235,7 @@ export const HackathonFixStep = ({ onNext, onBack, initialValue = "", idea = "",
           <Button
             variant="default"
             size="lg"
-            onClick={() => onNext(getCombinedFix())}
+            onClick={() => onNext(getCombinedValue(fix))}
             disabled={!hasContent}
             className="w-full"
           >
@@ -448,7 +252,7 @@ export const HackathonFixStep = ({ onNext, onBack, initialValue = "", idea = "",
   );
 };
 
-// Step 3: Hackathon Progress (Critical - replaces demo)
+// Step 3: Hackathon Progress
 interface ProgressStepProps {
   onNext: (progress: string) => void;
   onBack: () => void;
@@ -456,95 +260,49 @@ interface ProgressStepProps {
   idea?: string;
 }
 
-interface ProgressSuggestion {
-  id: string;
-  text: string;
-}
-
 export const HackathonProgressStep = ({ onNext, onBack, initialValue = "", idea = "" }: ProgressStepProps) => {
   const [progress, setProgress] = useState(initialValue);
-  const [suggestions, setSuggestions] = useState<ProgressSuggestion[]>([]);
-  const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (idea) {
-      fetchSuggestions();
-    }
-  }, [idea]);
+  const {
+    suggestions,
+    selectedSuggestions,
+    isLoading,
+    toggleSuggestion,
+    regenerate,
+    getCombinedValue,
+    hasSelection,
+  } = useSuggestions({
+    type: "progress-suggestions",
+    idea,
+    fallbackSuggestions: [
+      "Built with React + Supabase for real-time data sync",
+      "Implemented AI processing using OpenAI GPT-4 API",
+      "Created responsive UI with Tailwind CSS",
+      "Added authentication and user management",
+    ],
+  });
 
-  const fetchSuggestions = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-pitch", {
-        body: {
-          type: "progress-suggestions",
-          idea,
-        },
-      });
-
-      if (error) throw error;
-
-      if (data?.suggestions && Array.isArray(data.suggestions)) {
-        setSuggestions(
-          data.suggestions.map((text: string, index: number) => ({
-            id: `suggestion-${index}`,
-            text,
-          }))
-        );
-      }
-    } catch (error) {
-      console.error("Failed to fetch progress suggestions:", error);
-      setSuggestions([
-        { id: "s1", text: "Built with React + Supabase for real-time data sync" },
-        { id: "s2", text: "Implemented AI processing using OpenAI GPT-4 API" },
-        { id: "s3", text: "Created responsive dashboard with Tailwind CSS" },
-        { id: "s4", text: "Integrated authentication and user management system" },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const toggleSuggestion = (id: string) => {
-    setSelectedSuggestions((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
-    );
-  };
-
-  const getCombinedProgress = () => {
-    const selectedTexts = suggestions
-      .filter((s) => selectedSuggestions.includes(s.id))
-      .map((s) => s.text);
-    
-    const parts = [...selectedTexts];
-    if (progress.trim()) {
-      parts.push(progress.trim());
-    }
-    return parts.join(". ");
-  };
-
-  const hasContent = progress.trim() || selectedSuggestions.length > 0;
+  const hasContent = progress.trim() || hasSelection;
 
   return (
     <WizardStep
-      title="Hackathon Progress"
-      subtitle="What did you actually build? (This replaces your demo)"
+      title="What You Built"
+      subtitle="What did you actually build this weekend?"
     >
       <div className="flex-1 flex flex-col">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-card rounded-xl p-4 mb-6 border-2 border-violet-500/30"
+          className="glass-card rounded-xl p-4 mb-6 border-2 border-cyan-500/30"
         >
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-lg bg-violet-500/20 flex items-center justify-center">
-              <Code className="w-5 h-5 text-violet-500" />
+            <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+              <Code className="w-5 h-5 text-cyan-500" />
             </div>
-            <span className="text-sm font-semibold text-violet-400">CRITICAL SECTION</span>
+            <span className="text-sm font-semibold text-cyan-400">HACKATHON CRITICAL</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            Without a live demo, this section proves you built something real. Describe your architecture, user flow, and technical logic.
+            Judges want to see real progress - what features work? What tech did you use?
           </p>
         </motion.div>
 
@@ -556,88 +314,35 @@ export const HackathonProgressStep = ({ onNext, onBack, initialValue = "", idea 
         >
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Label htmlFor="progress">Architecture, Flow & Logic</Label>
+              <Label htmlFor="progress">Technical Progress</Label>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger>
                     <HelpCircle className="w-4 h-4 text-muted-foreground" />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs">
-                    <p>Include: Tech stack used, main components built, data flow, key algorithms or logic implemented</p>
+                    <p>Example: "Built a working MVP with React, integrated OpenAI API for text analysis, and deployed on Vercel"</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             </div>
             <Textarea
               id="progress"
-              placeholder="e.g., Built with React + Supabase. Core features: 
-1. OCR receipt scanner using Tesseract.js
-2. GPT-4 categorization API
-3. Real-time expense dashboard..."
+              placeholder="e.g., Built a React app with Supabase backend, integrated Stripe for payments..."
               value={progress}
               onChange={(e) => setProgress(e.target.value)}
-              className="min-h-[120px] resize-none"
+              className="min-h-[100px] resize-none"
             />
           </div>
 
-          {/* AI Suggestions */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="space-y-3"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-violet-500" />
-                <Label className="text-sm text-muted-foreground">AI Tech Stack Ideas (select any that apply)</Label>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setSelectedSuggestions([]);
-                  fetchSuggestions();
-                }}
-                disabled={isLoading}
-                className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
-              >
-                <RefreshCw className={`w-3 h-3 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
-                Regenerate
-              </Button>
-            </div>
-            
-            {isLoading ? (
-              <div className="flex items-center justify-center py-6">
-                <Loader2 className="w-5 h-5 animate-spin text-violet-500" />
-                <span className="ml-2 text-sm text-muted-foreground">Generating suggestions...</span>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {suggestions.map((suggestion, index) => (
-                  <motion.div
-                    key={suggestion.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.25 + index * 0.05 }}
-                    className={`flex items-start gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
-                      selectedSuggestions.includes(suggestion.id)
-                        ? "border-violet-500 bg-violet-500/10"
-                        : "border-border hover:border-violet-500/50 hover:bg-muted/50"
-                    }`}
-                    onClick={() => toggleSuggestion(suggestion.id)}
-                  >
-                    <Checkbox
-                      checked={selectedSuggestions.includes(suggestion.id)}
-                      onCheckedChange={() => toggleSuggestion(suggestion.id)}
-                      className="mt-0.5"
-                    />
-                    <span className="text-sm leading-relaxed">{suggestion.text}</span>
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </motion.div>
+          <AISuggestions
+            suggestions={suggestions}
+            selectedSuggestions={selectedSuggestions}
+            isLoading={isLoading}
+            onToggle={toggleSuggestion}
+            onRegenerate={regenerate}
+            accentColor="cyan"
+          />
         </motion.div>
 
         <div className="flex-1" />
@@ -651,7 +356,7 @@ export const HackathonProgressStep = ({ onNext, onBack, initialValue = "", idea 
           <Button
             variant="default"
             size="lg"
-            onClick={() => onNext(getCombinedProgress())}
+            onClick={() => onNext(getCombinedValue(progress))}
             disabled={!hasContent}
             className="w-full"
           >
@@ -680,8 +385,8 @@ export const HackathonFeasibilityStep = ({ onNext, onBack, initialValue = "" }: 
 
   return (
     <WizardStep
-      title="Feasibility"
-      subtitle="Why is this realistic? (Tech stack, cost, scalability)"
+      title="Next Steps"
+      subtitle="What's the path to making this real?"
     >
       <div className="flex-1 flex flex-col">
         <motion.div
@@ -689,11 +394,11 @@ export const HackathonFeasibilityStep = ({ onNext, onBack, initialValue = "" }: 
           animate={{ opacity: 1, y: 0 }}
           className="glass-card rounded-xl p-4 mb-6 flex items-center gap-3"
         >
-          <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-            <CheckCircle className="w-5 h-5 text-emerald-500" />
+          <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+            <CheckCircle className="w-5 h-5 text-amber-500" />
           </div>
           <p className="text-sm text-muted-foreground">
-            Prove this can work in the real world with real constraints
+            Show you've thought about the future - what comes after the hackathon?
           </p>
         </motion.div>
 
@@ -705,24 +410,24 @@ export const HackathonFeasibilityStep = ({ onNext, onBack, initialValue = "" }: 
         >
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Label htmlFor="feasibility">Technical & Business Feasibility</Label>
+              <Label htmlFor="feasibility">Your Next Steps</Label>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger>
                     <HelpCircle className="w-4 h-4 text-muted-foreground" />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs">
-                    <p>Include: Technologies used, estimated costs, infrastructure requirements, scalability plan</p>
+                    <p>Example: "Next week: user testing with 10 beta users. Next month: launch on Product Hunt"</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             </div>
             <Textarea
               id="feasibility"
-              placeholder="e.g., Uses free tier of Supabase (up to 50k users). OCR costs ~$0.001/image. Can handle 10k concurrent users with current setup..."
+              placeholder="e.g., Next week we'll onboard 5 beta users, then iterate based on feedback..."
               value={feasibility}
               onChange={(e) => setFeasibility(e.target.value)}
-              className="min-h-[120px] resize-none"
+              className="min-h-[100px] resize-none"
             />
           </div>
         </motion.div>
@@ -742,7 +447,7 @@ export const HackathonFeasibilityStep = ({ onNext, onBack, initialValue = "" }: 
             disabled={!feasibility.trim()}
             className="w-full"
           >
-            Continue
+            Finish
             <ArrowRight className="w-5 h-5" />
           </Button>
           <Button variant="ghost" onClick={onBack} className="w-full">
