@@ -47,10 +47,10 @@ export const Step1Hook = ({ onNext }: Step1HookProps) => {
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.5 }}
-          className="text-center mb-6"
+          className="text-center mb-4"
         >
           <motion.div 
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary/20 to-purple-500/20 text-primary text-sm font-semibold mb-4 border border-primary/30"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-primary/20 to-purple-500/20 text-primary text-sm font-semibold mb-3 border border-primary/30"
             animate={{ boxShadow: ["0 0 20px rgba(99, 102, 241, 0.3)", "0 0 40px rgba(99, 102, 241, 0.5)", "0 0 20px rgba(99, 102, 241, 0.3)"] }}
             transition={{ duration: 2, repeat: Infinity }}
           >
@@ -66,79 +66,12 @@ export const Step1Hook = ({ onNext }: Step1HookProps) => {
           </p>
         </motion.div>
 
-        {/* Time Savings Cards */}
+        {/* Input Section - Moved Higher */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
           className="space-y-3 mb-6"
-        >
-          {timeSavings.map((item, index) => (
-            <motion.div
-              key={item.label}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 + index * 0.15 }}
-              className={`relative overflow-hidden rounded-2xl p-4 bg-gradient-to-r ${item.bgGradient} border border-white/10`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${item.gradient} flex items-center justify-center shadow-lg`}>
-                    <item.icon className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-foreground text-lg">{item.label}</p>
-                    <p className="text-muted-foreground text-xs">Automated by AI</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="text-right">
-                    <p className="text-time-high font-bold text-lg line-through opacity-60">{item.before}</p>
-                  </div>
-                  <motion.div
-                    animate={{ x: [0, 5, 0] }}
-                    transition={{ duration: 1, repeat: Infinity }}
-                  >
-                    <ArrowRight className="w-5 h-5 text-time-low" />
-                  </motion.div>
-                  <div className="text-right">
-                    <motion.p 
-                      className="text-time-low font-bold text-xl"
-                      animate={{ scale: [1, 1.1, 1] }}
-                      transition={{ duration: 1.5, repeat: Infinity, delay: index * 0.2 }}
-                    >
-                      {item.after}
-                    </motion.p>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
-
-        {/* Total Savings Banner */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.7 }}
-          className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-time-low/20 to-emerald-400/20 border border-time-low/30 text-center"
-        >
-          <p className="text-sm text-muted-foreground mb-1">Total Time Saved</p>
-          <motion.p 
-            className="text-3xl font-black text-time-low"
-            animate={{ textShadow: ["0 0 10px rgba(16, 185, 129, 0.5)", "0 0 20px rgba(16, 185, 129, 0.8)", "0 0 10px rgba(16, 185, 129, 0.5)"] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            14h 30m
-          </motion.p>
-        </motion.div>
-
-        {/* Input Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.9 }}
-          className="space-y-3"
         >
           <div className="relative">
             <Input
@@ -159,6 +92,51 @@ export const Step1Hook = ({ onNext }: Step1HookProps) => {
             Start Optimization
             <ArrowRight className="w-5 h-5" />
           </Button>
+        </motion.div>
+
+        {/* Time Savings - Text Style */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="space-y-4"
+        >
+          <p className="text-center text-xs text-muted-foreground uppercase tracking-wider">How we save your time</p>
+          
+          <div className="space-y-3">
+            {timeSavings.map((item, index) => (
+              <motion.div
+                key={item.label}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 + index * 0.1 }}
+                className="flex items-center justify-between py-2 border-b border-border/30 last:border-0"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${item.gradient} flex items-center justify-center`}>
+                    <item.icon className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-foreground font-medium">{item.label}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-time-high line-through opacity-60">{item.before}</span>
+                  <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-time-low font-semibold">{item.after}</span>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Total Savings */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.8 }}
+            className="pt-2 text-center"
+          >
+            <p className="text-xs text-muted-foreground">Total saved:</p>
+            <p className="text-xl font-bold text-time-low">14h 30m</p>
+          </motion.div>
         </motion.div>
       </div>
     </StepWrapper>
