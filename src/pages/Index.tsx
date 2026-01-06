@@ -35,25 +35,22 @@ interface PitchData {
   generationTier: string;
 }
 
-// Time calculation based on step progress
+// Time calculation based on step progress - starts from Manual Grind time (5h 15m)
 const calculatePrepTime = (step: number, demoType?: string): number => {
-  const baseTime = 900; // 15h in minutes
-  const reductions: Record<number, number> = {
-    1: 0,      // After Step 1: Still 15h
-    2: 120,    // After audience: -2h
-    3: demoType === "live" ? 60 : demoType === "none" ? 180 : 120, // After demo
-    4: 180,    // After problem: -3h
-    5: 180,    // After solution: -3h
-    6: 60,     // After business: -1h
-    7: 150,    // After generation tier: most saved
+  const baseTime = 315; // 5h 15m in minutes (Manual Grind time from landing page)
+  
+  // Time at each step, decreasing from 5h 15m to 30m
+  const timeAtStep: Record<number, number> = {
+    0: 315,    // Step 0 (Landing): 5h 15m
+    1: 270,    // Step 1 (Audience): 4h 30m
+    2: 210,    // Step 2 (Demo): 3h 30m
+    3: 150,    // Step 3 (Problem): 2h 30m
+    4: 90,     // Step 4 (Solution): 1h 30m
+    5: 50,     // Step 5 (Business): 0h 50m
+    6: 30,     // Step 6 (Generation): 0h 30m (Final)
   };
 
-  let totalReduction = 0;
-  for (let i = 1; i <= step; i++) {
-    totalReduction += reductions[i] || 0;
-  }
-
-  return Math.max(30, baseTime - totalReduction);
+  return timeAtStep[step] ?? baseTime;
 };
 
 const Index = () => {
