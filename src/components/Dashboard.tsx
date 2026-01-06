@@ -1,15 +1,17 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   FileText, Video, BarChart3, Play, Pause, RotateCcw, Monitor, 
   Smartphone, Presentation, RefreshCw, Download, Clock, Minus, 
-  Smile, Zap, ChevronRight
+  Smile, Zap, ChevronRight, Timer, SkipForward
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { TrackType, trackConfigs } from "@/lib/tracks";
+import jsPDF from "jspdf";
 
 interface SpeechBlock {
   timeStart: string;
@@ -30,6 +32,8 @@ interface DashboardProps {
   };
   onBack?: () => void;
 }
+
+const SPEAKING_RATE = 130; // words per minute
 
 const tabs = [
   { id: "script", label: "Speech", icon: FileText },
@@ -54,6 +58,21 @@ const getVisualIcon = (visualCue?: string, isDemo?: boolean) => {
   return Monitor;
 };
 
+// Calculate reading time in milliseconds based on word count
+const calculateBlockDuration = (content: string): number => {
+  const wordCount = content.split(/\s+/).filter(w => w.length > 0).length;
+  const minutes = wordCount / SPEAKING_RATE;
+  return Math.max(minutes * 60 * 1000, 3000); // Minimum 3 seconds
+};
+
+// Format time in mm:ss
+const formatTime = (ms: number): string => {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+};
+
 export const Dashboard = ({ data, onBack }: DashboardProps) => {
   const [activeTab, setActiveTab] = useState("script");
   const [isPlaying, setIsPlaying] = useState(false);
@@ -62,9 +81,103 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [meta, setMeta] = useState<{ targetWordCount: number; actualWordCount: number } | null>(null);
-  const printRef = useRef<HTMLDivElement>(null);
+  
+  // Practice mode state
+  const [blockProgress, setBlockProgress] = useState(0);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [totalElapsedTime, setTotalElapsedTime] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const blockStartTimeRef = useRef<number>(0);
 
   const trackConfig = trackConfigs[data.track];
+
+  // Calculate total speech duration
+  const totalDuration = speechBlocks.reduce((acc, block) => {
+    return acc + calculateBlockDuration(block.content);
+  }, 0);
+
+  // Get current block duration
+  const currentBlockDuration = speechBlocks[currentBlock] 
+    ? calculateBlockDuration(speechBlocks[currentBlock].content)
+    : 0;
+
+  // Auto-advance logic for practice mode
+  useEffect(() => {
+    if (isPlaying && activeTab === "practice") {
+      blockStartTimeRef.current = Date.now() - elapsedTime;
+      
+      timerRef.current = setInterval(() => {
+        const now = Date.now();
+        const elapsed = now - blockStartTimeRef.current;
+        setElapsedTime(elapsed);
+        
+        const progress = Math.min((elapsed / currentBlockDuration) * 100, 100);
+        setBlockProgress(progress);
+        
+        // Auto-advance to next block
+        if (elapsed >= currentBlockDuration) {
+          if (currentBlock < speechBlocks.length - 1) {
+            setCurrentBlock(prev => prev + 1);
+            setElapsedTime(0);
+            setBlockProgress(0);
+            blockStartTimeRef.current = now;
+          } else {
+            // End of speech
+            setIsPlaying(false);
+            toast({
+              title: "Practice Complete!",
+              description: `Total time: ${formatTime(totalElapsedTime + elapsed)}`,
+            });
+          }
+        }
+        
+        // Update total elapsed time
+        const previousBlocksTime = speechBlocks
+          .slice(0, currentBlock)
+          .reduce((acc, block) => acc + calculateBlockDuration(block.content), 0);
+        setTotalElapsedTime(previousBlocksTime + elapsed);
+      }, 100);
+
+      return () => {
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+        }
+      };
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    }
+  }, [isPlaying, activeTab, currentBlock, currentBlockDuration, speechBlocks]);
+
+  // Reset timer when block changes manually
+  const handleBlockChange = useCallback((index: number) => {
+    setCurrentBlock(index);
+    setElapsedTime(0);
+    setBlockProgress(0);
+    blockStartTimeRef.current = Date.now();
+    
+    // Update total elapsed time
+    const previousBlocksTime = speechBlocks
+      .slice(0, index)
+      .reduce((acc, block) => acc + calculateBlockDuration(block.content), 0);
+    setTotalElapsedTime(previousBlocksTime);
+  }, [speechBlocks]);
+
+  const handleRestart = useCallback(() => {
+    setCurrentBlock(0);
+    setElapsedTime(0);
+    setBlockProgress(0);
+    setTotalElapsedTime(0);
+    setIsPlaying(false);
+    blockStartTimeRef.current = Date.now();
+  }, []);
+
+  const handleSkipBlock = useCallback(() => {
+    if (currentBlock < speechBlocks.length - 1) {
+      handleBlockChange(currentBlock + 1);
+    }
+  }, [currentBlock, speechBlocks.length, handleBlockChange]);
 
   // Generate speech on mount
   useEffect(() => {
@@ -88,7 +201,7 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
           track: data.track,
           duration: data.duration,
           inputs,
-          hasDemo: false, // For now, no demo support
+          hasDemo: false,
         },
       });
 
@@ -145,6 +258,7 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
     });
     await generateSpeech(option);
     setIsRegenerating(false);
+    handleRestart();
     toast({
       title: "Speech Updated!",
       description: "Your new speech is ready",
@@ -152,22 +266,103 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
   };
 
   const handleExportPDF = () => {
-    // Create print-friendly content
-    const content = speechBlocks.map(block => 
-      `[${block.timeStart} - ${block.timeEnd}] ${block.title}\n\n${block.content}\n\n`
-    ).join('---\n\n');
+    const pdf = new jsPDF();
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 20;
+    const contentWidth = pageWidth - margin * 2;
+    let yPosition = margin;
 
-    const blob = new Blob([`Speech: ${data.idea}\n\n${content}`], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `speech-${data.idea.slice(0, 20).replace(/\s+/g, '-')}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    // Title page
+    pdf.setFontSize(24);
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Speech Script", pageWidth / 2, yPosition + 20, { align: "center" });
+    
+    pdf.setFontSize(16);
+    pdf.setFont("helvetica", "normal");
+    const ideaLines = pdf.splitTextToSize(data.idea, contentWidth);
+    pdf.text(ideaLines, pageWidth / 2, yPosition + 35, { align: "center" });
+    
+    pdf.setFontSize(12);
+    pdf.setTextColor(100);
+    pdf.text(`${trackConfig?.name || "Presentation"} • ${data.duration} min`, pageWidth / 2, yPosition + 50, { align: "center" });
+    if (data.audienceLabel) {
+      pdf.text(`Audience: ${data.audienceLabel}`, pageWidth / 2, yPosition + 60, { align: "center" });
+    }
+    if (meta) {
+      pdf.text(`Word Count: ${meta.actualWordCount} words`, pageWidth / 2, yPosition + 70, { align: "center" });
+    }
+    
+    pdf.setTextColor(0);
+
+    // Speech blocks
+    speechBlocks.forEach((block, index) => {
+      // Add new page for each major section
+      pdf.addPage();
+      yPosition = margin;
+
+      // Section header with time
+      pdf.setFillColor(240, 240, 240);
+      pdf.roundedRect(margin, yPosition, contentWidth, 25, 3, 3, "F");
+      
+      pdf.setFontSize(10);
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(100);
+      pdf.text(`[${block.timeStart} - ${block.timeEnd}]`, margin + 5, yPosition + 10);
+      
+      pdf.setFontSize(14);
+      pdf.setTextColor(0);
+      pdf.text(block.title, margin + 5, yPosition + 20);
+      
+      yPosition += 35;
+
+      // Content
+      pdf.setFontSize(14);
+      pdf.setFont("helvetica", "normal");
+      const contentLines = pdf.splitTextToSize(block.content, contentWidth);
+      
+      contentLines.forEach((line: string) => {
+        if (yPosition > pageHeight - margin - 20) {
+          pdf.addPage();
+          yPosition = margin;
+        }
+        pdf.text(line, margin, yPosition);
+        yPosition += 8;
+      });
+
+      // Visual cue / slide placeholder
+      if (block.visualCue || block.isDemo) {
+        yPosition += 10;
+        pdf.setFillColor(245, 245, 255);
+        pdf.roundedRect(margin, yPosition, contentWidth, 40, 3, 3, "F");
+        
+        pdf.setFontSize(10);
+        pdf.setTextColor(100);
+        pdf.text("VISUAL CUE", margin + 5, yPosition + 12);
+        
+        pdf.setFontSize(12);
+        pdf.setTextColor(60);
+        const cueText = block.visualCue || (block.isDemo ? "Demo Section" : "Slide Placeholder");
+        pdf.text(cueText, margin + 5, yPosition + 28);
+        
+        pdf.setTextColor(0);
+        yPosition += 50;
+      }
+
+      // Page number
+      pdf.setFontSize(10);
+      pdf.setTextColor(150);
+      pdf.text(`Section ${index + 1} of ${speechBlocks.length}`, pageWidth / 2, pageHeight - 10, { align: "center" });
+      pdf.setTextColor(0);
+    });
+
+    // Save PDF
+    const filename = `speech-${data.idea.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}.pdf`;
+    pdf.save(filename);
 
     toast({
-      title: "Exported!",
-      description: "Your speech has been downloaded",
+      title: "PDF Exported!",
+      description: "Your speech has been downloaded as PDF",
     });
   };
 
@@ -250,7 +445,12 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => {
+                setActiveTab(tab.id);
+                if (tab.id !== "practice") {
+                  setIsPlaying(false);
+                }
+              }}
               className={cn(
                 "flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all",
                 activeTab === tab.id
@@ -273,7 +473,6 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               className="space-y-4"
-              ref={printRef}
             >
               {/* Script blocks with 3-column layout */}
               {speechBlocks.map((block, index) => {
@@ -372,7 +571,7 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
                   onClick={handleExportPDF}
                 >
                   <Download className="w-4 h-4" />
-                  Export to TXT
+                  Export to PDF
                 </Button>
               </motion.div>
             </motion.div>
@@ -386,26 +585,59 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
+              {/* Timer Display */}
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <Timer className="w-4 h-4" />
+                  <span>Block: {formatTime(elapsedTime)} / {formatTime(currentBlockDuration)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  <span>Total: {formatTime(totalElapsedTime)} / {formatTime(totalDuration)}</span>
+                </div>
+              </div>
+
               {/* Teleprompter */}
-              <div className="glass-card rounded-xl p-6 min-h-[300px] flex flex-col">
-                <div className="flex items-center justify-between mb-4">
+              <div className="glass-card rounded-xl p-6 min-h-[300px] flex flex-col relative overflow-hidden">
+                {/* Block progress bar */}
+                <div className="absolute top-0 left-0 right-0 h-1 bg-muted">
+                  <motion.div 
+                    className="h-full bg-primary"
+                    style={{ width: `${blockProgress}%` }}
+                    transition={{ duration: 0.1 }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between mb-4 mt-2">
                   <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded">
                     {speechBlocks[currentBlock]?.timeStart} - {speechBlocks[currentBlock]?.timeEnd}
                   </span>
                   <span className="text-sm font-semibold text-foreground">
                     {speechBlocks[currentBlock]?.title}
                   </span>
+                  <span className="text-xs text-muted-foreground">
+                    {currentBlock + 1} / {speechBlocks.length}
+                  </span>
                 </div>
+                
                 <div className="flex-1 flex items-center justify-center">
                   <motion.p
                     key={currentBlock}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="text-xl font-medium text-foreground text-center leading-relaxed"
+                    className="text-xl md:text-2xl font-medium text-foreground text-center leading-relaxed max-w-2xl"
                   >
                     {speechBlocks[currentBlock]?.content}
                   </motion.p>
                 </div>
+
+                {/* Visual cue indicator */}
+                {(speechBlocks[currentBlock]?.visualCue || speechBlocks[currentBlock]?.isDemo) && (
+                  <div className="mt-4 flex items-center justify-center gap-2 text-sm text-time-low">
+                    <Monitor className="w-4 h-4" />
+                    <span>{speechBlocks[currentBlock]?.visualCue || "Demo Section"}</span>
+                  </div>
+                )}
               </div>
 
               {/* Controls */}
@@ -413,7 +645,8 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => setCurrentBlock(0)}
+                  onClick={handleRestart}
+                  title="Restart"
                 >
                   <RotateCcw className="w-5 h-5" />
                 </Button>
@@ -421,7 +654,7 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
                   variant="default"
                   size="lg"
                   onClick={() => setIsPlaying(!isPlaying)}
-                  className="px-8"
+                  className="px-8 gap-2"
                 >
                   {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
                   {isPlaying ? "Pause" : "Start"}
@@ -429,24 +662,55 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => setCurrentBlock(Math.min(currentBlock + 1, speechBlocks.length - 1))}
+                  onClick={handleSkipBlock}
+                  disabled={currentBlock >= speechBlocks.length - 1}
+                  title="Skip to next block"
                 >
-                  <ChevronRight className="w-5 h-5" />
+                  <SkipForward className="w-5 h-5" />
                 </Button>
               </div>
 
-              {/* Progress */}
-              <div className="flex gap-1">
-                {speechBlocks.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentBlock(index)}
-                    className={cn(
-                      "flex-1 h-2 rounded-full transition-all cursor-pointer hover:opacity-80",
-                      index <= currentBlock ? "bg-primary" : "bg-muted"
-                    )}
-                  />
-                ))}
+              {/* Block Progress Indicators */}
+              <div className="space-y-2">
+                <div className="flex gap-1">
+                  {speechBlocks.map((block, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleBlockChange(index)}
+                      className={cn(
+                        "flex-1 h-2 rounded-full transition-all cursor-pointer hover:opacity-80 relative overflow-hidden",
+                        index < currentBlock ? "bg-primary" : 
+                        index === currentBlock ? "bg-primary/30" : "bg-muted"
+                      )}
+                    >
+                      {index === currentBlock && (
+                        <motion.div 
+                          className="absolute inset-y-0 left-0 bg-primary rounded-full"
+                          style={{ width: `${blockProgress}%` }}
+                        />
+                      )}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  {speechBlocks.map((block, index) => (
+                    <span key={index} className={cn(
+                      "text-center flex-1 truncate px-1",
+                      index === currentBlock && "text-primary font-medium"
+                    )}>
+                      {block.title}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Overall Progress */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Overall Progress</span>
+                  <span>{Math.round((totalElapsedTime / totalDuration) * 100)}%</span>
+                </div>
+                <Progress value={(totalElapsedTime / totalDuration) * 100} className="h-2" />
               </div>
             </motion.div>
           )}
