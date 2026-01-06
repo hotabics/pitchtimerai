@@ -158,6 +158,9 @@ export const HackathonFixStep = ({ onNext, onBack, initialValue = "", idea = "",
     regenerate,
     getCombinedValue,
     hasSelection,
+    isRateLimited,
+    remainingAttempts,
+    cooldownSeconds,
   } = useSuggestions({
     type: "fix-suggestions",
     idea,
@@ -227,6 +230,9 @@ export const HackathonFixStep = ({ onNext, onBack, initialValue = "", idea = "",
             onToggle={toggleSuggestion}
             onRegenerate={regenerate}
             accentColor="emerald"
+            isRateLimited={isRateLimited}
+            remainingAttempts={remainingAttempts}
+            cooldownSeconds={cooldownSeconds}
           />
         </motion.div>
 
@@ -277,6 +283,9 @@ export const HackathonProgressStep = ({ onNext, onBack, initialValue = "", idea 
     regenerate,
     getCombinedValue,
     hasSelection,
+    isRateLimited,
+    remainingAttempts,
+    cooldownSeconds,
   } = useSuggestions({
     type: "progress-suggestions",
     idea,
@@ -348,6 +357,9 @@ export const HackathonProgressStep = ({ onNext, onBack, initialValue = "", idea 
             onToggle={toggleSuggestion}
             onRegenerate={regenerate}
             accentColor="cyan"
+            isRateLimited={isRateLimited}
+            remainingAttempts={remainingAttempts}
+            cooldownSeconds={cooldownSeconds}
           />
         </motion.div>
 

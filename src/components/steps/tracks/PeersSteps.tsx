@@ -284,6 +284,9 @@ export const PeersThingStep = ({ onNext, onBack, initialValue = "", idea = "" }:
     regenerate,
     getCombinedValue,
     hasSelection,
+    isRateLimited,
+    remainingAttempts,
+    cooldownSeconds,
   } = useSuggestions({
     type: "peers-thing-suggestions",
     idea,
@@ -354,6 +357,9 @@ export const PeersThingStep = ({ onNext, onBack, initialValue = "", idea = "" }:
             onToggle={toggleSuggestion}
             onRegenerate={regenerate}
             accentColor="fuchsia"
+            isRateLimited={isRateLimited}
+            remainingAttempts={remainingAttempts}
+            cooldownSeconds={cooldownSeconds}
           />
         </motion.div>
 
@@ -406,6 +412,9 @@ export const PeersWhyCareStep = ({ onNext, onBack, initialValue = ["", "", ""], 
     regenerate,
     getSelectedTexts,
     hasSelection,
+    isRateLimited,
+    remainingAttempts,
+    cooldownSeconds,
   } = useSuggestions({
     type: "peers-why-care-suggestions",
     idea,
@@ -499,6 +508,9 @@ export const PeersWhyCareStep = ({ onNext, onBack, initialValue = ["", "", ""], 
             onToggle={toggleSuggestion}
             onRegenerate={regenerate}
             accentColor="fuchsia"
+            isRateLimited={isRateLimited}
+            remainingAttempts={remainingAttempts}
+            cooldownSeconds={cooldownSeconds}
           />
         </motion.div>
 
@@ -549,6 +561,9 @@ export const PeersHowToStep = ({ onNext, onBack, initialValue = "", idea = "" }:
     regenerate,
     getCombinedValue,
     hasSelection,
+    isRateLimited,
+    remainingAttempts,
+    cooldownSeconds,
   } = useSuggestions({
     type: "peers-howto-suggestions",
     idea,
@@ -616,6 +631,9 @@ export const PeersHowToStep = ({ onNext, onBack, initialValue = "", idea = "" }:
             onToggle={toggleSuggestion}
             onRegenerate={regenerate}
             accentColor="fuchsia"
+            isRateLimited={isRateLimited}
+            remainingAttempts={remainingAttempts}
+            cooldownSeconds={cooldownSeconds}
           />
         </motion.div>
 
@@ -666,6 +684,9 @@ export const PeersComparisonStep = ({ onNext, onBack, initialValue = "", idea = 
     regenerate,
     getCombinedValue,
     hasSelection,
+    isRateLimited,
+    remainingAttempts,
+    cooldownSeconds,
   } = useSuggestions({
     type: "peers-comparison-suggestions",
     idea,
@@ -721,6 +742,9 @@ export const PeersComparisonStep = ({ onNext, onBack, initialValue = "", idea = 
             onToggle={toggleSuggestion}
             onRegenerate={regenerate}
             accentColor="fuchsia"
+            isRateLimited={isRateLimited}
+            remainingAttempts={remainingAttempts}
+            cooldownSeconds={cooldownSeconds}
           />
         </motion.div>
 
@@ -771,6 +795,9 @@ export const PeersAuthenticWhyStep = ({ onNext, onBack, initialValue = "", idea 
     regenerate,
     getCombinedValue,
     hasSelection,
+    isRateLimited,
+    remainingAttempts,
+    cooldownSeconds,
   } = useSuggestions({
     type: "peers-why-suggestions",
     idea,
@@ -829,6 +856,9 @@ export const PeersAuthenticWhyStep = ({ onNext, onBack, initialValue = "", idea 
             onToggle={toggleSuggestion}
             onRegenerate={regenerate}
             accentColor="fuchsia"
+            isRateLimited={isRateLimited}
+            remainingAttempts={remainingAttempts}
+            cooldownSeconds={cooldownSeconds}
           />
         </motion.div>
 
@@ -885,6 +915,9 @@ export const PeersCTAStep = ({ onNext, onBack, initialValue = "", idea = "" }: C
     regenerate,
     getCombinedValue,
     hasSelection,
+    isRateLimited,
+    remainingAttempts,
+    cooldownSeconds,
   } = useSuggestions({
     type: "peers-cta-suggestions",
     idea,
@@ -950,6 +983,9 @@ export const PeersCTAStep = ({ onNext, onBack, initialValue = "", idea = "" }: C
             onToggle={toggleSuggestion}
             onRegenerate={regenerate}
             accentColor="fuchsia"
+            isRateLimited={isRateLimited}
+            remainingAttempts={remainingAttempts}
+            cooldownSeconds={cooldownSeconds}
           />
         </motion.div>
 

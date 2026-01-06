@@ -122,6 +122,9 @@ export const GrandmaPainStep = ({ onNext, onBack, initialValue = "", idea = "" }
     regenerate,
     getCombinedValue,
     hasSelection,
+    isRateLimited,
+    remainingAttempts,
+    cooldownSeconds,
   } = useSuggestions({
     type: "grandma-pain-suggestions",
     idea,
@@ -171,6 +174,9 @@ export const GrandmaPainStep = ({ onNext, onBack, initialValue = "", idea = "" }
             onToggle={toggleSuggestion}
             onRegenerate={regenerate}
             accentColor="amber"
+            isRateLimited={isRateLimited}
+            remainingAttempts={remainingAttempts}
+            cooldownSeconds={cooldownSeconds}
           />
         </motion.div>
 
@@ -206,6 +212,9 @@ export const GrandmaAnalogyStep = ({ onNext, onBack, initialValue = "", idea = "
     regenerate,
     getCombinedValue,
     hasSelection,
+    isRateLimited,
+    remainingAttempts,
+    cooldownSeconds,
   } = useSuggestions({
     type: "grandma-analogy-suggestions",
     idea,
@@ -258,6 +267,9 @@ export const GrandmaAnalogyStep = ({ onNext, onBack, initialValue = "", idea = "
             onToggle={toggleSuggestion}
             onRegenerate={regenerate}
             accentColor="amber"
+            isRateLimited={isRateLimited}
+            remainingAttempts={remainingAttempts}
+            cooldownSeconds={cooldownSeconds}
           />
         </motion.div>
 
@@ -293,6 +305,9 @@ export const GrandmaBenefitsStep = ({ onNext, onBack, initialValue = "", idea = 
     regenerate,
     getCombinedValue,
     hasSelection,
+    isRateLimited,
+    remainingAttempts,
+    cooldownSeconds,
   } = useSuggestions({
     type: "grandma-benefits-suggestions",
     idea,
@@ -342,6 +357,9 @@ export const GrandmaBenefitsStep = ({ onNext, onBack, initialValue = "", idea = 
             onToggle={toggleSuggestion}
             onRegenerate={regenerate}
             accentColor="emerald"
+            isRateLimited={isRateLimited}
+            remainingAttempts={remainingAttempts}
+            cooldownSeconds={cooldownSeconds}
           />
         </motion.div>
 
@@ -377,6 +395,9 @@ export const GrandmaSafetyStep = ({ onNext, onBack, initialValue = "", idea = ""
     regenerate,
     getCombinedValue,
     hasSelection,
+    isRateLimited,
+    remainingAttempts,
+    cooldownSeconds,
   } = useSuggestions({
     type: "grandma-safety-suggestions",
     idea,
@@ -426,6 +447,9 @@ export const GrandmaSafetyStep = ({ onNext, onBack, initialValue = "", idea = ""
             onToggle={toggleSuggestion}
             onRegenerate={regenerate}
             accentColor="blue"
+            isRateLimited={isRateLimited}
+            remainingAttempts={remainingAttempts}
+            cooldownSeconds={cooldownSeconds}
           />
         </motion.div>
 
