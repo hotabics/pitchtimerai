@@ -120,6 +120,7 @@ export const TimeEater = ({
   // Counting animations
   const animatedTimeSaved = useCountUp(timeSaved, 1500, animateBars);
   const animatedPercentage = useCountUp(percentageSaved, 1500, animateBars);
+  const animatedTotalAI = useCountUp(totalAI, 1500, animateBars);
   useEffect(() => {
     if (projectName.length > 3 && !showVisualization) {
       setShowVisualization(true);
@@ -322,7 +323,7 @@ export const TimeEater = ({
                   ease: "easeInOut"
                 }}>
                       <span className="text-3xl font-mono font-bold text-emerald-400">
-                        ~{formatTime(useCountUp(totalAI, 1500, animateBars))}
+                        ~{formatTime(animatedTotalAI)}
                       </span>
                       <div className="flex items-center justify-end gap-1">
                         <span className="text-xs font-bold text-emerald-300 bg-emerald-500/20 px-1.5 py-0.5 rounded">
