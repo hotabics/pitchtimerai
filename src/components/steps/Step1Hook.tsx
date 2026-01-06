@@ -61,8 +61,11 @@ export const Step1Hook = ({ onNext }: Step1HookProps) => {
             From <span className="text-time-high">15 Hours</span> to{" "}
             <span className="text-time-low">30 Minutes</span>
           </h1>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-muted-foreground text-sm mb-2">
             Let AI do the heavy lifting while you focus on winning
+          </p>
+          <p className="text-xs text-primary/80 font-medium">
+            ✨ Create scripts + Practice & improve your delivery
           </p>
         </motion.div>
 
