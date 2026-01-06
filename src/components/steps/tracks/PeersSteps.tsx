@@ -502,14 +502,55 @@ interface WhyCareStepProps {
   onNext: (benefits: string[]) => void;
   onBack: () => void;
   initialValue?: string[];
+  idea?: string;
 }
 
-export const PeersWhyCareStep = ({ onNext, onBack, initialValue = ["", "", ""] }: WhyCareStepProps) => {
+export const PeersWhyCareStep = ({ onNext, onBack, initialValue = ["", "", ""], idea = "" }: WhyCareStepProps) => {
   const [benefit1, setBenefit1] = useState(initialValue[0] || "");
   const [benefit2, setBenefit2] = useState(initialValue[1] || "");
   const [benefit3, setBenefit3] = useState(initialValue[2] || "");
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const hasAtLeastOne = benefit1.trim() || benefit2.trim() || benefit3.trim();
+  useEffect(() => {
+    if (idea) fetchSuggestions();
+  }, [idea]);
+
+  const fetchSuggestions = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-pitch", {
+        body: { type: "peers-why-care-suggestions", idea },
+      });
+      if (error) throw error;
+      if (data?.suggestions && Array.isArray(data.suggestions)) {
+        setSuggestions(data.suggestions.map((text: string, i: number) => ({ id: `s-${i}`, text })));
+      }
+    } catch (error) {
+      console.error("Failed to fetch suggestions:", error);
+      setSuggestions([
+        { id: "s1", text: "Saves you 2+ hours every single week" },
+        { id: "s2", text: "No more embarrassing manual errors" },
+        { id: "s3", text: "Actually have time for the fun stuff" },
+        { id: "s4", text: "Be the one who always has it together" },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const toggleSuggestion = (id: string) => {
+    setSelectedSuggestions((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
+  };
+
+  const hasAtLeastOne = benefit1.trim() || benefit2.trim() || benefit3.trim() || selectedSuggestions.length > 0;
+
+  const handleNext = () => {
+    const selected = suggestions.filter((s) => selectedSuggestions.includes(s.id)).map((s) => s.text);
+    const benefits = [benefit1, benefit2, benefit3, ...selected].filter(Boolean);
+    onNext(benefits);
+  };
 
   return (
     <WizardStep
@@ -577,6 +618,14 @@ export const PeersWhyCareStep = ({ onNext, onBack, initialValue = ["", "", ""] }
               className="h-11"
             />
           </div>
+
+          <AISuggestions
+            suggestions={suggestions}
+            selectedSuggestions={selectedSuggestions}
+            isLoading={isLoading}
+            onToggle={toggleSuggestion}
+            onRegenerate={() => { setSelectedSuggestions([]); fetchSuggestions(); }}
+          />
         </motion.div>
 
         <div className="flex-1" />
@@ -590,7 +639,7 @@ export const PeersWhyCareStep = ({ onNext, onBack, initialValue = ["", "", ""] }
           <Button
             variant="default"
             size="lg"
-            onClick={() => onNext([benefit1, benefit2, benefit3].filter(Boolean))}
+            onClick={handleNext}
             disabled={!hasAtLeastOne}
             className="w-full bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700"
           >
@@ -612,10 +661,54 @@ interface HowToStepProps {
   onNext: (howTo: string) => void;
   onBack: () => void;
   initialValue?: string;
+  idea?: string;
 }
 
-export const PeersHowToStep = ({ onNext, onBack, initialValue = "" }: HowToStepProps) => {
+export const PeersHowToStep = ({ onNext, onBack, initialValue = "", idea = "" }: HowToStepProps) => {
   const [howTo, setHowTo] = useState(initialValue);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (idea) fetchSuggestions();
+  }, [idea]);
+
+  const fetchSuggestions = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-pitch", {
+        body: { type: "peers-howto-suggestions", idea },
+      });
+      if (error) throw error;
+      if (data?.suggestions && Array.isArray(data.suggestions)) {
+        setSuggestions(data.suggestions.map((text: string, i: number) => ({ id: `s-${i}`, text })));
+      }
+    } catch (error) {
+      console.error("Failed to fetch suggestions:", error);
+      setSuggestions([
+        { id: "s1", text: "Just connect your account and it handles everything automatically" },
+        { id: "s2", text: "Open the app, hit one button, and you're done" },
+        { id: "s3", text: "It learns what you need and adapts to your style" },
+        { id: "s4", text: "Set it up once and forget about it forever" },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const toggleSuggestion = (id: string) => {
+    setSelectedSuggestions((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
+  };
+
+  const getCombined = () => {
+    const selected = suggestions.filter((s) => selectedSuggestions.includes(s.id)).map((s) => s.text);
+    const parts = [...selected];
+    if (howTo.trim()) parts.push(howTo.trim());
+    return parts.join(". ");
+  };
+
+  const hasContent = howTo.trim() || selectedSuggestions.length > 0;
 
   return (
     <WizardStep
@@ -664,6 +757,13 @@ export const PeersHowToStep = ({ onNext, onBack, initialValue = "" }: HowToStepP
               className="h-12"
             />
           </div>
+          <AISuggestions
+            suggestions={suggestions}
+            selectedSuggestions={selectedSuggestions}
+            isLoading={isLoading}
+            onToggle={toggleSuggestion}
+            onRegenerate={() => { setSelectedSuggestions([]); fetchSuggestions(); }}
+          />
         </motion.div>
 
         <div className="flex-1" />
@@ -677,8 +777,8 @@ export const PeersHowToStep = ({ onNext, onBack, initialValue = "" }: HowToStepP
           <Button
             variant="default"
             size="lg"
-            onClick={() => onNext(howTo)}
-            disabled={!howTo.trim()}
+            onClick={() => onNext(getCombined())}
+            disabled={!hasContent}
             className="w-full bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700"
           >
             Easy! 👍
@@ -954,16 +1054,60 @@ interface CTAStepProps {
   onNext: (cta: string) => void;
   onBack: () => void;
   initialValue?: string;
+  idea?: string;
 }
 
 const blockedPhrases = ["buy now", "you must", "you need to", "hurry", "limited time", "act now", "don't miss"];
 
-export const PeersCTAStep = ({ onNext, onBack, initialValue = "" }: CTAStepProps) => {
+export const PeersCTAStep = ({ onNext, onBack, initialValue = "", idea = "" }: CTAStepProps) => {
   const [cta, setCta] = useState(initialValue);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   
   const hasBlockedPhrase = blockedPhrases.some(phrase => 
     cta.toLowerCase().includes(phrase)
   );
+
+  useEffect(() => {
+    if (idea) fetchSuggestions();
+  }, [idea]);
+
+  const fetchSuggestions = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-pitch", {
+        body: { type: "peers-cta-suggestions", idea },
+      });
+      if (error) throw error;
+      if (data?.suggestions && Array.isArray(data.suggestions)) {
+        setSuggestions(data.suggestions.map((text: string, i: number) => ({ id: `s-${i}`, text })));
+      }
+    } catch (error) {
+      console.error("Failed to fetch suggestions:", error);
+      setSuggestions([
+        { id: "s1", text: "Try it out and let me know what you think" },
+        { id: "s2", text: "Check it out if you're curious, no pressure" },
+        { id: "s3", text: "DM me if you want early access" },
+        { id: "s4", text: "Link's in my bio if you wanna explore" },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const toggleSuggestion = (id: string) => {
+    setSelectedSuggestions((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
+  };
+
+  const getCombined = () => {
+    const selected = suggestions.filter((s) => selectedSuggestions.includes(s.id)).map((s) => s.text);
+    const parts = [...selected];
+    if (cta.trim()) parts.push(cta.trim());
+    return parts.join(". ");
+  };
+
+  const hasContent = (cta.trim() && !hasBlockedPhrase) || selectedSuggestions.length > 0;
 
   return (
     <WizardStep
@@ -1010,6 +1154,13 @@ export const PeersCTAStep = ({ onNext, onBack, initialValue = "" }: CTAStepProps
               </motion.div>
             )}
           </div>
+          <AISuggestions
+            suggestions={suggestions}
+            selectedSuggestions={selectedSuggestions}
+            isLoading={isLoading}
+            onToggle={toggleSuggestion}
+            onRegenerate={() => { setSelectedSuggestions([]); fetchSuggestions(); }}
+          />
         </motion.div>
 
         <div className="flex-1" />
@@ -1023,8 +1174,8 @@ export const PeersCTAStep = ({ onNext, onBack, initialValue = "" }: CTAStepProps
           <Button
             variant="default"
             size="lg"
-            onClick={() => onNext(cta)}
-            disabled={!cta.trim() || hasBlockedPhrase}
+            onClick={() => onNext(getCombined())}
+            disabled={!hasContent}
             className="w-full bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700"
           >
             Done! Let&apos;s generate! 🎉

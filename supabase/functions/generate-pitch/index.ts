@@ -200,6 +200,176 @@ serve(async (req) => {
         Only return valid JSON, no markdown.`;
         break;
 
+      // Grandma track suggestions
+      case 'grandma-connection-suggestions':
+        systemPrompt = 'You are an expert at explaining technology to elderly family members in heartfelt, emotional terms.';
+        userPrompt = `For a project about "${idea}", generate 4 personal connection suggestions for explaining to a grandma.
+        Each suggestion should:
+        - Be emotional and heartfelt
+        - Focus on WHY sharing this matters personally
+        - Be simple and jargon-free
+        - Be concise (1 sentence, max 15 words)
+        
+        Return a JSON object with a "suggestions" array containing 4 strings.
+        Example format: {"suggestions": ["I want you to understand what I've been working on because you always believed in me", ...]}
+        Only return valid JSON, no markdown.`;
+        break;
+
+      case 'grandma-pain-suggestions':
+        systemPrompt = 'You are an expert at explaining technology problems in relatable, everyday terms for elderly people.';
+        userPrompt = `For a project about "${idea}", generate 4 relatable pain point suggestions a grandma would understand.
+        Each suggestion should:
+        - Use everyday situations she can relate to
+        - Start with "You know how..." or similar phrasing
+        - Avoid technical jargon completely
+        - Be concise (1 sentence, max 15 words)
+        
+        Return a JSON object with a "suggestions" array containing 4 strings.
+        Example format: {"suggestions": ["You know how it's hard to remember which pills to take and when?", ...]}
+        Only return valid JSON, no markdown.`;
+        break;
+
+      case 'grandma-analogy-suggestions':
+        systemPrompt = 'You are an expert at creating simple analogies that explain technology to elderly people.';
+        userPrompt = `For a project about "${idea}", generate 4 simple analogy suggestions a grandma would understand.
+        Each suggestion should:
+        - Compare to something familiar from daily life
+        - Use "It's like a..." format
+        - Be completely jargon-free
+        - Be concise (1 sentence, max 15 words)
+        
+        Return a JSON object with a "suggestions" array containing 4 strings.
+        Example format: {"suggestions": ["It's like a friendly alarm clock that reminds you of important things", ...]}
+        Only return valid JSON, no markdown.`;
+        break;
+
+      case 'grandma-benefits-suggestions':
+        systemPrompt = 'You are an expert at explaining technology benefits to elderly people in practical, caring terms.';
+        userPrompt = `For a project about "${idea}", generate 4 benefit suggestions a grandma would appreciate.
+        Each suggestion should:
+        - Focus on practical life improvements
+        - Use warm, caring language
+        - Avoid technical terms
+        - Be concise (1 sentence, max 15 words)
+        
+        Return a JSON object with a "suggestions" array containing 4 strings.
+        Example format: {"suggestions": ["It helps you stay connected with family without any confusing buttons", ...]}
+        Only return valid JSON, no markdown.`;
+        break;
+
+      case 'grandma-safety-suggestions':
+        systemPrompt = 'You are an expert at reassuring elderly people about technology safety and ease of use.';
+        userPrompt = `For a project about "${idea}", generate 4 safety/trust reassurance suggestions for a grandma.
+        Each suggestion should:
+        - Address common concerns about technology
+        - Be reassuring and gentle
+        - Focus on simplicity and safety
+        - Be concise (1 sentence, max 15 words)
+        
+        Return a JSON object with a "suggestions" array containing 4 strings.
+        Example format: {"suggestions": ["It's completely safe and you can't accidentally break anything", ...]}
+        Only return valid JSON, no markdown.`;
+        break;
+
+      // Peers track suggestions
+      case 'peers-hook-suggestions':
+        systemPrompt = 'You are a Gen-Z/millennial pitch expert who creates relatable, casual hooks.';
+        userPrompt = `For a project about "${idea}", generate 4 attention-grabbing hook suggestions for peers.
+        Each suggestion should:
+        - Feel authentic and conversational
+        - Use casual, relatable language
+        - Ask a question or make a bold statement
+        - Be concise (1 sentence, max 15 words)
+        
+        Return a JSON object with a "suggestions" array containing 4 strings.
+        Example format: {"suggestions": ["Have you ever wasted hours doing something that should take minutes?", ...]}
+        Only return valid JSON, no markdown.`;
+        break;
+
+      case 'peers-thing-suggestions':
+        systemPrompt = 'You are a Gen-Z/millennial pitch expert who explains things simply and casually.';
+        userPrompt = `For a project about "${idea}", generate 4 simple definition suggestions for explaining to peers.
+        Each suggestion should:
+        - Be casual and conversational
+        - Avoid marketing speak
+        - Explain what it actually does
+        - Be concise (1 sentence, max 15 words)
+        
+        Return a JSON object with a "suggestions" array containing 4 strings.
+        Example format: {"suggestions": ["It's an app that automates the boring stuff so you can focus on what matters", ...]}
+        Only return valid JSON, no markdown.`;
+        break;
+
+      case 'peers-why-care-suggestions':
+        systemPrompt = 'You are a Gen-Z/millennial pitch expert who articulates value propositions casually.';
+        userPrompt = `For a project about "${idea}", generate 4 "why should I care" suggestions for peers.
+        Each suggestion should:
+        - Focus on personal benefit
+        - Be direct and honest
+        - Use casual language
+        - Be concise (1 phrase, max 10 words)
+        
+        Return a JSON object with a "suggestions" array containing 4 strings.
+        Example format: {"suggestions": ["Saves you 2+ hours every single week", "No more embarrassing manual errors", ...]}
+        Only return valid JSON, no markdown.`;
+        break;
+
+      case 'peers-howto-suggestions':
+        systemPrompt = 'You are a Gen-Z/millennial pitch expert who explains processes casually.';
+        userPrompt = `For a project about "${idea}", generate 4 "how it works" suggestions for peers.
+        Each suggestion should:
+        - Describe the process simply
+        - Feel effortless and easy
+        - Be action-oriented
+        - Be concise (1 sentence, max 15 words)
+        
+        Return a JSON object with a "suggestions" array containing 4 strings.
+        Example format: {"suggestions": ["Just connect your account and it handles everything automatically", ...]}
+        Only return valid JSON, no markdown.`;
+        break;
+
+      case 'peers-comparison-suggestions':
+        systemPrompt = 'You are a Gen-Z/millennial pitch expert who creates relatable comparisons.';
+        userPrompt = `For a project about "${idea}", generate 4 comparison/differentiation suggestions for peers.
+        Each suggestion should:
+        - Compare to something they already know
+        - Highlight what makes this different
+        - Be honest and not salesy
+        - Be concise (1 sentence, max 15 words)
+        
+        Return a JSON object with a "suggestions" array containing 4 strings.
+        Example format: {"suggestions": ["Unlike other tools, this actually works with your existing workflow", ...]}
+        Only return valid JSON, no markdown.`;
+        break;
+
+      case 'peers-why-suggestions':
+        systemPrompt = 'You are a Gen-Z/millennial pitch expert who helps articulate authentic motivations.';
+        userPrompt = `For a project about "${idea}", generate 4 authentic "why I built this" suggestions for peers.
+        Each suggestion should:
+        - Be personal and genuine
+        - Show real motivation
+        - Connect to a shared experience
+        - Be concise (1 sentence, max 20 words)
+        
+        Return a JSON object with a "suggestions" array containing 4 strings.
+        Example format: {"suggestions": ["I was so frustrated with existing solutions that I had to build something better", ...]}
+        Only return valid JSON, no markdown.`;
+        break;
+
+      case 'peers-cta-suggestions':
+        systemPrompt = 'You are a Gen-Z/millennial pitch expert who creates casual but effective calls to action.';
+        userPrompt = `For a project about "${idea}", generate 4 call-to-action suggestions for peers.
+        Each suggestion should:
+        - Be casual and not pushy
+        - Feel like a friend's recommendation
+        - Include a specific action
+        - Be concise (1 sentence, max 12 words)
+        
+        Return a JSON object with a "suggestions" array containing 4 strings.
+        Example format: {"suggestions": ["Try it out and let me know what you think", ...]}
+        Only return valid JSON, no markdown.`;
+        break;
+
       case 'persona':
         systemPrompt = 'You are a market research expert specializing in target audience definition.';
         userPrompt = `For a startup idea about "${idea}", create a primary target persona.
@@ -301,7 +471,13 @@ serve(async (req) => {
       'investor-traction-suggestions', 'investor-business-model-suggestions',
       'investor-ask-suggestions', 'academic-topic-suggestions',
       'academic-frame-suggestions', 'academic-methodology-suggestions',
-      'academic-results-suggestions', 'academic-conclusions-suggestions'
+      'academic-results-suggestions', 'academic-conclusions-suggestions',
+      'grandma-connection-suggestions', 'grandma-pain-suggestions',
+      'grandma-analogy-suggestions', 'grandma-benefits-suggestions',
+      'grandma-safety-suggestions', 'peers-hook-suggestions',
+      'peers-thing-suggestions', 'peers-why-care-suggestions',
+      'peers-howto-suggestions', 'peers-comparison-suggestions',
+      'peers-why-suggestions', 'peers-cta-suggestions'
     ];
     if (suggestionTypes.includes(type) && parsed.suggestions) {
       return new Response(JSON.stringify({ suggestions: parsed.suggestions }), {
