@@ -1,13 +1,32 @@
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import { TimeEater } from "@/components/landing/TimeEater";
 import { BentoGrid } from "@/components/landing/BentoGrid";
+import { useState, useEffect } from "react";
 
 interface Step1HookProps {
   onNext: (idea: string) => void;
 }
 
+const sloganVariations = [
+  { subject: "Hackathons", contrast: "code" },
+  { subject: "Deals", contrast: "spreadsheets" },
+  { subject: "Degrees", contrast: "research" },
+  { subject: "Investments", contrast: "features" },
+];
+
 export const Step1Hook = ({ onNext }: Step1HookProps) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % sloganVariations.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const { subject, contrast } = sloganVariations[currentIndex];
+
   return (
     <div className="min-h-screen hero-gradient overflow-x-hidden">
       {/* Hero Section */}
@@ -33,11 +52,36 @@ export const Step1Hook = ({ onNext }: Step1HookProps) => {
           className="text-center max-w-3xl mx-auto mb-10"
         >
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tighter text-foreground mb-4">
-            Hackathons are won with{" "}
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={subject}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.4 }}
+                className="inline-block"
+              >
+                {subject}
+              </motion.span>
+            </AnimatePresence>{" "}
+            are won with{" "}
             <span className="bg-gradient-to-r from-primary via-primary to-emerald-400 bg-clip-text text-transparent">
               stories
             </span>
-            , not just code.
+            , not just{" "}
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={contrast}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.4 }}
+                className="inline-block"
+              >
+                {contrast}
+              </motion.span>
+            </AnimatePresence>
+            .
           </h1>
           <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
             See exactly how much prep time you'll save with our{" "}
