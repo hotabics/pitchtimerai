@@ -282,8 +282,9 @@ export const TimeEater = ({
                   ease: "easeInOut"
                 }}>
                       <span className="text-3xl font-mono font-bold text-emerald-400">
-                        ~{formatTime(totalAI)}
+                        ~{formatTime(timeSaved)}
                       </span>
+                      <span className="text-xs text-emerald-400/70 block">saved</span>
                     </motion.div>
                   </div>
 
