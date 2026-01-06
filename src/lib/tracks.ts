@@ -5,7 +5,8 @@ export type TrackType =
   | 'hackathon-with-demo' 
   | 'investor' 
   | 'academic' 
-  | 'grandma';
+  | 'grandma'
+  | 'peers';
 
 export interface TrackConfig {
   id: TrackType;
@@ -69,6 +70,16 @@ export const trackConfigs: Record<TrackType, TrackConfig> = {
     color: 'from-amber-500 to-amber-600',
     outputStructure: ['Why', 'Problem', 'What Is It', 'Benefits', 'Usage', 'Safety', 'Care'],
   },
+  'peers': {
+    id: 'peers',
+    name: 'Peers & Friends',
+    description: 'Casual pitch to classmates, friends, or student clubs - authentic and no-BS',
+    stepCount: 8,
+    baseTime: 120, // Low prep time - casual but structured
+    finalTime: 15,
+    color: 'from-fuchsia-500 to-purple-600',
+    outputStructure: ['Hook', 'Relatable Problem', 'Definition', 'Benefits', 'How-to', 'Comparison', 'Personal Story', 'Chill CTA'],
+  },
 };
 
 // Determine track based on audience and demo selections
@@ -81,6 +92,11 @@ export function determineTrack(audience: string, demoType: string): TrackType {
   // Grandma/Non-tech track
   if (audience === 'nontech') {
     return 'grandma';
+  }
+  
+  // Peers/Friends track
+  if (audience === 'peers') {
+    return 'peers';
   }
   
   // Investor track
@@ -156,5 +172,12 @@ export const trackFieldLabels: Record<TrackType, TrackFieldLabels> = {
     field3: { label: 'Analogy', icon: 'Sparkles' },
     field4: { label: 'Benefits', icon: 'Gift' },
     field5: { label: 'Safety', icon: 'ShieldCheck' },
+  },
+  'peers': {
+    field1: { label: 'Hook', icon: 'Zap' },
+    field2: { label: 'Struggle', icon: 'Flame' },
+    field3: { label: 'The Thing', icon: 'Sparkles' },
+    field4: { label: 'Why Care', icon: 'PartyPopper' },
+    field5: { label: 'Vibe', icon: 'Smile' },
   },
 };
