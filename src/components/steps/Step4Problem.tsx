@@ -3,12 +3,12 @@ import { ArrowRight, ArrowLeft, Edit2, Lightbulb, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SelectionCard } from "@/components/SelectionCard";
-import { StepWrapper } from "@/components/StepWrapper";
+import { WizardStep } from "@/components/WizardStep";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-interface Step3ProblemProps {
+interface Step4ProblemProps {
   idea: string;
   onNext: (problem: string) => void;
   onBack: () => void;
@@ -20,7 +20,7 @@ interface Problem {
   description: string;
 }
 
-export const Step3Problem = ({ idea, onNext, onBack }: Step3ProblemProps) => {
+export const Step4Problem = ({ idea, onNext, onBack }: Step4ProblemProps) => {
   const [selected, setSelected] = useState("");
   const [customMode, setCustomMode] = useState(false);
   const [customProblem, setCustomProblem] = useState("");
@@ -37,10 +37,7 @@ export const Step3Problem = ({ idea, onNext, onBack }: Step3ProblemProps) => {
 
         if (error) throw error;
         
-        console.log('AI response:', data);
-        
         if (data?.result && Array.isArray(data.result)) {
-          // Ensure each item has required fields
           const validProblems = data.result.map((p: any, i: number) => ({
             id: String(p.id || i + 1),
             title: p.title || `Option ${i + 1}`,
@@ -57,7 +54,6 @@ export const Step3Problem = ({ idea, onNext, onBack }: Step3ProblemProps) => {
           description: "Using fallback suggestions. You can also write your own.",
           variant: "destructive"
         });
-        // Fallback problems
         setProblems([
           { id: "1", title: "Efficiency Gap", description: `Teams struggle to organize and execute "${idea}" effectively due to fragmented tools.` },
           { id: "2", title: "Complexity Issue", description: `Current solutions for "${idea}" are too complex, leaving users frustrated.` },
@@ -81,7 +77,7 @@ export const Step3Problem = ({ idea, onNext, onBack }: Step3ProblemProps) => {
   };
 
   return (
-    <StepWrapper
+    <WizardStep
       title="The Problem"
       subtitle="What pain point does your solution address?"
     >
@@ -176,6 +172,6 @@ export const Step3Problem = ({ idea, onNext, onBack }: Step3ProblemProps) => {
           </Button>
         </motion.div>
       </div>
-    </StepWrapper>
+    </WizardStep>
   );
 };

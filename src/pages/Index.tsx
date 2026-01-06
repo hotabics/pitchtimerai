@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import { Header } from "@/components/Header";
+import { WizardLayout } from "@/components/WizardLayout";
+import { BriefData } from "@/components/ProjectBrief";
 import { Step1Hook } from "@/components/steps/Step1Hook";
-import { Step2Specs } from "@/components/steps/Step2Specs";
-import { Step3Problem } from "@/components/steps/Step3Problem";
-import { Step4Audience } from "@/components/steps/Step4Audience";
+import { Step2Audience } from "@/components/steps/Step2Audience";
+import { Step3Demo } from "@/components/steps/Step3Demo";
+import { Step4Problem } from "@/components/steps/Step4Problem";
 import { Step5Solution } from "@/components/steps/Step5Solution";
 import { Step6Business } from "@/components/steps/Step6Business";
-import { Step7Summary } from "@/components/steps/Step7Summary";
+import { Step7Generation } from "@/components/steps/Step7Generation";
 import { Dashboard } from "@/components/Dashboard";
 import { toast } from "@/hooks/use-toast";
 
@@ -22,15 +24,37 @@ interface PitchData {
   idea: string;
   duration: number;
   audience: string;
+  audienceLabel: string;
   demo: DemoInfo;
+  demoLabel: string;
   problem: string;
   persona: { description: string; keywords: string[] };
   pitch: string;
   solutionDescription?: string;
   models: string[];
+  generationTier: string;
 }
 
+// Time calculation based on step progress
+const calculatePrepTime = (step: number, demoType?: string): number => {
+  const baseTime = 900; // 15h in minutes
+  const reductions: Record<number, number> = {
+    1: 0,      // After Step 1: Still 15h
+    2: 120,    // After audience: -2h
+    3: demoType === "live" ? 60 : demoType === "none" ? 180 : 120, // After demo
+    4: 180,    // After problem: -3h
+    5: 180,    // After solution: -3h
+    6: 60,     // After business: -1h
+    7: 150,    // After generation tier: most saved
+  };
 
+  let totalReduction = 0;
+  for (let i = 1; i <= step; i++) {
+    totalReduction += reductions[i] || 0;
+  }
+
+  return Math.max(30, baseTime - totalReduction);
+};
 
 const Index = () => {
   const [step, setStep] = useState(0);
@@ -46,6 +70,7 @@ const Index = () => {
     setShowDashboard(false);
   };
 
+  // Step 1: Landing with idea input
   const handleStep1 = (idea: string) => {
     setData({ ...data, idea });
     setStep(1);
@@ -55,33 +80,41 @@ const Index = () => {
     });
   };
 
-  const handleStep2 = (specs: { duration: number; audience: string; demo: DemoInfo }) => {
-    setData({ ...data, ...specs });
+  // Step 2: Audience selection
+  const handleStep2 = (audience: string, audienceLabel: string) => {
+    setData({ ...data, audience, audienceLabel });
     setStep(2);
     toast({
-      title: specs.demo.hasDemo ? "Demo Planned!" : "Structure Adapted!",
-      description: specs.demo.hasDemo ? "AI will optimize demo timing" : "Pitch optimized for your audience",
+      title: "Audience Selected!",
+      description: `Tailoring pitch for ${audienceLabel}`,
     });
   };
 
-  const handleStep3 = (problem: string) => {
-    setData({ ...data, problem });
+  // Step 3: Demo strategy
+  const handleStep3 = (demoType: string, demoLabel: string) => {
+    const demo: DemoInfo = {
+      hasDemo: demoType !== "none",
+      demoType: demoType !== "none" ? demoType : undefined,
+    };
+    setData({ ...data, demo, demoLabel });
     setStep(3);
     toast({
-      title: "Focus Found!",
-      description: "Problem statement locked in",
+      title: "Demo Strategy Set!",
+      description: `Using ${demoLabel} approach`,
     });
   };
 
-  const handleStep4 = (persona: { description: string; keywords: string[] }) => {
-    setData({ ...data, persona });
+  // Step 4: Problem selection
+  const handleStep4 = (problem: string) => {
+    setData({ ...data, problem });
     setStep(4);
     toast({
-      title: "Target Acquired!",
-      description: "Audience persona defined",
+      title: "Problem Defined!",
+      description: "Core pain point identified",
     });
   };
 
+  // Step 5: Solution pitch
   const handleStep5 = (pitch: string, solutionDescription?: string) => {
     setData({ ...data, pitch, solutionDescription });
     setStep(5);
@@ -91,23 +124,39 @@ const Index = () => {
     });
   };
 
+  // Step 6: Business model
   const handleStep6 = (models: string[]) => {
     setData({ ...data, models });
     setStep(6);
     toast({
-      title: "Almost There!",
-      description: "Final review time",
+      title: "Monetization Set!",
+      description: `${models.length} revenue model(s) selected`,
     });
   };
 
-  const handleGenerate = () => {
+  // Step 7: Generation tier and generate
+  const handleStep7 = (tier: string, tierLabel: string) => {
+    setData({ ...data, generationTier: tier });
     setShowDashboard(true);
     toast({
       title: "🎉 Pitch Generated!",
-      description: "14h 30m saved. You're ready to win!",
+      description: `${tierLabel} package ready. You saved hours!`,
     });
   };
 
+  // Build brief data for sidebar
+  const briefData: BriefData = {
+    projectName: data.idea,
+    audienceLabel: data.audienceLabel,
+    demoLabel: data.demoLabel,
+    problem: data.problem,
+    solution: data.pitch,
+    monetization: data.models,
+    generationTier: data.generationTier,
+    prepTime: calculatePrepTime(step, data.demo?.demoType),
+  };
+
+  // Dashboard view after generation
   if (showDashboard) {
     return (
       <>
@@ -126,26 +175,66 @@ const Index = () => {
     );
   }
 
+  // Landing page (Step 0)
+  if (step === 0) {
+    return <Step1Hook onNext={handleStep1} />;
+  }
+
+  // Wizard steps (1-7)
   return (
-    <>
-      {step > 0 && <Header showProgress currentStep={step} totalSteps={7} onLogoClick={handleLogoClick} />}
+    <WizardLayout
+      briefData={briefData}
+      currentStep={step}
+      totalSteps={7}
+      onLogoClick={handleLogoClick}
+    >
       <AnimatePresence mode="wait">
-        {step === 0 && <Step1Hook key="step1" onNext={handleStep1} />}
-        {step === 1 && <Step2Specs key="step2" onNext={handleStep2} onBack={handleBack} />}
-        {step === 2 && <Step3Problem key="step3" idea={data.idea || ""} onNext={handleStep3} onBack={handleBack} />}
-        {step === 3 && <Step4Audience key="step4" idea={data.idea || ""} onNext={handleStep4} onBack={handleBack} />}
-        {step === 4 && <Step5Solution key="step5" idea={data.idea || ""} onNext={handleStep5} onBack={handleBack} />}
-        {step === 5 && <Step6Business key="step6" onNext={handleStep6} onBack={handleBack} />}
+        {step === 1 && (
+          <Step2Audience
+            key="step2"
+            onNext={handleStep2}
+            onBack={handleBack}
+          />
+        )}
+        {step === 2 && (
+          <Step3Demo
+            key="step3"
+            onNext={handleStep3}
+            onBack={handleBack}
+          />
+        )}
+        {step === 3 && (
+          <Step4Problem
+            key="step4"
+            idea={data.idea || ""}
+            onNext={handleStep4}
+            onBack={handleBack}
+          />
+        )}
+        {step === 4 && (
+          <Step5Solution
+            key="step5"
+            idea={data.idea || ""}
+            onNext={handleStep5}
+            onBack={handleBack}
+          />
+        )}
+        {step === 5 && (
+          <Step6Business
+            key="step6"
+            onNext={handleStep6}
+            onBack={handleBack}
+          />
+        )}
         {step === 6 && (
-          <Step7Summary
+          <Step7Generation
             key="step7"
-            data={data as PitchData}
-            onGenerate={handleGenerate}
+            onNext={handleStep7}
             onBack={handleBack}
           />
         )}
       </AnimatePresence>
-    </>
+    </WizardLayout>
   );
 };
 
