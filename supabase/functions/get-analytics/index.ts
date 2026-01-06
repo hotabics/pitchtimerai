@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getRateLimitKey, createRateLimitResponse, RATE_LIMITS } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,6 +14,15 @@ serve(async (req) => {
   }
 
   try {
+    // Rate limiting
+    const rateLimitKey = getRateLimitKey(req, 'get-analytics');
+    const rateLimitResult = checkRateLimit(rateLimitKey, RATE_LIMITS.analytics);
+    
+    if (!rateLimitResult.allowed) {
+      console.warn(`Rate limit exceeded for key: ${rateLimitKey}`);
+      return createRateLimitResponse(rateLimitResult, corsHeaders);
+    }
+
     // Create Supabase client with service role to bypass RLS
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;

@@ -1,9 +1,28 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { validateIdea, validateType, validateContext } from "../_shared/input-validation.ts";
+import { checkRateLimit, getRateLimitKey, createRateLimitResponse, RATE_LIMITS } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Allowed generation types
+const ALLOWED_TYPES = [
+  'problems', 'pain-suggestions', 'fix-suggestions', 'progress-suggestions',
+  'investor-opportunity-suggestions', 'investor-market-suggestions',
+  'investor-traction-suggestions', 'investor-business-model-suggestions',
+  'investor-ask-suggestions', 'academic-topic-suggestions',
+  'academic-frame-suggestions', 'academic-methodology-suggestions',
+  'academic-results-suggestions', 'academic-conclusions-suggestions',
+  'grandma-connection-suggestions', 'grandma-pain-suggestions',
+  'grandma-analogy-suggestions', 'grandma-benefits-suggestions',
+  'grandma-safety-suggestions', 'peers-hook-suggestions',
+  'peers-thing-suggestions', 'peers-why-care-suggestions',
+  'peers-howto-suggestions', 'peers-comparison-suggestions',
+  'peers-why-suggestions', 'peers-cta-suggestions',
+  'persona', 'pitches', 'script'
+];
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -11,28 +30,70 @@ serve(async (req) => {
   }
 
   try {
+    // Rate limiting
+    const rateLimitKey = getRateLimitKey(req, 'generate-pitch');
+    const rateLimitResult = checkRateLimit(rateLimitKey, RATE_LIMITS.aiGeneration);
+    
+    if (!rateLimitResult.allowed) {
+      console.warn(`Rate limit exceeded for key: ${rateLimitKey}`);
+      return createRateLimitResponse(rateLimitResult, corsHeaders);
+    }
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    const { type, idea, context } = await req.json();
-    console.log(`Generating ${type} for idea: ${idea}`);
+    const body = await req.json();
+    const { type, idea, context } = body;
+
+    // Validate type
+    const typeResult = validateType(type, ALLOWED_TYPES);
+    if (!typeResult.isValid) {
+      return new Response(JSON.stringify({ error: typeResult.error }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Validate idea
+    const ideaResult = validateIdea(idea);
+    if (!ideaResult.isValid) {
+      return new Response(JSON.stringify({ error: ideaResult.error }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Validate context
+    const contextResult = validateContext(context);
+    if (!contextResult.isValid) {
+      return new Response(JSON.stringify({ error: contextResult.error }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Use sanitized values
+    const sanitizedIdea = ideaResult.sanitized!;
+    const sanitizedContext = contextResult.sanitized || {};
+
+    console.log(`Generating ${typeResult.sanitized} for idea: ${sanitizedIdea.substring(0, 50)}...`);
 
     let systemPrompt = '';
     let userPrompt = '';
 
-    switch (type) {
+    switch (typeResult.sanitized) {
       case 'problems':
         systemPrompt = 'You are a startup pitch expert. Generate realistic problem statements that a startup could solve.';
-        userPrompt = `For a startup idea about "${idea}", generate 3 unique problem statements that this solution could address. 
-        Return a JSON array with objects containing "id" (1, 2, 3), "title" (short 3-5 word title), and "description" (one sentence problem statement mentioning "${idea}").
+        userPrompt = `For a startup idea about "${sanitizedIdea}", generate 3 unique problem statements that this solution could address. 
+        Return a JSON array with objects containing "id" (1, 2, 3), "title" (short 3-5 word title), and "description" (one sentence problem statement mentioning "${sanitizedIdea}").
         Only return valid JSON, no markdown.`;
         break;
 
       case 'pain-suggestions':
         systemPrompt = 'You are a startup pitch expert who identifies real pain points that users experience.';
-        userPrompt = `For a startup idea about "${idea}", generate 4 specific pain point suggestions that this solution could address.
+        userPrompt = `For a startup idea about "${sanitizedIdea}", generate 4 specific pain point suggestions that this solution could address.
         Each pain point should:
         - Be specific about WHO experiences the problem
         - Mention WHEN or in what context it happens
@@ -45,8 +106,8 @@ serve(async (req) => {
 
       case 'fix-suggestions':
         systemPrompt = 'You are a startup pitch expert who crafts compelling solution descriptions.';
-        const painContext = context?.pain ? `The pain point being addressed: "${context.pain}"` : '';
-        userPrompt = `For a startup idea about "${idea}"${painContext ? `, ${painContext}` : ''}, generate 4 specific solution/fix suggestions.
+        const painContext = sanitizedContext?.pain ? `The pain point being addressed: "${sanitizedContext.pain}"` : '';
+        userPrompt = `For a startup idea about "${sanitizedIdea}"${painContext ? `, ${painContext}` : ''}, generate 4 specific solution/fix suggestions.
         Each solution should:
         - Describe HOW the solution works in simple terms
         - Be action-oriented and concrete
@@ -59,7 +120,7 @@ serve(async (req) => {
 
       case 'progress-suggestions':
         systemPrompt = 'You are a hackathon mentor who helps teams describe their technical implementation.';
-        userPrompt = `For a hackathon project about "${idea}", generate 4 architecture/tech stack suggestions that describe what was built.
+        userPrompt = `For a hackathon project about "${sanitizedIdea}", generate 4 architecture/tech stack suggestions that describe what was built.
         Each suggestion should:
         - Mention specific technologies or frameworks
         - Describe a key component or feature
@@ -72,7 +133,7 @@ serve(async (req) => {
 
       case 'investor-opportunity-suggestions':
         systemPrompt = 'You are an investor pitch expert who helps quantify market opportunities.';
-        userPrompt = `For a startup idea about "${idea}", generate 4 opportunity/problem cost suggestions.
+        userPrompt = `For a startup idea about "${sanitizedIdea}", generate 4 opportunity/problem cost suggestions.
         Each suggestion should:
         - Quantify the problem (cost, time lost, frequency)
         - Be specific about who is affected
@@ -85,7 +146,7 @@ serve(async (req) => {
 
       case 'investor-market-suggestions':
         systemPrompt = 'You are a market research expert who helps define TAM/SAM/SOM.';
-        userPrompt = `For a startup idea about "${idea}", generate 4 market size suggestions.
+        userPrompt = `For a startup idea about "${sanitizedIdea}", generate 4 market size suggestions.
         Each suggestion should:
         - Include realistic market size estimates
         - Reference a specific market segment
@@ -98,7 +159,7 @@ serve(async (req) => {
 
       case 'investor-traction-suggestions':
         systemPrompt = 'You are a startup advisor who helps founders describe early traction metrics.';
-        userPrompt = `For a startup idea about "${idea}", generate 4 traction/validation suggestions.
+        userPrompt = `For a startup idea about "${sanitizedIdea}", generate 4 traction/validation suggestions.
         Each suggestion should:
         - Describe a realistic early-stage metric
         - Be specific and measurable
@@ -111,7 +172,7 @@ serve(async (req) => {
 
       case 'investor-business-model-suggestions':
         systemPrompt = 'You are a business strategy expert who helps define monetization models.';
-        userPrompt = `For a startup idea about "${idea}", generate 4 business model/pricing suggestions.
+        userPrompt = `For a startup idea about "${sanitizedIdea}", generate 4 business model/pricing suggestions.
         Each suggestion should:
         - Describe a specific pricing tier or revenue stream
         - Include example pricing
@@ -124,7 +185,7 @@ serve(async (req) => {
 
       case 'investor-ask-suggestions':
         systemPrompt = 'You are a fundraising advisor who helps founders structure investment asks.';
-        userPrompt = `For a startup idea about "${idea}", generate 4 investment ask suggestions.
+        userPrompt = `For a startup idea about "${sanitizedIdea}", generate 4 investment ask suggestions.
         Each suggestion should:
         - Include funding amount and allocation
         - Be specific about use of funds
@@ -137,7 +198,7 @@ serve(async (req) => {
 
       case 'academic-topic-suggestions':
         systemPrompt = 'You are an academic advisor who helps structure research presentations.';
-        userPrompt = `For a research topic about "${idea}", generate 4 topic relevance suggestions.
+        userPrompt = `For a research topic about "${sanitizedIdea}", generate 4 topic relevance suggestions.
         Each suggestion should:
         - Explain why this research matters
         - Reference real-world impact or applications
@@ -150,7 +211,7 @@ serve(async (req) => {
 
       case 'academic-frame-suggestions':
         systemPrompt = 'You are a research methodology expert who helps define research objectives.';
-        userPrompt = `For a research topic about "${idea}", generate 4 research goal/hypothesis suggestions.
+        userPrompt = `For a research topic about "${sanitizedIdea}", generate 4 research goal/hypothesis suggestions.
         Each suggestion should:
         - Define a clear research objective or hypothesis
         - Be testable and specific
@@ -163,7 +224,7 @@ serve(async (req) => {
 
       case 'academic-methodology-suggestions':
         systemPrompt = 'You are a research methodology expert who helps describe research approaches.';
-        userPrompt = `For a research topic about "${idea}", generate 4 methodology suggestions.
+        userPrompt = `For a research topic about "${sanitizedIdea}", generate 4 methodology suggestions.
         Each suggestion should:
         - Describe a specific research method or approach
         - Include data or tools used
@@ -176,7 +237,7 @@ serve(async (req) => {
 
       case 'academic-results-suggestions':
         systemPrompt = 'You are a research presentation expert who helps articulate findings.';
-        userPrompt = `For a research topic about "${idea}", generate 4 key results suggestions.
+        userPrompt = `For a research topic about "${sanitizedIdea}", generate 4 key results suggestions.
         Each suggestion should:
         - Present a quantifiable finding
         - Include metrics or statistical significance
@@ -189,7 +250,7 @@ serve(async (req) => {
 
       case 'academic-conclusions-suggestions':
         systemPrompt = 'You are an academic advisor who helps summarize research contributions.';
-        userPrompt = `For a research topic about "${idea}", generate 4 conclusion/contribution suggestions.
+        userPrompt = `For a research topic about "${sanitizedIdea}", generate 4 conclusion/contribution suggestions.
         Each suggestion should:
         - Summarize a key contribution or implication
         - Be suitable for a thesis defense
@@ -200,10 +261,9 @@ serve(async (req) => {
         Only return valid JSON, no markdown.`;
         break;
 
-      // Grandma track suggestions
       case 'grandma-connection-suggestions':
         systemPrompt = 'You are an expert at explaining technology to elderly family members in heartfelt, emotional terms.';
-        userPrompt = `For a project about "${idea}", generate 4 personal connection suggestions for explaining to a grandma.
+        userPrompt = `For a project about "${sanitizedIdea}", generate 4 personal connection suggestions for explaining to a grandma.
         Each suggestion should:
         - Be emotional and heartfelt
         - Focus on WHY sharing this matters personally
@@ -217,7 +277,7 @@ serve(async (req) => {
 
       case 'grandma-pain-suggestions':
         systemPrompt = 'You are an expert at explaining technology problems in relatable, everyday terms for elderly people.';
-        userPrompt = `For a project about "${idea}", generate 4 relatable pain point suggestions a grandma would understand.
+        userPrompt = `For a project about "${sanitizedIdea}", generate 4 relatable pain point suggestions a grandma would understand.
         Each suggestion should:
         - Use everyday situations she can relate to
         - Start with "You know how..." or similar phrasing
@@ -231,7 +291,7 @@ serve(async (req) => {
 
       case 'grandma-analogy-suggestions':
         systemPrompt = 'You are an expert at creating simple analogies that explain technology to elderly people.';
-        userPrompt = `For a project about "${idea}", generate 4 simple analogy suggestions a grandma would understand.
+        userPrompt = `For a project about "${sanitizedIdea}", generate 4 simple analogy suggestions a grandma would understand.
         Each suggestion should:
         - Compare to something familiar from daily life
         - Use "It's like a..." format
@@ -245,7 +305,7 @@ serve(async (req) => {
 
       case 'grandma-benefits-suggestions':
         systemPrompt = 'You are an expert at explaining technology benefits to elderly people in practical, caring terms.';
-        userPrompt = `For a project about "${idea}", generate 4 benefit suggestions a grandma would appreciate.
+        userPrompt = `For a project about "${sanitizedIdea}", generate 4 benefit suggestions a grandma would appreciate.
         Each suggestion should:
         - Focus on practical life improvements
         - Use warm, caring language
@@ -259,7 +319,7 @@ serve(async (req) => {
 
       case 'grandma-safety-suggestions':
         systemPrompt = 'You are an expert at reassuring elderly people about technology safety and ease of use.';
-        userPrompt = `For a project about "${idea}", generate 4 safety/trust reassurance suggestions for a grandma.
+        userPrompt = `For a project about "${sanitizedIdea}", generate 4 safety/trust reassurance suggestions for a grandma.
         Each suggestion should:
         - Address common concerns about technology
         - Be reassuring and gentle
@@ -271,10 +331,9 @@ serve(async (req) => {
         Only return valid JSON, no markdown.`;
         break;
 
-      // Peers track suggestions
       case 'peers-hook-suggestions':
         systemPrompt = 'You are a Gen-Z/millennial pitch expert who creates relatable, casual hooks.';
-        userPrompt = `For a project about "${idea}", generate 4 attention-grabbing hook suggestions for peers.
+        userPrompt = `For a project about "${sanitizedIdea}", generate 4 attention-grabbing hook suggestions for peers.
         Each suggestion should:
         - Feel authentic and conversational
         - Use casual, relatable language
@@ -288,7 +347,7 @@ serve(async (req) => {
 
       case 'peers-thing-suggestions':
         systemPrompt = 'You are a Gen-Z/millennial pitch expert who explains things simply and casually.';
-        userPrompt = `For a project about "${idea}", generate 4 simple definition suggestions for explaining to peers.
+        userPrompt = `For a project about "${sanitizedIdea}", generate 4 simple definition suggestions for explaining to peers.
         Each suggestion should:
         - Be casual and conversational
         - Avoid marketing speak
@@ -302,7 +361,7 @@ serve(async (req) => {
 
       case 'peers-why-care-suggestions':
         systemPrompt = 'You are a Gen-Z/millennial pitch expert who articulates value propositions casually.';
-        userPrompt = `For a project about "${idea}", generate 4 "why should I care" suggestions for peers.
+        userPrompt = `For a project about "${sanitizedIdea}", generate 4 "why should I care" suggestions for peers.
         Each suggestion should:
         - Focus on personal benefit
         - Be direct and honest
@@ -316,7 +375,7 @@ serve(async (req) => {
 
       case 'peers-howto-suggestions':
         systemPrompt = 'You are a Gen-Z/millennial pitch expert who explains processes casually.';
-        userPrompt = `For a project about "${idea}", generate 4 "how it works" suggestions for peers.
+        userPrompt = `For a project about "${sanitizedIdea}", generate 4 "how it works" suggestions for peers.
         Each suggestion should:
         - Describe the process simply
         - Feel effortless and easy
@@ -330,7 +389,7 @@ serve(async (req) => {
 
       case 'peers-comparison-suggestions':
         systemPrompt = 'You are a Gen-Z/millennial pitch expert who creates relatable comparisons.';
-        userPrompt = `For a project about "${idea}", generate 4 comparison/differentiation suggestions for peers.
+        userPrompt = `For a project about "${sanitizedIdea}", generate 4 comparison/differentiation suggestions for peers.
         Each suggestion should:
         - Compare to something they already know
         - Highlight what makes this different
@@ -344,7 +403,7 @@ serve(async (req) => {
 
       case 'peers-why-suggestions':
         systemPrompt = 'You are a Gen-Z/millennial pitch expert who helps articulate authentic motivations.';
-        userPrompt = `For a project about "${idea}", generate 4 authentic "why I built this" suggestions for peers.
+        userPrompt = `For a project about "${sanitizedIdea}", generate 4 authentic "why I built this" suggestions for peers.
         Each suggestion should:
         - Be personal and genuine
         - Show real motivation
@@ -358,7 +417,7 @@ serve(async (req) => {
 
       case 'peers-cta-suggestions':
         systemPrompt = 'You are a Gen-Z/millennial pitch expert who creates casual but effective calls to action.';
-        userPrompt = `For a project about "${idea}", generate 4 call-to-action suggestions for peers.
+        userPrompt = `For a project about "${sanitizedIdea}", generate 4 call-to-action suggestions for peers.
         Each suggestion should:
         - Be casual and not pushy
         - Feel like a friend's recommendation
@@ -372,7 +431,7 @@ serve(async (req) => {
 
       case 'persona':
         systemPrompt = 'You are a market research expert specializing in target audience definition.';
-        userPrompt = `For a startup idea about "${idea}", create a primary target persona.
+        userPrompt = `For a startup idea about "${sanitizedIdea}", create a primary target persona.
         Return a JSON object with:
         - "description": A 2-sentence description of who this persona is
         - "keywords": An array of 5-6 relevant demographic/psychographic keywords
@@ -381,29 +440,36 @@ serve(async (req) => {
 
       case 'pitches':
         systemPrompt = 'You are a pitch deck expert who creates compelling elevator pitches using analogy-based frameworks.';
-        userPrompt = `For a startup idea about "${idea}", create 3 different elevator pitch variations using famous company analogies.
+        userPrompt = `For a startup idea about "${sanitizedIdea}", create 3 different elevator pitch variations using famous company analogies.
         Return a JSON array with objects containing:
         - "id" (1, 2, 3)
         - "title" (e.g., "The Uber Model", "The Netflix Approach")
-        - "pitch" (A compelling one-liner using the analogy, mentioning "${idea}")
+        - "pitch" (A compelling one-liner using the analogy, mentioning "${sanitizedIdea}")
         Only return valid JSON, no markdown.`;
         break;
 
       case 'script':
         systemPrompt = 'You are an expert pitch coach who creates compelling, time-appropriate pitch scripts.';
-        const { duration, problem, persona, pitch, businessModels, demo } = context;
-        userPrompt = `Create a ${duration}-minute pitch script for this startup:
+        const { duration, problem, persona, pitch, businessModels, demo } = sanitizedContext as Record<string, unknown>;
+        const durationVal = typeof duration === 'number' ? duration : 3;
+        const problemVal = typeof problem === 'string' ? problem : '';
+        const personaVal = typeof persona === 'string' ? persona : '';
+        const pitchVal = typeof pitch === 'string' ? pitch : '';
+        const businessModelsVal = Array.isArray(businessModels) ? businessModels.join(', ') : '';
+        const demoObj = demo as Record<string, unknown> | undefined;
         
-        Idea: ${idea}
-        Problem: ${problem}
-        Target Audience: ${persona}
-        Elevator Pitch: ${pitch}
-        Business Models: ${businessModels.join(', ')}
-        ${demo?.hasDemo ? `Demo: ${demo.demoType} - ${demo.demoDescription}` : 'No demo'}
+        userPrompt = `Create a ${durationVal}-minute pitch script for this startup:
+        
+        Idea: ${sanitizedIdea}
+        Problem: ${problemVal}
+        Target Audience: ${personaVal}
+        Elevator Pitch: ${pitchVal}
+        Business Models: ${businessModelsVal}
+        ${demoObj?.hasDemo ? `Demo: ${demoObj.demoType} - ${demoObj.demoDescription}` : 'No demo'}
         
         Return a JSON object with:
-        - "script": The full pitch script as a string with clear sections (Hook, Problem, Solution, ${demo?.hasDemo ? 'Demo, ' : ''}Business Model, Call to Action)
-        - "demoActions": ${demo?.hasDemo ? `An array of 3-4 specific demo actions based on ${demo.demoType}` : 'null'}
+        - "script": The full pitch script as a string with clear sections (Hook, Problem, Solution, ${demoObj?.hasDemo ? 'Demo, ' : ''}Business Model, Call to Action)
+        - "demoActions": ${demoObj?.hasDemo ? `An array of 3-4 specific demo actions based on ${demoObj.demoType}` : 'null'}
         Only return valid JSON, no markdown.`;
         break;
 
@@ -451,12 +517,11 @@ serve(async (req) => {
       throw new Error('No content in AI response');
     }
 
-    console.log('AI response:', content);
+    console.log('AI response received successfully');
 
     // Parse the JSON from the response
     let parsed;
     try {
-      // Remove any markdown code blocks if present
       const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
       parsed = JSON.parse(cleanContent);
     } catch (e) {
@@ -479,7 +544,7 @@ serve(async (req) => {
       'peers-howto-suggestions', 'peers-comparison-suggestions',
       'peers-why-suggestions', 'peers-cta-suggestions'
     ];
-    if (suggestionTypes.includes(type) && parsed.suggestions) {
+    if (suggestionTypes.includes(typeResult.sanitized!) && parsed.suggestions) {
       return new Response(JSON.stringify({ suggestions: parsed.suggestions }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

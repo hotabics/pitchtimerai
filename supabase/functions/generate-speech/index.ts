@@ -1,4 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { validateTrack, validateDuration, validateContext } from "../_shared/input-validation.ts";
+import { checkRateLimit, getRateLimitKey, createRateLimitResponse, RATE_LIMITS } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -154,25 +156,62 @@ serve(async (req) => {
   }
 
   try {
+    // Rate limiting
+    const rateLimitKey = getRateLimitKey(req, 'generate-speech');
+    const rateLimitResult = checkRateLimit(rateLimitKey, RATE_LIMITS.aiGeneration);
+    
+    if (!rateLimitResult.allowed) {
+      console.warn(`Rate limit exceeded for key: ${rateLimitKey}`);
+      return createRateLimitResponse(rateLimitResult, corsHeaders);
+    }
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
 
-    const { track, duration, inputs, hasDemo } = await req.json();
+    const body = await req.json();
+    const { track, duration, inputs, hasDemo } = body;
+
+    // Validate track
+    const trackResult = validateTrack(track);
+    if (!trackResult.isValid) {
+      return new Response(JSON.stringify({ error: trackResult.error }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Validate duration
+    const durationResult = validateDuration(duration);
+    if (!durationResult.isValid) {
+      return new Response(JSON.stringify({ error: durationResult.error }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Validate inputs
+    const inputsResult = validateContext(inputs);
+    if (!inputsResult.isValid) {
+      return new Response(JSON.stringify({ error: inputsResult.error }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
     
-    console.log(`Generating speech for track: ${track}, duration: ${duration} min`);
+    console.log(`Generating speech for track: ${trackResult.sanitized}, duration: ${durationResult.value} min`);
     
     // Calculate target word count
-    const targetWordCount = Math.round(duration * SPEAKING_RATE);
-    console.log(`Target word count: ${targetWordCount} words (${SPEAKING_RATE} wpm × ${duration} min)`);
+    const targetWordCount = Math.round(durationResult.value! * SPEAKING_RATE);
+    console.log(`Target word count: ${targetWordCount} words (${SPEAKING_RATE} wpm × ${durationResult.value} min)`);
 
     const { systemPrompt, userPrompt } = buildSpeechPrompt(
-      track,
-      duration,
+      trackResult.sanitized!,
+      durationResult.value!,
       targetWordCount,
-      inputs,
-      hasDemo
+      inputsResult.sanitized || {},
+      hasDemo === true
     );
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -237,8 +276,8 @@ serve(async (req) => {
     return new Response(JSON.stringify({ 
       speech: parsed,
       meta: {
-        track,
-        duration,
+        track: trackResult.sanitized,
+        duration: durationResult.value,
         targetWordCount,
         actualWordCount: parsed.totalWords,
         speakingRate: SPEAKING_RATE,

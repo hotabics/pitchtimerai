@@ -1,9 +1,26 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { checkRateLimit, getRateLimitKey, createRateLimitResponse, RATE_LIMITS } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Maximum audio file size (10MB)
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+// Allowed audio MIME types
+const ALLOWED_MIME_TYPES = [
+  'audio/webm',
+  'audio/wav',
+  'audio/mpeg',
+  'audio/mp3',
+  'audio/mp4',
+  'audio/ogg',
+  'audio/flac',
+  'audio/x-wav',
+  'audio/x-m4a',
+];
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -11,6 +28,15 @@ serve(async (req) => {
   }
 
   try {
+    // Rate limiting
+    const rateLimitKey = getRateLimitKey(req, 'elevenlabs-stt');
+    const rateLimitResult = checkRateLimit(rateLimitKey, RATE_LIMITS.speech);
+    
+    if (!rateLimitResult.allowed) {
+      console.warn(`Rate limit exceeded for key: ${rateLimitKey}`);
+      return createRateLimitResponse(rateLimitResult, corsHeaders);
+    }
+
     const formData = await req.formData();
     const audioFile = formData.get('audio') as File;
     const ELEVENLABS_API_KEY = Deno.env.get('ELEVENLABS_API_KEY');
@@ -20,10 +46,29 @@ serve(async (req) => {
     }
 
     if (!audioFile) {
-      throw new Error('Audio file is required');
+      return new Response(JSON.stringify({ error: 'Audio file is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    console.log(`Processing audio file: ${audioFile.name}, size: ${audioFile.size} bytes`);
+    // Validate file size
+    if (audioFile.size > MAX_FILE_SIZE) {
+      return new Response(JSON.stringify({ error: 'Audio file exceeds maximum size of 10MB' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Validate file type
+    const mimeType = audioFile.type.toLowerCase();
+    if (!ALLOWED_MIME_TYPES.some(allowed => mimeType.includes(allowed.split('/')[1]))) {
+      console.warn(`Invalid audio type received: ${mimeType}`);
+      // Be lenient - some browsers report different MIME types
+      // Just log a warning but proceed
+    }
+
+    console.log(`Processing audio file: ${audioFile.name}, size: ${audioFile.size} bytes, type: ${mimeType}`);
 
     // Prepare form data for ElevenLabs Scribe API
     const apiFormData = new FormData();
