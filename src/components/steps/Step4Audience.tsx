@@ -1,10 +1,11 @@
 import { motion } from "framer-motion";
-import { ArrowRight, ArrowLeft, User, X, Loader2 } from "lucide-react";
+import { ArrowRight, ArrowLeft, User, X, Loader2, RefreshCw, Pencil, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StepWrapper } from "@/components/StepWrapper";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Step4AudienceProps {
   idea: string;
@@ -21,50 +22,84 @@ export const Step4Audience = ({ idea, onNext, onBack }: Step4AudienceProps) => {
   const [persona, setPersona] = useState<Persona | null>(null);
   const [keywords, setKeywords] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedDescription, setEditedDescription] = useState("");
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchPersona = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke('generate-pitch', {
-          body: { type: 'persona', idea }
-        });
+  const fetchPersona = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-pitch', {
+        body: { type: 'persona', idea }
+      });
 
-        if (error) throw error;
-        
-        console.log('AI persona response:', data);
-        
-        if (data?.result && typeof data.result === 'object') {
-          const persona = {
-            description: data.result.description || '',
-            keywords: Array.isArray(data.result.keywords) ? data.result.keywords : []
-          };
-          setPersona(persona);
-          setKeywords(persona.keywords);
-        } else {
-          throw new Error('Invalid response format');
-        }
-      } catch (error) {
-        console.error('Failed to generate persona:', error);
-        toast({
-          title: "AI Generation Failed",
-          description: "Using fallback persona.",
-          variant: "destructive"
-        });
-        // Fallback persona
-        const fallback = {
-          description: `Busy professionals aged 25-40 who work in tech-adjacent industries and are looking for efficient solutions to manage "${idea}".`,
-          keywords: ["Time-constrained", "Tech-savvy", "Decision makers", "Innovation seekers", "ROI-focused"]
+      if (error) throw error;
+      
+      console.log('AI persona response:', data);
+      
+      if (data?.result && typeof data.result === 'object') {
+        const newPersona = {
+          description: data.result.description || '',
+          keywords: Array.isArray(data.result.keywords) ? data.result.keywords : []
         };
-        setPersona(fallback);
-        setKeywords(fallback.keywords);
-      } finally {
-        setIsLoading(false);
+        setPersona(newPersona);
+        setKeywords(newPersona.keywords);
+        setEditedDescription(newPersona.description);
+      } else {
+        throw new Error('Invalid response format');
       }
-    };
+    } catch (error) {
+      console.error('Failed to generate persona:', error);
+      toast({
+        title: "AI Generation Failed",
+        description: "Using fallback persona.",
+        variant: "destructive"
+      });
+      // Fallback persona
+      const fallback = {
+        description: `Busy professionals aged 25-40 who work in tech-adjacent industries and are looking for efficient solutions to manage "${idea}".`,
+        keywords: ["Time-constrained", "Tech-savvy", "Decision makers", "Innovation seekers", "ROI-focused"]
+      };
+      setPersona(fallback);
+      setKeywords(fallback.keywords);
+      setEditedDescription(fallback.description);
+    }
+  };
 
-    fetchPersona();
-  }, [idea, toast]);
+  useEffect(() => {
+    const init = async () => {
+      setIsLoading(true);
+      await fetchPersona();
+      setIsLoading(false);
+    };
+    init();
+  }, [idea]);
+
+  const handleRegenerate = async () => {
+    setIsRegenerating(true);
+    await fetchPersona();
+    setIsRegenerating(false);
+    toast({
+      title: "Persona Regenerated",
+      description: "New audience persona generated."
+    });
+  };
+
+  const handleSaveEdit = () => {
+    if (persona) {
+      setPersona({ ...persona, description: editedDescription });
+    }
+    setIsEditing(false);
+    toast({
+      title: "Description Updated",
+      description: "Your changes have been saved."
+    });
+  };
+
+  const handleStartEdit = () => {
+    setEditedDescription(persona?.description || "");
+    setIsEditing(true);
+  };
 
   const removeKeyword = (keyword: string) => {
     setKeywords(keywords.filter((k) => k !== keyword));
@@ -99,11 +134,64 @@ export const Step4Audience = ({ idea, onNext, onBack }: Step4AudienceProps) => {
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
               <User className="w-6 h-6 text-primary" />
             </div>
-            <div>
-              <h3 className="font-semibold text-foreground mb-2">Primary Persona</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {persona?.description}
-              </p>
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold text-foreground">Primary Persona</h3>
+                <div className="flex items-center gap-2">
+                  {!isEditing && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleStartEdit}
+                      className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRegenerate}
+                    disabled={isRegenerating || isEditing}
+                    className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isRegenerating ? 'animate-spin' : ''}`} />
+                  </Button>
+                </div>
+              </div>
+              {isEditing ? (
+                <div className="space-y-3">
+                  <Textarea
+                    value={editedDescription}
+                    onChange={(e) => setEditedDescription(e.target.value)}
+                    className="min-h-[100px] text-sm bg-background/50"
+                    placeholder="Describe your target audience..."
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={handleSaveEdit}
+                      className="h-8"
+                    >
+                      <Check className="w-4 h-4 mr-1" />
+                      Save
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsEditing(false)}
+                      className="h-8"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {persona?.description}
+                </p>
+              )}
             </div>
           </div>
         </motion.div>
