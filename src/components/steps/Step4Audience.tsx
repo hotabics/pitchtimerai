@@ -32,9 +32,17 @@ export const Step4Audience = ({ idea, onNext, onBack }: Step4AudienceProps) => {
 
         if (error) throw error;
         
-        if (data?.result) {
-          setPersona(data.result);
-          setKeywords(data.result.keywords || []);
+        console.log('AI persona response:', data);
+        
+        if (data?.result && typeof data.result === 'object') {
+          const persona = {
+            description: data.result.description || '',
+            keywords: Array.isArray(data.result.keywords) ? data.result.keywords : []
+          };
+          setPersona(persona);
+          setKeywords(persona.keywords);
+        } else {
+          throw new Error('Invalid response format');
         }
       } catch (error) {
         console.error('Failed to generate persona:', error);
