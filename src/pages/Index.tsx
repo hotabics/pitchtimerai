@@ -27,6 +27,7 @@ interface PitchData {
   problem: string;
   persona: { description: string; keywords: string[] };
   pitch: string;
+  solutionDescription?: string;
   models: string[];
 }
 
@@ -77,8 +78,8 @@ const Index = () => {
     });
   };
 
-  const handleStep5 = (pitch: string) => {
-    setData({ ...data, pitch });
+  const handleStep5 = (pitch: string, solutionDescription?: string) => {
+    setData({ ...data, pitch, solutionDescription });
     setStep(5);
     toast({
       title: "Pitch Locked!",
