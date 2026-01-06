@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowRight, ArrowLeft, Code, Figma, Video, SlidersHorizontal } from "lucide-react";
+import { ArrowRight, ArrowLeft, Figma, Video, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WizardStep } from "@/components/WizardStep";
 import { useState } from "react";
@@ -10,16 +10,6 @@ interface Step3DemoProps {
 }
 
 const demoOptions = [
-  {
-    id: "live",
-    label: "Live Code / App",
-    description: "I will mirror my screen and show the real product.",
-    subtext: "High Risk, High Reward",
-    icon: Code,
-    color: "from-red-500/20 to-red-600/10",
-    iconColor: "text-red-500",
-    riskLevel: "high",
-  },
   {
     id: "prototype",
     label: "Clickable Prototype",
