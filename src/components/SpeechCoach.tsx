@@ -3,12 +3,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Mic, MicOff, Square, Brain, Sparkles, CheckCircle2, 
   AlertCircle, TrendingUp, Clock, MessageSquare, Zap,
-  Volume2, Target, ArrowLeft
+  Volume2, Target, ArrowLeft, History, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 interface SpeechBlock {
   timeStart: string;
@@ -22,6 +24,9 @@ interface SpeechBlock {
 interface SpeechCoachProps {
   speechBlocks: SpeechBlock[];
   onBack: () => void;
+  idea: string;
+  track: string;
+  duration: number;
 }
 
 interface AnalysisResult {
@@ -29,48 +34,115 @@ interface AnalysisResult {
   wpm: number;
   fillers: number;
   fillerBreakdown: { ums: number; likes: number; basically: number };
+  transcription: string;
   transcription_html: string;
   feedback: string[];
   tone: "energetic" | "confident" | "monotone" | "nervous";
   missedSections: string[];
 }
 
-type CoachState = "idle" | "recording" | "processing" | "results";
+interface PracticeSession {
+  id: string;
+  created_at: string;
+  score: number;
+  wpm: number;
+  filler_count: number;
+  tone: string;
+  recording_duration_seconds: number;
+}
+
+type CoachState = "idle" | "recording" | "processing" | "results" | "history";
 
 const processingMessages = [
   "Uploading audio...",
-  "Transcribing speech (Whisper AI)...",
+  "Transcribing speech (ElevenLabs Scribe)...",
   "Analyzing tonality...",
   "Detecting filler words...",
   "Checking content coverage...",
   "Generating feedback...",
 ];
 
-// Mock analysis service
-const mockAnalysisService = async (): Promise<AnalysisResult> => {
-  await new Promise(resolve => setTimeout(resolve, 3000));
-  
-  return {
-    score: 88,
-    wpm: 142,
-    fillers: 6,
-    fillerBreakdown: { ums: 4, likes: 1, basically: 1 },
-    transcription_html: `We are building <span class="text-success font-bold">PitchDeck AI</span>, a revolutionary platform that helps students and entrepreneurs <span class="text-destructive font-medium">um</span> create winning pitches in minutes. 
-
-<span class="text-destructive font-medium">Basically</span>, it works by analyzing your idea and generating <span class="text-success font-bold">AI-powered</span> scripts tailored to your <span class="text-success font-bold">audience</span>.
-
-The problem is that most people <span class="text-destructive font-medium">uh</span> struggle with public speaking and spend hours preparing. Our solution uses <span class="text-success font-bold">machine learning</span> to <span class="text-destructive font-medium">um</span> accelerate this process.
-
-We've already helped <span class="text-success font-bold">500+ users</span> and saved them an average of <span class="text-success font-bold">3 hours</span> per pitch. <span class="text-destructive font-medium">Like</span>, that's huge for busy founders.`,
-    feedback: [
-      "Great energy throughout!",
-      "Watch out for 'um' usage",
-      "You spoke 10% faster than target",
-      "Excellent use of key metrics",
-    ],
-    tone: "energetic",
-    missedSections: ["Monetization Strategy"],
+// Analyze transcription for filler words and key terms
+const analyzeTranscription = (
+  transcription: string, 
+  originalScript: string
+): { 
+  html: string; 
+  fillers: { ums: number; likes: number; basically: number };
+  score: number;
+  missedSections: string[];
+} => {
+  const fillerPatterns = {
+    ums: /\b(um|uh|er|ah)\b/gi,
+    likes: /\b(like)\b/gi,
+    basically: /\b(basically|so|you know|i mean)\b/gi,
   };
+  
+  // Count fillers
+  const ums = (transcription.match(fillerPatterns.ums) || []).length;
+  const likes = (transcription.match(fillerPatterns.likes) || []).length;
+  const basically = (transcription.match(fillerPatterns.basically) || []).length;
+  
+  // Extract key terms from original script
+  const keyTerms = originalScript
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(word => word.length > 5)
+    .filter((word, index, arr) => arr.indexOf(word) === index)
+    .slice(0, 20);
+  
+  // Check which key terms were mentioned
+  const transcriptionLower = transcription.toLowerCase();
+  const mentionedTerms = keyTerms.filter(term => transcriptionLower.includes(term));
+  const score = Math.min(100, Math.round((mentionedTerms.length / Math.max(keyTerms.length, 1)) * 100) + 40);
+  
+  // Build HTML with highlighting
+  let html = transcription;
+  
+  // Highlight key terms in green
+  mentionedTerms.forEach(term => {
+    const regex = new RegExp(`\\b(${term})\\b`, 'gi');
+    html = html.replace(regex, '<span class="text-success font-bold">$1</span>');
+  });
+  
+  // Highlight filler words in red
+  Object.values(fillerPatterns).forEach(pattern => {
+    html = html.replace(pattern, '<span class="text-destructive font-medium">$&</span>');
+  });
+  
+  // Determine missed sections (simplified)
+  const missedSections: string[] = [];
+  const sections = ["Introduction", "Problem", "Solution", "Demo", "Closing"];
+  const sectionKeywords: Record<string, string[]> = {
+    "Introduction": ["hello", "hi", "welcome", "today"],
+    "Problem": ["problem", "issue", "challenge", "struggle"],
+    "Solution": ["solution", "solve", "fix", "approach"],
+    "Demo": ["demo", "show", "works", "see"],
+    "Closing": ["thank", "questions", "contact", "summary"],
+  };
+  
+  sections.forEach(section => {
+    const keywords = sectionKeywords[section] || [];
+    const found = keywords.some(kw => transcriptionLower.includes(kw));
+    if (!found) {
+      missedSections.push(section);
+    }
+  });
+  
+  return { 
+    html, 
+    fillers: { ums, likes, basically },
+    score: Math.max(0, score - (ums + likes + basically) * 2),
+    missedSections: missedSections.slice(0, 2),
+  };
+};
+
+// Determine tone based on WPM and filler count
+const determineTone = (wpm: number, fillerCount: number): AnalysisResult["tone"] => {
+  if (wpm > 160 && fillerCount < 3) return "energetic";
+  if (wpm >= 130 && wpm <= 160 && fillerCount < 5) return "confident";
+  if (fillerCount > 8) return "nervous";
+  return "monotone";
 };
 
 const getToneEmoji = (tone: AnalysisResult["tone"]) => {
@@ -100,32 +172,113 @@ const getWpmFeedback = (wpm: number) => {
   return "Too Fast";
 };
 
-export const SpeechCoach = ({ speechBlocks, onBack }: SpeechCoachProps) => {
+export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: SpeechCoachProps) => {
   const [state, setState] = useState<CoachState>("idle");
   const [currentBlock, setCurrentBlock] = useState(0);
   const [recordingTime, setRecordingTime] = useState(0);
   const [processingStep, setProcessingStep] = useState(0);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [waveformBars, setWaveformBars] = useState<number[]>(Array(40).fill(0.1));
+  const [pastSessions, setPastSessions] = useState<PracticeSession[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  
+  // Audio recording refs
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const waveformRef = useRef<NodeJS.Timeout | null>(null);
   const teleprompterRef = useRef<HTMLDivElement>(null);
 
-  // Simulate waveform animation during recording
-  useEffect(() => {
-    if (state === "recording") {
-      waveformRef.current = setInterval(() => {
-        setWaveformBars(prev => prev.map(() => 0.1 + Math.random() * 0.9));
-      }, 100);
-    } else {
-      if (waveformRef.current) clearInterval(waveformRef.current);
-      setWaveformBars(Array(40).fill(0.1));
+  // Get original script text
+  const originalScript = speechBlocks.map(b => b.content).join(" ");
+  const sessionGroupId = `${idea.slice(0, 50)}-${track}`;
+
+  // Fetch past sessions
+  const fetchHistory = useCallback(async () => {
+    setIsLoadingHistory(true);
+    try {
+      const { data, error } = await supabase
+        .from('practice_sessions')
+        .select('id, created_at, score, wpm, filler_count, tone, recording_duration_seconds')
+        .eq('session_group_id', sessionGroupId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setPastSessions(data || []);
+    } catch (err) {
+      console.error('Failed to fetch history:', err);
+    } finally {
+      setIsLoadingHistory(false);
     }
-    return () => {
-      if (waveformRef.current) clearInterval(waveformRef.current);
-    };
+  }, [sessionGroupId]);
+
+  // Save session to database
+  const saveSession = useCallback(async (analysisResult: AnalysisResult, recordingSeconds: number) => {
+    try {
+      const { error } = await supabase.from('practice_sessions').insert({
+        idea,
+        track,
+        duration_minutes: duration,
+        recording_duration_seconds: recordingSeconds,
+        score: analysisResult.score,
+        wpm: analysisResult.wpm,
+        filler_count: analysisResult.fillers,
+        filler_breakdown: analysisResult.fillerBreakdown,
+        tone: analysisResult.tone,
+        missed_sections: analysisResult.missedSections,
+        transcription: analysisResult.transcription,
+        transcription_html: analysisResult.transcription_html,
+        feedback: analysisResult.feedback,
+        original_script: originalScript,
+        session_group_id: sessionGroupId,
+      });
+
+      if (error) throw error;
+      toast({ title: "Session saved!", description: "Your practice session has been recorded." });
+    } catch (err) {
+      console.error('Failed to save session:', err);
+    }
+  }, [idea, track, duration, originalScript, sessionGroupId]);
+
+  // Real audio visualization using Web Audio API
+  const updateWaveform = useCallback(() => {
+    if (analyserRef.current) {
+      const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+      analyserRef.current.getByteFrequencyData(dataArray);
+      
+      // Sample 40 bars from frequency data
+      const bars: number[] = [];
+      const step = Math.floor(dataArray.length / 40);
+      for (let i = 0; i < 40; i++) {
+        const value = dataArray[i * step] / 255;
+        bars.push(Math.max(0.1, value));
+      }
+      setWaveformBars(bars);
+    }
+    
+    if (state === "recording") {
+      animationFrameRef.current = requestAnimationFrame(updateWaveform);
+    }
   }, [state]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, []);
 
   // Recording timer
   useEffect(() => {
@@ -169,25 +322,147 @@ export const SpeechCoach = ({ speechBlocks, onBack }: SpeechCoachProps) => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleStartRecording = useCallback(() => {
-    setState("recording");
-    setRecordingTime(0);
-    setCurrentBlock(0);
-  }, []);
+  const handleStartRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Set up audio context for visualization
+      audioContextRef.current = new AudioContext();
+      const source = audioContextRef.current.createMediaStreamSource(stream);
+      analyserRef.current = audioContextRef.current.createAnalyser();
+      analyserRef.current.fftSize = 256;
+      source.connect(analyserRef.current);
+      
+      // Set up media recorder
+      mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      audioChunksRef.current = [];
+      
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+      
+      mediaRecorderRef.current.start(1000); // Collect data every second
+      
+      setState("recording");
+      setRecordingTime(0);
+      setCurrentBlock(0);
+      
+      // Start waveform animation
+      animationFrameRef.current = requestAnimationFrame(updateWaveform);
+      
+    } catch (err) {
+      console.error('Failed to start recording:', err);
+      toast({
+        title: "Microphone Error",
+        description: "Could not access microphone. Please check permissions.",
+        variant: "destructive",
+      });
+    }
+  }, [updateWaveform]);
 
   const handleStopRecording = useCallback(async () => {
+    const recordingSeconds = recordingTime;
+    
+    // Stop recording
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+    }
+    
+    // Stop animation
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+    
     setState("processing");
     setProcessingStep(0);
+    setWaveformBars(Array(40).fill(0.1));
     
     try {
-      const result = await mockAnalysisService();
-      setAnalysis(result);
+      // Wait a bit for all chunks to be collected
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+      
+      if (audioBlob.size < 1000) {
+        throw new Error('Recording too short');
+      }
+      
+      console.log('Audio blob size:', audioBlob.size);
+      
+      // Send to ElevenLabs STT
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'recording.webm');
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-stt`,
+        {
+          method: 'POST',
+          headers: {
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: formData,
+        }
+      );
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Transcription failed');
+      }
+      
+      const transcriptionResult = await response.json();
+      const transcription = transcriptionResult.text || '';
+      
+      // Calculate WPM
+      const wordCount = transcription.split(/\s+/).filter((w: string) => w.length > 0).length;
+      const wpm = Math.round((wordCount / recordingSeconds) * 60);
+      
+      // Analyze transcription
+      const { html, fillers, score, missedSections } = analyzeTranscription(transcription, originalScript);
+      const fillerCount = fillers.ums + fillers.likes + fillers.basically;
+      const tone = determineTone(wpm, fillerCount);
+      
+      // Generate feedback
+      const feedback: string[] = [];
+      if (score >= 80) feedback.push("Great job covering the key points!");
+      if (wpm >= 130 && wpm <= 150) feedback.push("Perfect speaking pace!");
+      if (wpm > 160) feedback.push("You spoke 10% faster than target - try slowing down");
+      if (wpm < 120) feedback.push("Consider speaking a bit faster to maintain energy");
+      if (fillerCount > 5) feedback.push("Watch out for filler words - try pausing silently instead");
+      if (fillerCount <= 2) feedback.push("Excellent - minimal filler words!");
+      if (missedSections.length > 0) feedback.push(`Consider emphasizing: ${missedSections.join(', ')}`);
+      
+      const analysisResult: AnalysisResult = {
+        score,
+        wpm,
+        fillers: fillerCount,
+        fillerBreakdown: fillers,
+        transcription,
+        transcription_html: html,
+        feedback,
+        tone,
+        missedSections,
+      };
+      
+      setAnalysis(analysisResult);
       setState("results");
+      
+      // Save to database
+      await saveSession(analysisResult, recordingSeconds);
+      
     } catch (error) {
       console.error("Analysis failed:", error);
+      toast({
+        title: "Analysis Failed",
+        description: error instanceof Error ? error.message : "Could not analyze recording",
+        variant: "destructive",
+      });
       setState("idle");
     }
-  }, []);
+  }, [recordingTime, originalScript, saveSession]);
 
   const handleReset = useCallback(() => {
     setState("idle");
@@ -196,6 +471,11 @@ export const SpeechCoach = ({ speechBlocks, onBack }: SpeechCoachProps) => {
     setProcessingStep(0);
     setCurrentBlock(0);
   }, []);
+
+  const handleShowHistory = useCallback(() => {
+    fetchHistory();
+    setState("history");
+  }, [fetchHistory]);
 
   // Render Recording View
   const renderRecorder = () => (
@@ -284,7 +564,6 @@ export const SpeechCoach = ({ speechBlocks, onBack }: SpeechCoachProps) => {
       className="fixed inset-0 z-50 bg-background/95 backdrop-blur-md flex items-center justify-center"
     >
       <div className="text-center space-y-8 max-w-md mx-auto p-8">
-        {/* Animated Brain Icon */}
         <motion.div
           animate={{ 
             scale: [1, 1.1, 1],
@@ -300,12 +579,10 @@ export const SpeechCoach = ({ speechBlocks, onBack }: SpeechCoachProps) => {
           <Brain className="w-12 h-12 text-primary" />
         </motion.div>
 
-        {/* Progress Bar */}
         <div className="space-y-2">
           <Progress value={(processingStep / processingMessages.length) * 100} className="h-2" />
         </div>
 
-        {/* Dynamic Status Message */}
         <AnimatePresence mode="wait">
           <motion.p
             key={processingStep}
@@ -326,6 +603,119 @@ export const SpeechCoach = ({ speechBlocks, onBack }: SpeechCoachProps) => {
     </motion.div>
   );
 
+  // Render History View
+  const renderHistory = () => (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="space-y-6"
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">Practice History</h2>
+          <p className="text-muted-foreground">Track your improvement over time</p>
+        </div>
+        <Button variant="outline" onClick={() => setState("idle")} className="gap-2">
+          <ArrowLeft className="w-4 h-4" />
+          Back
+        </Button>
+      </div>
+
+      {isLoadingHistory ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      ) : pastSessions.length === 0 ? (
+        <Card className="glass-card">
+          <CardContent className="py-12 text-center">
+            <History className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">No practice sessions yet</p>
+            <p className="text-sm text-muted-foreground">Record your first session to start tracking progress!</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Progress Chart */}
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <TrendingUp className="w-5 h-5 text-primary" />
+                Score Trend
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-end justify-between h-32 gap-2">
+                {pastSessions.slice().reverse().map((session, index) => (
+                  <div key={session.id} className="flex-1 flex flex-col items-center gap-1">
+                    <motion.div
+                      initial={{ height: 0 }}
+                      animate={{ height: `${session.score}%` }}
+                      transition={{ delay: index * 0.1, duration: 0.5 }}
+                      className={cn(
+                        "w-full rounded-t",
+                        session.score >= 80 ? "bg-success" : 
+                        session.score >= 60 ? "bg-warning" : "bg-destructive"
+                      )}
+                    />
+                    <span className="text-xs text-muted-foreground">{session.score}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+                <span>Oldest</span>
+                <span>Most Recent</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Session List */}
+          <div className="space-y-3">
+            {pastSessions.map((session, index) => (
+              <motion.div
+                key={session.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05 }}
+              >
+                <Card className="glass-card">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className={cn(
+                          "w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold",
+                          session.score >= 80 ? "bg-success/10 text-success" : 
+                          session.score >= 60 ? "bg-warning/10 text-warning" : "bg-destructive/10 text-destructive"
+                        )}>
+                          {session.score}
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">
+                            {new Date(session.created_at).toLocaleDateString()} at {new Date(session.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                            <span>{session.wpm} WPM</span>
+                            <span>•</span>
+                            <span>{session.filler_count} fillers</span>
+                            <span>•</span>
+                            <span>{formatTime(session.recording_duration_seconds)}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-2xl">
+                        {getToneEmoji(session.tone as AnalysisResult["tone"])}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </>
+      )}
+    </motion.div>
+  );
+
   // Render Analysis Results
   const renderResults = () => {
     if (!analysis) return null;
@@ -337,16 +727,21 @@ export const SpeechCoach = ({ speechBlocks, onBack }: SpeechCoachProps) => {
         exit={{ opacity: 0 }}
         className="space-y-6"
       >
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-foreground">Analysis Complete!</h2>
             <p className="text-muted-foreground">Here's how you did</p>
           </div>
-          <Button variant="outline" onClick={handleReset} className="gap-2">
-            <Mic className="w-4 h-4" />
-            Record Again
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleShowHistory} className="gap-2">
+              <History className="w-4 h-4" />
+              History
+            </Button>
+            <Button variant="outline" onClick={handleReset} className="gap-2">
+              <Mic className="w-4 h-4" />
+              Record Again
+            </Button>
+          </div>
         </div>
 
         {/* Results Grid */}
@@ -534,7 +929,7 @@ export const SpeechCoach = ({ speechBlocks, onBack }: SpeechCoachProps) => {
     );
   };
 
-  // Render Idle State (Start Screen)
+  // Render Idle State
   const renderIdle = () => (
     <motion.div
       initial={{ opacity: 0 }}
@@ -559,16 +954,22 @@ export const SpeechCoach = ({ speechBlocks, onBack }: SpeechCoachProps) => {
           <Mic className="w-5 h-5" />
           Start Recording
         </Button>
-        <Button variant="ghost" onClick={onBack} className="gap-2">
-          <ArrowLeft className="w-4 h-4" />
-          Back to Practice
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleShowHistory} className="gap-2">
+            <History className="w-4 h-4" />
+            View History
+          </Button>
+          <Button variant="ghost" onClick={onBack} className="gap-2">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Practice
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center justify-center gap-6 text-sm text-muted-foreground">
         <div className="flex items-center gap-2">
           <Brain className="w-4 h-4" />
-          <span>Whisper AI Transcription</span>
+          <span>ElevenLabs Scribe</span>
         </div>
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4" />
@@ -585,6 +986,7 @@ export const SpeechCoach = ({ speechBlocks, onBack }: SpeechCoachProps) => {
         {state === "recording" && renderRecorder()}
         {state === "processing" && renderProcessing()}
         {state === "results" && renderResults()}
+        {state === "history" && renderHistory()}
       </AnimatePresence>
     </div>
   );
