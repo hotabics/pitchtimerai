@@ -291,7 +291,7 @@ const Index = () => {
           case 1:
             return <HackathonFixStep key="fix" onNext={(v) => handleTrackStepNext('fix', v)} onBack={handleBack} initialValue={td.fix as string} idea={data.idea} pain={td.pain as string} />;
           case 2:
-            return <HackathonProgressStep key="progress" onNext={(v) => handleTrackStepNext('progress', v)} onBack={handleBack} initialValue={td.progress as string} />;
+            return <HackathonProgressStep key="progress" onNext={(v) => handleTrackStepNext('progress', v)} onBack={handleBack} initialValue={td.progress as string} idea={data.idea} />;
           case 3:
             return <HackathonFeasibilityStep key="feasibility" onNext={(v) => handleTrackStepNext('feasibility', v)} onBack={handleBack} initialValue={td.feasibility as string} />;
         }
@@ -300,30 +300,30 @@ const Index = () => {
       case 'investor':
         switch (trackStep) {
           case 0:
-            return <InvestorOpportunityStep key="opportunity" onNext={(v) => handleTrackStepNext('opportunity', v)} onBack={handleBack} initialValue={td.opportunity as string} />;
+            return <InvestorOpportunityStep key="opportunity" onNext={(v) => handleTrackStepNext('opportunity', v)} onBack={handleBack} initialValue={td.opportunity as string} idea={data.idea} />;
           case 1:
-            return <InvestorMarketStep key="market" onNext={(v) => handleTrackStepNext('market', v)} onBack={handleBack} initialValue={td.market as string} />;
+            return <InvestorMarketStep key="market" onNext={(v) => handleTrackStepNext('market', v)} onBack={handleBack} initialValue={td.market as string} idea={data.idea} />;
           case 2:
-            return <InvestorTractionStep key="traction" onNext={(v) => handleTrackStepNext('traction', v)} onBack={handleBack} initialValue={td.traction as string} />;
+            return <InvestorTractionStep key="traction" onNext={(v) => handleTrackStepNext('traction', v)} onBack={handleBack} initialValue={td.traction as string} idea={data.idea} />;
           case 3:
-            return <InvestorBusinessModelStep key="businessModel" onNext={(v) => handleTrackStepNext('businessModel', v)} onBack={handleBack} initialValue={td.businessModel as string} />;
+            return <InvestorBusinessModelStep key="businessModel" onNext={(v) => handleTrackStepNext('businessModel', v)} onBack={handleBack} initialValue={td.businessModel as string} idea={data.idea} />;
           case 4:
-            return <InvestorAskStep key="ask" onNext={(v) => handleTrackStepNext('ask', v)} onBack={handleBack} initialValue={td.ask as string} />;
+            return <InvestorAskStep key="ask" onNext={(v) => handleTrackStepNext('ask', v)} onBack={handleBack} initialValue={td.ask as string} idea={data.idea} />;
         }
         break;
 
       case 'academic':
         switch (trackStep) {
           case 0:
-            return <AcademicTopicStep key="topic" onNext={(v) => handleTrackStepNext('topic', v)} onBack={handleBack} initialValue={td.topic as string} />;
+            return <AcademicTopicStep key="topic" onNext={(v) => handleTrackStepNext('topic', v)} onBack={handleBack} initialValue={td.topic as string} idea={data.idea} />;
           case 1:
-            return <AcademicResearchFrameStep key="frame" onNext={(v) => handleTrackStepNext('researchFrame', v)} onBack={handleBack} initialValue={td.researchFrame as string} />;
+            return <AcademicResearchFrameStep key="frame" onNext={(v) => handleTrackStepNext('researchFrame', v)} onBack={handleBack} initialValue={td.researchFrame as string} idea={data.idea} />;
           case 2:
-            return <AcademicMethodologyStep key="methodology" onNext={(v) => handleTrackStepNext('methodology', v)} onBack={handleBack} initialValue={td.methodology as string} />;
+            return <AcademicMethodologyStep key="methodology" onNext={(v) => handleTrackStepNext('methodology', v)} onBack={handleBack} initialValue={td.methodology as string} idea={data.idea} />;
           case 3:
-            return <AcademicResultsStep key="results" onNext={(v) => handleTrackStepNext('results', v)} onBack={handleBack} initialValue={td.results as string} />;
+            return <AcademicResultsStep key="results" onNext={(v) => handleTrackStepNext('results', v)} onBack={handleBack} initialValue={td.results as string} idea={data.idea} />;
           case 4:
-            return <AcademicConclusionsStep key="conclusions" onNext={(v) => handleTrackStepNext('conclusions', v)} onBack={handleBack} initialValue={td.conclusions as string} />;
+            return <AcademicConclusionsStep key="conclusions" onNext={(v) => handleTrackStepNext('conclusions', v)} onBack={handleBack} initialValue={td.conclusions as string} idea={data.idea} />;
         }
         break;
 
@@ -371,7 +371,7 @@ const Index = () => {
           case 1:
             return <HackathonFixStep key="fix" onNext={(v) => handleTrackStepNext('fix', v)} onBack={handleBack} initialValue={td.fix as string} idea={data.idea} pain={td.pain as string} />;
           case 2:
-            return <HackathonProgressStep key="progress" onNext={(v) => handleTrackStepNext('progress', v)} onBack={handleBack} initialValue={td.progress as string} />;
+            return <HackathonProgressStep key="progress" onNext={(v) => handleTrackStepNext('progress', v)} onBack={handleBack} initialValue={td.progress as string} idea={data.idea} />;
           case 3:
             return <HackathonFeasibilityStep key="feasibility" onNext={(v) => handleTrackStepNext('feasibility', v)} onBack={handleBack} initialValue={td.feasibility as string} />;
         }

@@ -453,10 +453,78 @@ interface ProgressStepProps {
   onNext: (progress: string) => void;
   onBack: () => void;
   initialValue?: string;
+  idea?: string;
 }
 
-export const HackathonProgressStep = ({ onNext, onBack, initialValue = "" }: ProgressStepProps) => {
+interface ProgressSuggestion {
+  id: string;
+  text: string;
+}
+
+export const HackathonProgressStep = ({ onNext, onBack, initialValue = "", idea = "" }: ProgressStepProps) => {
   const [progress, setProgress] = useState(initialValue);
+  const [suggestions, setSuggestions] = useState<ProgressSuggestion[]>([]);
+  const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (idea) {
+      fetchSuggestions();
+    }
+  }, [idea]);
+
+  const fetchSuggestions = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-pitch", {
+        body: {
+          type: "progress-suggestions",
+          idea,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.suggestions && Array.isArray(data.suggestions)) {
+        setSuggestions(
+          data.suggestions.map((text: string, index: number) => ({
+            id: `suggestion-${index}`,
+            text,
+          }))
+        );
+      }
+    } catch (error) {
+      console.error("Failed to fetch progress suggestions:", error);
+      setSuggestions([
+        { id: "s1", text: "Built with React + Supabase for real-time data sync" },
+        { id: "s2", text: "Implemented AI processing using OpenAI GPT-4 API" },
+        { id: "s3", text: "Created responsive dashboard with Tailwind CSS" },
+        { id: "s4", text: "Integrated authentication and user management system" },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const toggleSuggestion = (id: string) => {
+    setSelectedSuggestions((prev) =>
+      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
+    );
+  };
+
+  const getCombinedProgress = () => {
+    const selectedTexts = suggestions
+      .filter((s) => selectedSuggestions.includes(s.id))
+      .map((s) => s.text);
+    
+    const parts = [...selectedTexts];
+    if (progress.trim()) {
+      parts.push(progress.trim());
+    }
+    return parts.join(". ");
+  };
+
+  const hasContent = progress.trim() || selectedSuggestions.length > 0;
 
   return (
     <WizardStep
@@ -508,9 +576,68 @@ export const HackathonProgressStep = ({ onNext, onBack, initialValue = "" }: Pro
 3. Real-time expense dashboard..."
               value={progress}
               onChange={(e) => setProgress(e.target.value)}
-              className="min-h-[180px] resize-none"
+              className="min-h-[120px] resize-none"
             />
           </div>
+
+          {/* AI Suggestions */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="space-y-3"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-violet-500" />
+                <Label className="text-sm text-muted-foreground">AI Tech Stack Ideas (select any that apply)</Label>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSelectedSuggestions([]);
+                  fetchSuggestions();
+                }}
+                disabled={isLoading}
+                className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <RefreshCw className={`w-3 h-3 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
+                Regenerate
+              </Button>
+            </div>
+            
+            {isLoading ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="w-5 h-5 animate-spin text-violet-500" />
+                <span className="ml-2 text-sm text-muted-foreground">Generating suggestions...</span>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {suggestions.map((suggestion, index) => (
+                  <motion.div
+                    key={suggestion.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.25 + index * 0.05 }}
+                    className={`flex items-start gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
+                      selectedSuggestions.includes(suggestion.id)
+                        ? "border-violet-500 bg-violet-500/10"
+                        : "border-border hover:border-violet-500/50 hover:bg-muted/50"
+                    }`}
+                    onClick={() => toggleSuggestion(suggestion.id)}
+                  >
+                    <Checkbox
+                      checked={selectedSuggestions.includes(suggestion.id)}
+                      onCheckedChange={() => toggleSuggestion(suggestion.id)}
+                      className="mt-0.5"
+                    />
+                    <span className="text-sm leading-relaxed">{suggestion.text}</span>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </motion.div>
         </motion.div>
 
         <div className="flex-1" />
@@ -524,8 +651,8 @@ export const HackathonProgressStep = ({ onNext, onBack, initialValue = "" }: Pro
           <Button
             variant="default"
             size="lg"
-            onClick={() => onNext(progress)}
-            disabled={!progress.trim()}
+            onClick={() => onNext(getCombinedProgress())}
+            disabled={!hasContent}
             className="w-full"
           >
             Continue
