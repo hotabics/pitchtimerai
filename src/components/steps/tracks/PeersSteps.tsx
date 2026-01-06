@@ -1,18 +1,26 @@
 import { motion } from "framer-motion";
-import { ArrowRight, ArrowLeft, Zap, Flame, Sparkles, PartyPopper, Rocket, GitCompare, Heart, MessageCircle, HelpCircle, AlertTriangle } from "lucide-react";
+import { ArrowRight, ArrowLeft, Zap, Flame, Sparkles, PartyPopper, Rocket, GitCompare, Heart, MessageCircle, HelpCircle, AlertTriangle, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { WizardStep } from "@/components/WizardStep";
 import { Chip } from "@/components/Chip";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { SuggestionSkeleton } from "@/components/ui/suggestion-skeleton";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Suggestion {
+  id: string;
+  text: string;
+}
 
 // Shared accent style for Peers track - vibrant purple/coral
 const peersAccentBg = "bg-gradient-to-br from-fuchsia-500/20 to-purple-500/10";
@@ -20,15 +28,128 @@ const peersAccentBorder = "border-fuchsia-500/30";
 const peersAccentText = "text-fuchsia-400";
 const peersIconBg = "bg-fuchsia-500/20";
 
+// Reusable AI Suggestions component with skeleton loading
+const AISuggestions = ({
+  suggestions,
+  selectedSuggestions,
+  isLoading,
+  onToggle,
+  onRegenerate,
+  label = "AI Suggestions (select any that apply)",
+}: {
+  suggestions: Suggestion[];
+  selectedSuggestions: string[];
+  isLoading: boolean;
+  onToggle: (id: string) => void;
+  onRegenerate: () => void;
+  label?: string;
+}) => (
+  <motion.div
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: 0.2 }}
+    className="space-y-3"
+  >
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <Sparkles className="w-4 h-4 text-fuchsia-500" />
+        <Label className="text-sm text-muted-foreground">{label}</Label>
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={onRegenerate}
+        disabled={isLoading}
+        className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+      >
+        <RefreshCw className={`w-3 h-3 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
+        Regenerate
+      </Button>
+    </div>
+    
+    {isLoading ? (
+      <SuggestionSkeleton count={4} />
+    ) : (
+      <div className="space-y-2">
+        {suggestions.map((suggestion, index) => (
+          <motion.div
+            key={suggestion.id}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.05 + index * 0.05 }}
+            className={`flex items-start gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
+              selectedSuggestions.includes(suggestion.id)
+                ? "border-fuchsia-500 bg-fuchsia-500/10"
+                : "border-border hover:border-fuchsia-500/50 hover:bg-muted/50"
+            }`}
+            onClick={() => onToggle(suggestion.id)}
+          >
+            <Checkbox
+              checked={selectedSuggestions.includes(suggestion.id)}
+              onCheckedChange={() => onToggle(suggestion.id)}
+              className="mt-0.5"
+            />
+            <span className="text-sm leading-relaxed">{suggestion.text}</span>
+          </motion.div>
+        ))}
+      </div>
+    )}
+  </motion.div>
+);
+
 // Step 1: The Hook
 interface HookStepProps {
   onNext: (hook: string) => void;
   onBack: () => void;
   initialValue?: string;
+  idea?: string;
 }
 
-export const PeersHookStep = ({ onNext, onBack, initialValue = "" }: HookStepProps) => {
+export const PeersHookStep = ({ onNext, onBack, initialValue = "", idea = "" }: HookStepProps) => {
   const [hook, setHook] = useState(initialValue);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (idea) fetchSuggestions();
+  }, [idea]);
+
+  const fetchSuggestions = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-pitch", {
+        body: { type: "peers-hook-suggestions", idea },
+      });
+      if (error) throw error;
+      if (data?.suggestions && Array.isArray(data.suggestions)) {
+        setSuggestions(data.suggestions.map((text: string, i: number) => ({ id: `s-${i}`, text })));
+      }
+    } catch (error) {
+      console.error("Failed to fetch suggestions:", error);
+      setSuggestions([
+        { id: "s1", text: "Have you ever wasted hours doing something that should take minutes?" },
+        { id: "s2", text: "Why does everyone just accept that this has to be so complicated?" },
+        { id: "s3", text: "Okay but hear me out - what if there was actually a better way?" },
+        { id: "s4", text: "I'm honestly shocked more people don't know about this" },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const toggleSuggestion = (id: string) => {
+    setSelectedSuggestions((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
+  };
+
+  const getCombined = () => {
+    const selected = suggestions.filter((s) => selectedSuggestions.includes(s.id)).map((s) => s.text);
+    const parts = [...selected];
+    if (hook.trim()) parts.push(hook.trim());
+    return parts.join(" ");
+  };
+
+  const hasContent = hook.trim() || selectedSuggestions.length > 0;
 
   return (
     <WizardStep
@@ -67,7 +188,7 @@ export const PeersHookStep = ({ onNext, onBack, initialValue = "" }: HookStepPro
                     <HelpCircle className="w-4 h-4 text-muted-foreground" />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs">
-                    <p>💡 Ask something they&apos;ll relate to. Make them think &quot;omg yes, me too!&quot;</p>
+                    <p>Ask something they&apos;ll relate to. Make them think &quot;omg yes, me too!&quot;</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -77,9 +198,16 @@ export const PeersHookStep = ({ onNext, onBack, initialValue = "" }: HookStepPro
               placeholder="Vai kādam no jums ir bijis, ka...? (Have you ever felt that...?)"
               value={hook}
               onChange={(e) => setHook(e.target.value)}
-              className="min-h-[100px] resize-none"
+              className="min-h-[80px] resize-none"
             />
           </div>
+          <AISuggestions
+            suggestions={suggestions}
+            selectedSuggestions={selectedSuggestions}
+            isLoading={isLoading}
+            onToggle={toggleSuggestion}
+            onRegenerate={() => { setSelectedSuggestions([]); fetchSuggestions(); }}
+          />
         </motion.div>
 
         <div className="flex-1" />
@@ -93,8 +221,8 @@ export const PeersHookStep = ({ onNext, onBack, initialValue = "" }: HookStepPro
           <Button
             variant="default"
             size="lg"
-            onClick={() => onNext(hook)}
-            disabled={!hook.trim()}
+            onClick={() => onNext(getCombined())}
+            disabled={!hasContent}
             className="w-full bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700"
           >
             Let&apos;s go! 🚀
@@ -232,12 +360,55 @@ interface ThingStepProps {
   onNext: (thing: string) => void;
   onBack: () => void;
   initialValue?: string;
+  idea?: string;
 }
 
-export const PeersThingStep = ({ onNext, onBack, initialValue = "" }: ThingStepProps) => {
+export const PeersThingStep = ({ onNext, onBack, initialValue = "", idea = "" }: ThingStepProps) => {
   const [thing, setThing] = useState(initialValue);
-  const isValid = thing.trim().length > 0 && thing.length <= 140;
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const isTooLong = thing.length > 140;
+
+  useEffect(() => {
+    if (idea) fetchSuggestions();
+  }, [idea]);
+
+  const fetchSuggestions = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-pitch", {
+        body: { type: "peers-thing-suggestions", idea },
+      });
+      if (error) throw error;
+      if (data?.suggestions && Array.isArray(data.suggestions)) {
+        setSuggestions(data.suggestions.map((text: string, i: number) => ({ id: `s-${i}`, text })));
+      }
+    } catch (error) {
+      console.error("Failed to fetch suggestions:", error);
+      setSuggestions([
+        { id: "s1", text: "It's an app that automates the boring stuff so you can focus on what matters" },
+        { id: "s2", text: "Basically it's like having a smart assistant in your pocket" },
+        { id: "s3", text: "Think of it as autopilot for the tedious parts of your day" },
+        { id: "s4", text: "It's the tool I wish I had when I was struggling with this" },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const toggleSuggestion = (id: string) => {
+    setSelectedSuggestions((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
+  };
+
+  const getCombined = () => {
+    const selected = suggestions.filter((s) => selectedSuggestions.includes(s.id)).map((s) => s.text);
+    const parts = [...selected];
+    if (thing.trim()) parts.push(thing.trim());
+    return parts.join(". ");
+  };
+
+  const hasContent = (thing.trim().length > 0 && thing.length <= 140) || selectedSuggestions.length > 0;
 
   return (
     <WizardStep
@@ -289,6 +460,13 @@ export const PeersThingStep = ({ onNext, onBack, initialValue = "" }: ThingStepP
               </motion.div>
             )}
           </div>
+          <AISuggestions
+            suggestions={suggestions}
+            selectedSuggestions={selectedSuggestions}
+            isLoading={isLoading}
+            onToggle={toggleSuggestion}
+            onRegenerate={() => { setSelectedSuggestions([]); fetchSuggestions(); }}
+          />
         </motion.div>
 
         <div className="flex-1" />
@@ -302,8 +480,8 @@ export const PeersThingStep = ({ onNext, onBack, initialValue = "" }: ThingStepP
           <Button
             variant="default"
             size="lg"
-            onClick={() => onNext(thing)}
-            disabled={!isValid}
+            onClick={() => onNext(getCombined())}
+            disabled={!hasContent}
             className="w-full bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700"
           >
             Perfect! 👌
@@ -473,7 +651,7 @@ export const PeersHowToStep = ({ onNext, onBack, initialValue = "" }: HowToStepP
                     <HelpCircle className="w-4 h-4 text-muted-foreground" />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs">
-                    <p>💡 Format: Step 1 → Step 2 → Step 3. Done!</p>
+                    <p>Format: Step 1 → Step 2 → Step 3. Done!</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -521,10 +699,54 @@ interface ComparisonStepProps {
   onNext: (comparison: string) => void;
   onBack: () => void;
   initialValue?: string;
+  idea?: string;
 }
 
-export const PeersComparisonStep = ({ onNext, onBack, initialValue = "" }: ComparisonStepProps) => {
+export const PeersComparisonStep = ({ onNext, onBack, initialValue = "", idea = "" }: ComparisonStepProps) => {
   const [comparison, setComparison] = useState(initialValue);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (idea) fetchSuggestions();
+  }, [idea]);
+
+  const fetchSuggestions = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-pitch", {
+        body: { type: "peers-comparison-suggestions", idea },
+      });
+      if (error) throw error;
+      if (data?.suggestions && Array.isArray(data.suggestions)) {
+        setSuggestions(data.suggestions.map((text: string, i: number) => ({ id: `s-${i}`, text })));
+      }
+    } catch (error) {
+      console.error("Failed to fetch suggestions:", error);
+      setSuggestions([
+        { id: "s1", text: "Usually we spend hours doing it manually, but this takes seconds" },
+        { id: "s2", text: "Instead of juggling 5 different apps, everything's in one place" },
+        { id: "s3", text: "No more spreadsheets - it just handles everything automatically" },
+        { id: "s4", text: "While others are still figuring it out, you're already done" },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const toggleSuggestion = (id: string) => {
+    setSelectedSuggestions((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
+  };
+
+  const getCombined = () => {
+    const selected = suggestions.filter((s) => selectedSuggestions.includes(s.id)).map((s) => s.text);
+    const parts = [...selected];
+    if (comparison.trim()) parts.push(comparison.trim());
+    return parts.join(". ");
+  };
+
+  const hasContent = comparison.trim() || selectedSuggestions.length > 0;
 
   return (
     <WizardStep
@@ -561,6 +783,13 @@ export const PeersComparisonStep = ({ onNext, onBack, initialValue = "" }: Compa
               className="h-12"
             />
           </div>
+          <AISuggestions
+            suggestions={suggestions}
+            selectedSuggestions={selectedSuggestions}
+            isLoading={isLoading}
+            onToggle={toggleSuggestion}
+            onRegenerate={() => { setSelectedSuggestions([]); fetchSuggestions(); }}
+          />
         </motion.div>
 
         <div className="flex-1" />
@@ -574,8 +803,8 @@ export const PeersComparisonStep = ({ onNext, onBack, initialValue = "" }: Compa
           <Button
             variant="default"
             size="lg"
-            onClick={() => onNext(comparison)}
-            disabled={!comparison.trim()}
+            onClick={() => onNext(getCombined())}
+            disabled={!hasContent}
             className="w-full bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700"
           >
             Yup! 👊
@@ -596,10 +825,54 @@ interface AuthenticWhyStepProps {
   onNext: (why: string) => void;
   onBack: () => void;
   initialValue?: string;
+  idea?: string;
 }
 
-export const PeersAuthenticWhyStep = ({ onNext, onBack, initialValue = "" }: AuthenticWhyStepProps) => {
+export const PeersAuthenticWhyStep = ({ onNext, onBack, initialValue = "", idea = "" }: AuthenticWhyStepProps) => {
   const [why, setWhy] = useState(initialValue);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (idea) fetchSuggestions();
+  }, [idea]);
+
+  const fetchSuggestions = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-pitch", {
+        body: { type: "peers-why-suggestions", idea },
+      });
+      if (error) throw error;
+      if (data?.suggestions && Array.isArray(data.suggestions)) {
+        setSuggestions(data.suggestions.map((text: string, i: number) => ({ id: `s-${i}`, text })));
+      }
+    } catch (error) {
+      console.error("Failed to fetch suggestions:", error);
+      setSuggestions([
+        { id: "s1", text: "I use it every day because it literally saved me during finals week" },
+        { id: "s2", text: "I built this because I was so frustrated with the existing options" },
+        { id: "s3", text: "Honestly, I wish someone had shown me this a year ago" },
+        { id: "s4", text: "It's the tool I needed when I was going through the same thing" },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const toggleSuggestion = (id: string) => {
+    setSelectedSuggestions((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
+  };
+
+  const getCombined = () => {
+    const selected = suggestions.filter((s) => selectedSuggestions.includes(s.id)).map((s) => s.text);
+    const parts = [...selected];
+    if (why.trim()) parts.push(why.trim());
+    return parts.join(". ");
+  };
+
+  const hasContent = why.trim() || selectedSuggestions.length > 0;
 
   return (
     <WizardStep
@@ -636,9 +909,16 @@ export const PeersAuthenticWhyStep = ({ onNext, onBack, initialValue = "" }: Aut
               placeholder="I use it myself because... / It saved me when..."
               value={why}
               onChange={(e) => setWhy(e.target.value)}
-              className="min-h-[120px] resize-none"
+              className="min-h-[80px] resize-none"
             />
           </div>
+          <AISuggestions
+            suggestions={suggestions}
+            selectedSuggestions={selectedSuggestions}
+            isLoading={isLoading}
+            onToggle={toggleSuggestion}
+            onRegenerate={() => { setSelectedSuggestions([]); fetchSuggestions(); }}
+          />
         </motion.div>
 
         <div className="flex-1" />
@@ -652,8 +932,8 @@ export const PeersAuthenticWhyStep = ({ onNext, onBack, initialValue = "" }: Aut
           <Button
             variant="default"
             size="lg"
-            onClick={() => onNext(why)}
-            disabled={!why.trim()}
+            onClick={() => onNext(getCombined())}
+            disabled={!hasContent}
             className="w-full bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700"
           >
             That&apos;s me! ✨
