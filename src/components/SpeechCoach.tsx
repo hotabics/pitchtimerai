@@ -622,6 +622,12 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
         </Button>
       </div>
 
+      {/* Public data disclaimer */}
+      <div className="flex items-center gap-2 text-xs text-muted-foreground/70 bg-muted/30 rounded-lg px-4 py-2">
+        <AlertCircle className="w-3 h-3 flex-shrink-0" />
+        <span>This is a public demo. All practice sessions shown here are visible to everyone.</span>
+      </div>
+
       {isLoadingHistory ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -975,6 +981,12 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
           <Sparkles className="w-4 h-4" />
           <span>NLP Analysis</span>
         </div>
+      </div>
+
+      {/* Public data disclaimer */}
+      <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground/70 bg-muted/30 rounded-lg px-4 py-2 max-w-md mx-auto">
+        <AlertCircle className="w-3 h-3 flex-shrink-0" />
+        <span>This is a public demo. Practice sessions are visible to everyone.</span>
       </div>
     </motion.div>
   );
