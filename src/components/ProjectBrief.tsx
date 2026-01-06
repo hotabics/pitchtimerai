@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Clock, FileText, Users, Presentation, AlertCircle, Lightbulb, DollarSign, Package, ChevronUp, ChevronDown } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import confetti from "canvas-confetti";
 
 export interface BriefData {
   projectName?: string;
@@ -102,6 +103,41 @@ export const ProjectBrief = ({ data, currentStep }: ProjectBriefProps) => {
   const animatedPrepTime = useCountUp(prepTime, 800);
   const isFinalTime = prepTime <= 30;
   const hasData = data.projectName || data.audience || data.demoStyle || data.problem || data.solution;
+  const hasTriggeredConfetti = useRef(false);
+
+  // Trigger confetti when reaching final time
+  useEffect(() => {
+    if (isFinalTime && !hasTriggeredConfetti.current) {
+      hasTriggeredConfetti.current = true;
+      
+      // Fire confetti from both sides
+      const duration = 2000;
+      const end = Date.now() + duration;
+
+      const frame = () => {
+        confetti({
+          particleCount: 3,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0, y: 0.6 },
+          colors: ['#10b981', '#34d399', '#6ee7b7', '#a7f3d0']
+        });
+        confetti({
+          particleCount: 3,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1, y: 0.6 },
+          colors: ['#10b981', '#34d399', '#6ee7b7', '#a7f3d0']
+        });
+
+        if (Date.now() < end) {
+          requestAnimationFrame(frame);
+        }
+      };
+      
+      frame();
+    }
+  }, [isFinalTime]);
 
   const briefItems = [
     data.projectName && { icon: FileText, label: "Project", value: data.projectName },
@@ -129,7 +165,7 @@ export const ProjectBrief = ({ data, currentStep }: ProjectBriefProps) => {
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-500 ${
                 isFinalTime 
-                  ? 'bg-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.4)]' 
+                  ? 'bg-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.4)] animate-[pulse-glow_2s_ease-in-out_infinite]' 
                   : 'bg-gradient-to-br from-primary/20 to-primary/10'
               }`}>
                 <Clock className={`w-5 h-5 transition-colors duration-500 ${isFinalTime ? 'text-emerald-400' : 'text-primary'}`} />
@@ -213,7 +249,7 @@ export const ProjectBrief = ({ data, currentStep }: ProjectBriefProps) => {
             layout
             className={`p-4 rounded-xl border transition-all duration-500 ${
               isFinalTime 
-                ? 'bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-transparent border-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.3)]' 
+                ? 'bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-transparent border-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.3)] animate-[pulse-glow_2s_ease-in-out_infinite]' 
                 : 'bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-primary/20'
             }`}
           >
