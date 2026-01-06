@@ -124,7 +124,7 @@ const Index = () => {
     <>
       <TimeCounter targetMinutes={timeSteps[step]} />
       {step > 0 && (
-        <div className="fixed top-14 left-0 right-0 z-40 bg-background/80 backdrop-blur-sm border-b border-border/50">
+        <div className="fixed top-16 left-0 right-0 z-40">
           <ProgressIndicator currentStep={step} totalSteps={7} />
         </div>
       )}
