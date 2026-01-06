@@ -132,7 +132,7 @@ export const AISuggestions = ({
 };
 
 // Helper hook for managing AI suggestions state
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -143,12 +143,26 @@ interface UseSuggestionsOptions {
   fallbackSuggestions: string[];
 }
 
+// Track suggestion selection for analytics
+const trackSuggestionSelection = async (type: string, text: string, selected: boolean) => {
+  if (!selected) return; // Only track selections, not deselections
+  
+  try {
+    await supabase.from("suggestion_analytics").insert({
+      suggestion_type: type,
+      suggestion_text: text,
+    });
+  } catch (error) {
+    console.error("Failed to track suggestion:", error);
+  }
+};
+
 export const useSuggestions = ({ type, idea, context, fallbackSuggestions }: UseSuggestionsOptions) => {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const fetchSuggestions = async () => {
+  const fetchSuggestions = useCallback(async () => {
     if (!idea) return;
     
     setIsLoading(true);
@@ -166,22 +180,45 @@ export const useSuggestions = ({ type, idea, context, fallbackSuggestions }: Use
       }
     } catch (error) {
       console.error("Failed to fetch suggestions:", error);
-      toast({
+      
+      const { dismiss } = toast({
         title: "Couldn't load AI suggestions",
-        description: "Using default suggestions instead. Try regenerating.",
+        description: "Using default suggestions instead.",
         variant: "destructive",
+        action: (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              dismiss();
+              fetchSuggestions();
+            }}
+            className="shrink-0"
+          >
+            Retry
+          </Button>
+        ),
       });
+      
       setSuggestions(fallbackSuggestions.map((text, i) => ({ id: `s-${i}`, text })));
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [idea, type, context, fallbackSuggestions]);
 
   useEffect(() => {
     if (idea) fetchSuggestions();
-  }, [idea]);
+  }, [idea, fetchSuggestions]);
 
   const toggleSuggestion = (id: string) => {
+    const suggestion = suggestions.find((s) => s.id === id);
+    const isCurrentlySelected = selectedSuggestions.includes(id);
+    
+    // Track selection for analytics
+    if (suggestion && !isCurrentlySelected) {
+      trackSuggestionSelection(type, suggestion.text, true);
+    }
+    
     setSelectedSuggestions((prev) => 
       prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
     );
