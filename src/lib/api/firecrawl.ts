@@ -2,9 +2,17 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface ScrapedProjectData {
   name: string;
+  tagline?: string;
   problem: string;
   solution: string;
   audience: string;
+  targetAudience?: string;
+  keyFeatures?: string[];
+  pricingInfo?: string;
+  techStack?: string[];
+  teamInfo?: string;
+  traction?: string;
+  callToAction?: string;
 }
 
 export interface FirecrawlResponse {
@@ -14,11 +22,12 @@ export interface FirecrawlResponse {
   raw?: {
     markdown: string;
     metadata: Record<string, any>;
+    json?: Record<string, any>;
   };
 }
 
 /**
- * Scrape a URL using Firecrawl and extract project information
+ * Scrape a URL using Firecrawl and extract structured project information
  */
 export async function scrapeUrl(url: string): Promise<FirecrawlResponse> {
   try {

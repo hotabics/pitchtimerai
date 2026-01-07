@@ -8,18 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.5.0] - 2026-01-07
 
 ### Added
-- **Real URL Scraping with Firecrawl**: Replaced mock scraper with production Firecrawl API
-  - Extracts project name, problem, and solution from any website
-  - Intelligent content parsing with keyword-based extraction
+- **Enhanced URL Scraping with Firecrawl JSON Extraction**: Production Firecrawl API with structured data extraction
+  - Extracts: company name, tagline, problem, solution, target audience
+  - Additional fields: key features, pricing info, tech stack, team info, traction
+  - AI-powered prompt for comprehensive pitch data extraction
   - Automatic audience detection (Investors, Academic, Hackathon)
-  - New `firecrawl-scrape` edge function for secure API calls
+  - New `firecrawl-scrape` edge function with JSON schema
 - **Getting Started Tutorial**: Interactive onboarding for first-time users
   - 6-step guided tour of key features
   - Progress dots with navigation
   - Persists completion state in localStorage
   - Skip option for returning users
-- New `src/lib/api/firecrawl.ts` API client for Firecrawl integration
+- **Floating Tutorial Button**: Vertical button on left side of landing page
+  - Click to reset and re-watch the tutorial
+  - Animated entrance with hover effects
+- New `src/lib/api/firecrawl.ts` API client with extended data types
 - New `GettingStartedTutorial.tsx` component with animations
+- New `FloatingTutorialButton.tsx` for tutorial reset access
 
 ## [1.4.0] - 2026-01-07
 

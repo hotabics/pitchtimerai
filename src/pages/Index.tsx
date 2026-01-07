@@ -11,6 +11,7 @@ import { Dashboard } from "@/components/Dashboard";
 import { AICoachPage } from "@/components/ai-coach/AICoachPage";
 import { AutoGenerateOverlay } from "@/components/landing/AutoGenerateOverlay";
 import { GettingStartedTutorial } from "@/components/landing/GettingStartedTutorial";
+import { FloatingTutorialButton } from "@/components/landing/FloatingTutorialButton";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrapedProjectData } from "@/lib/api/firecrawl";
@@ -150,6 +151,11 @@ const Index = () => {
 
   const handleTutorialComplete = () => {
     setShowTutorial(false);
+  };
+
+  const handleOpenTutorial = () => {
+    localStorage.removeItem("pitchdeck-tutorial-completed");
+    setShowTutorial(true);
   };
 
   const currentTrack = data.track;
@@ -481,6 +487,8 @@ const Index = () => {
           inputValue={autoGenerateInput}
           onComplete={handleAutoGenerateComplete}
         />
+        {/* Floating Tutorial Button */}
+        <FloatingTutorialButton onClick={handleOpenTutorial} />
       </>
     );
   }

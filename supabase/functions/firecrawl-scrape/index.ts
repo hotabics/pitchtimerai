@@ -3,6 +3,33 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// JSON schema for structured extraction
+const projectSchema = {
+  type: 'object',
+  properties: {
+    company_name: { type: 'string', description: 'The company or project name' },
+    tagline: { type: 'string', description: 'The main tagline or value proposition' },
+    problem: { type: 'string', description: 'The problem the company solves' },
+    solution: { type: 'string', description: 'How the company solves the problem' },
+    target_audience: { type: 'string', description: 'Who the product is for' },
+    key_features: { 
+      type: 'array', 
+      items: { type: 'string' },
+      description: 'Main features or capabilities'
+    },
+    pricing_info: { type: 'string', description: 'Pricing information if available' },
+    tech_stack: { 
+      type: 'array', 
+      items: { type: 'string' },
+      description: 'Technologies mentioned'
+    },
+    team_info: { type: 'string', description: 'Team or founder information' },
+    traction: { type: 'string', description: 'Metrics, users, revenue, or growth data' },
+    call_to_action: { type: 'string', description: 'Main CTA or next step' }
+  },
+  required: ['company_name', 'problem', 'solution']
+};
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -33,7 +60,7 @@ Deno.serve(async (req) => {
       formattedUrl = `https://${formattedUrl}`;
     }
 
-    console.log('Scraping URL:', formattedUrl);
+    console.log('Scraping URL with JSON extraction:', formattedUrl);
 
     const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
       method: 'POST',
@@ -43,7 +70,14 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         url: formattedUrl,
-        formats: ['markdown', 'html'],
+        formats: [
+          'markdown',
+          { 
+            type: 'json', 
+            schema: projectSchema,
+            prompt: 'Extract comprehensive information about this company/project for a pitch presentation. Focus on their value proposition, problem they solve, target market, and any traction or team info.'
+          }
+        ],
         onlyMainContent: true,
       }),
     });
@@ -58,19 +92,38 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Extract useful info from scraped content
+    // Extract structured JSON data
+    const jsonData = data.data?.json || data.json || {};
     const markdown = data.data?.markdown || data.markdown || '';
     const metadata = data.data?.metadata || data.metadata || {};
     
-    // Try to extract problem/solution from content
-    const extractedData = extractProjectInfo(markdown, metadata, formattedUrl);
+    // Build enhanced response
+    const extractedData = {
+      name: jsonData.company_name || metadata.title || extractDomainName(formattedUrl),
+      tagline: jsonData.tagline || metadata.description || '',
+      problem: jsonData.problem || '',
+      solution: jsonData.solution || '',
+      audience: detectAudience(jsonData, markdown),
+      targetAudience: jsonData.target_audience || '',
+      keyFeatures: jsonData.key_features || [],
+      pricingInfo: jsonData.pricing_info || '',
+      techStack: jsonData.tech_stack || [],
+      teamInfo: jsonData.team_info || '',
+      traction: jsonData.traction || '',
+      callToAction: jsonData.call_to_action || '',
+    };
 
-    console.log('Scrape successful');
+    console.log('Scrape successful with JSON extraction:', extractedData.name);
+    
     return new Response(
       JSON.stringify({ 
         success: true, 
         data: extractedData,
-        raw: { markdown: markdown.slice(0, 2000), metadata }
+        raw: { 
+          markdown: markdown.slice(0, 2000), 
+          metadata,
+          json: jsonData
+        }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -84,59 +137,19 @@ Deno.serve(async (req) => {
   }
 });
 
-function extractProjectInfo(markdown: string, metadata: any, url: string) {
-  const title = metadata.title || extractDomainName(url);
-  const description = metadata.description || '';
+function detectAudience(jsonData: any, markdown: string): string {
+  const content = (JSON.stringify(jsonData) + ' ' + markdown).toLowerCase();
   
-  // Extract first meaningful paragraphs for problem/solution
-  const paragraphs = markdown
-    .split('\n\n')
-    .map((p: string) => p.replace(/[#*_`]/g, '').trim())
-    .filter((p: string) => p.length > 30 && p.length < 500);
-  
-  // Look for problem/pain point indicators
-  const problemKeywords = ['problem', 'challenge', 'struggle', 'pain', 'difficult', 'frustrat', 'waste', 'inefficient'];
-  const solutionKeywords = ['solution', 'help', 'enable', 'automate', 'simplify', 'transform', 'platform', 'tool'];
-  
-  let problem = '';
-  let solution = '';
-  
-  for (const para of paragraphs) {
-    const lower = para.toLowerCase();
-    if (!problem && problemKeywords.some(k => lower.includes(k))) {
-      problem = para.slice(0, 200);
-    }
-    if (!solution && solutionKeywords.some(k => lower.includes(k))) {
-      solution = para.slice(0, 200);
-    }
+  if (content.includes('invest') || content.includes('fund') || content.includes('capital') || content.includes('seed') || content.includes('series')) {
+    return 'investors';
   }
-  
-  // Fallback to description or first paragraphs
-  if (!problem && paragraphs.length > 0) {
-    problem = paragraphs[0].slice(0, 150);
+  if (content.includes('academic') || content.includes('research') || content.includes('university') || content.includes('paper')) {
+    return 'academic';
   }
-  if (!solution && paragraphs.length > 1) {
-    solution = paragraphs[1].slice(0, 150);
+  if (content.includes('enterprise') || content.includes('b2b') || content.includes('saas')) {
+    return 'investors';
   }
-  if (!solution && description) {
-    solution = description.slice(0, 150);
-  }
-  
-  // Detect audience from content
-  const content = (markdown + ' ' + description).toLowerCase();
-  let audience = 'judges';
-  if (content.includes('invest') || content.includes('fund') || content.includes('capital')) {
-    audience = 'investors';
-  } else if (content.includes('academic') || content.includes('research') || content.includes('university')) {
-    audience = 'academic';
-  }
-  
-  return {
-    name: title,
-    problem: problem || 'Manual processes that are slow and error-prone',
-    solution: solution || description || 'An innovative platform that automates and streamlines the workflow',
-    audience,
-  };
+  return 'judges';
 }
 
 function extractDomainName(url: string): string {
