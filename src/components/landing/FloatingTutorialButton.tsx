@@ -5,5 +5,5 @@ interface FloatingTutorialButtonProps {
 export const FloatingTutorialButton = ({
   onClick
 }: FloatingTutorialButtonProps) => {
-  return;
+  return null;
 };
