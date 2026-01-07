@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       practice_sessions: {
         Row: {
+          baseline_session_id: string | null
           created_at: string
           duration_minutes: number
           entry_mode: string | null
@@ -25,6 +26,7 @@ export type Database = {
           filler_count: number
           id: string
           idea: string
+          improvement_summary_json: Json | null
           missed_sections: string[] | null
           original_script: string | null
           original_script_text: string | null
@@ -41,6 +43,7 @@ export type Database = {
           wpm: number
         }
         Insert: {
+          baseline_session_id?: string | null
           created_at?: string
           duration_minutes: number
           entry_mode?: string | null
@@ -50,6 +53,7 @@ export type Database = {
           filler_count?: number
           id?: string
           idea: string
+          improvement_summary_json?: Json | null
           missed_sections?: string[] | null
           original_script?: string | null
           original_script_text?: string | null
@@ -66,6 +70,7 @@ export type Database = {
           wpm?: number
         }
         Update: {
+          baseline_session_id?: string | null
           created_at?: string
           duration_minutes?: number
           entry_mode?: string | null
@@ -75,6 +80,7 @@ export type Database = {
           filler_count?: number
           id?: string
           idea?: string
+          improvement_summary_json?: Json | null
           missed_sections?: string[] | null
           original_script?: string | null
           original_script_text?: string | null
@@ -90,7 +96,15 @@ export type Database = {
           transcription_html?: string | null
           wpm?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "practice_sessions_baseline_session_id_fkey"
+            columns: ["baseline_session_id"]
+            isOneToOne: false
+            referencedRelation: "practice_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       suggestion_analytics: {
         Row: {
