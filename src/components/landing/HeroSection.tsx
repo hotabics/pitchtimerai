@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Link2, Loader2, Zap, Video, Check, ArrowRight } from "lucide-react";
+import { Sparkles, Link2, Loader2, Zap, Video, Check, ArrowRight, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isUrl, scrapeUrl, ScrapedProjectData } from "@/lib/api/firecrawl";
 import { toast } from "@/hooks/use-toast";
@@ -73,6 +73,17 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
     }
   };
   
+  const handleCustomizePitch = () => {
+    const idea = scrapedData?.name || projectInput.trim();
+    if (idea) {
+      trackEvent('Onboarding: Customize Pitch Clicked', { 
+        url: inputIsUrl ? projectInput : undefined,
+        hasScrapedData: !!scrapedData 
+      });
+      onSubmit(idea, scrapedData || undefined);
+    }
+  };
+
   const handleOpenCoach = () => {
     trackEvent('AI Coach: Opened from Hero');
     // Request camera permission early
@@ -115,16 +126,15 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
         className="text-center max-w-4xl mx-auto mb-8"
       >
         <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tighter text-foreground mb-4">
-          From Project URL to{" "}
+          Hackathons are won with{" "}
           <span className="bg-gradient-to-r from-primary via-emerald-400 to-cyan-400 bg-clip-text text-transparent">
-            Winning Pitch
-          </span>{" "}
-          in 30 Seconds.
+            stories
+          </span>
+          , not just code.
         </h1>
         <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-          The only AI that{" "}
-          <span className="text-foreground font-medium">scrapes your website</span> to write your script,
-          then <span className="text-foreground font-medium">watches you practice</span> to perfect your delivery.
+          Don't let a bad pitch kill a great product.{" "}
+          <span className="text-foreground font-medium">Turn your URL or idea</span> into a winning script in seconds.
         </p>
       </motion.div>
 
@@ -190,7 +200,7 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
                   onFocus={() => setIsFocused(true)} 
                   onBlur={() => setIsFocused(false)} 
                   onKeyDown={handleKeyDown} 
-                  placeholder="Paste your Devpost/GitHub link or type your idea..."
+                  placeholder="Paste your Devpost URL or describe your idea..."
                   className="
                     w-full h-16 pl-12 pr-32
                     bg-background text-foreground text-base md:text-lg
@@ -203,16 +213,6 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
                 />
               </div>
 
-              {/* Generate Button */}
-              <Button 
-                onClick={handleGenerateScript}
-                disabled={(!projectInput.trim() && !scrapedData) || isScrapingUrl}
-                size="lg"
-                className="h-14 sm:h-auto px-6 rounded-xl bg-gradient-to-r from-primary to-emerald-500 text-white hover:from-primary/90 hover:to-emerald-500/90 shadow-lg shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-base transition-all duration-300"
-              >
-                Generate Script
-                <Zap className="w-5 h-5 ml-2" />
-              </Button>
             </div>
           </div>
         </div>
@@ -238,6 +238,42 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Dual Action Buttons */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+          className="mt-6 flex flex-col sm:flex-row gap-3 w-full"
+        >
+          {/* Auto-Generate Button (Primary) */}
+          <Button
+            onClick={handleGenerateScript}
+            disabled={(!projectInput.trim() && !scrapedData) || isScrapingUrl}
+            size="lg"
+            className="flex-1 h-14 px-6 rounded-xl bg-gradient-to-r from-primary via-amber-500 to-primary text-white hover:opacity-90 shadow-lg shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-base transition-all duration-300 border-2 border-amber-400/30"
+          >
+            <Zap className="w-5 h-5 mr-2" />
+            Auto-Generate
+          </Button>
+
+          {/* Customize Pitch Button (Secondary) */}
+          <Button
+            onClick={handleCustomizePitch}
+            disabled={(!projectInput.trim() && !scrapedData) || isScrapingUrl}
+            variant="outline"
+            size="lg"
+            className="flex-1 h-14 px-6 rounded-xl border-2 border-muted-foreground/30 hover:border-primary/50 hover:bg-primary/5 font-semibold text-base transition-all duration-300"
+          >
+            <Settings className="w-5 h-5 mr-2" />
+            Customize Pitch
+          </Button>
+        </motion.div>
+
+        {/* Helper text */}
+        <p className="text-xs text-muted-foreground text-center mt-3">
+          Choose 'Customize' to select specific audiences (Investors, Non-Tech, etc.)
+        </p>
       </motion.div>
 
       {/* Secondary Action - AI Coach */}
@@ -245,7 +281,7 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
-        className="flex flex-col items-center gap-4"
+        className="flex flex-col items-center gap-4 mt-8"
       >
         <div className="flex items-center gap-2 text-muted-foreground text-sm">
           <div className="w-12 h-px bg-border" />
