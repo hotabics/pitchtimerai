@@ -46,7 +46,7 @@ export const Step1Hook = ({ onNext, onAutoGenerate, onPracticeOwn, onOpenAICoach
       <TechStackBanner />
 
       {/* Bento Grid - Original features (refined) */}
-      <section className="py-16 md:py-24 px-4 bg-gradient-to-b from-transparent to-muted/30">
+      <section id="how-it-works" className="py-16 md:py-24 px-4 bg-gradient-to-b from-transparent to-muted/30 scroll-mt-16">
         <BentoGrid />
       </section>
 

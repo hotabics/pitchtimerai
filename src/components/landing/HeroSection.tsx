@@ -93,7 +93,7 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
   };
 
   return (
-    <section className="min-h-[90vh] flex flex-col items-center justify-center px-4 py-16 relative">
+    <section id="hero" className="min-h-[90vh] flex flex-col items-center justify-center px-4 py-16 relative scroll-mt-16">
       {/* Floating badge */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}

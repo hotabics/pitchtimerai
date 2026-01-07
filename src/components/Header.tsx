@@ -8,13 +8,28 @@ interface HeaderProps {
   currentStep?: number;
   totalSteps?: number;
   onLogoClick?: () => void;
+  showNavigation?: boolean;
 }
 
-export const Header = ({ showProgress, currentStep = 0, totalSteps = 7, onLogoClick }: HeaderProps) => {
+const navItems = [
+  { label: "Features", href: "#features" },
+  { label: "AI Coach", href: "#ai-coach" },
+  { label: "How it Works", href: "#how-it-works" },
+];
+
+export const Header = ({ showProgress, currentStep = 0, totalSteps = 7, onLogoClick, showNavigation = false }: HeaderProps) => {
   const { theme, setTheme } = useTheme();
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
+  };
+
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    e.preventDefault();
+    const element = document.querySelector(href);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
   return (
@@ -23,7 +38,7 @@ export const Header = ({ showProgress, currentStep = 0, totalSteps = 7, onLogoCl
       animate={{ opacity: 1, y: 0 }}
       className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50"
     >
-      <div className="max-w-lg mx-auto px-4 py-3">
+      <div className="max-w-5xl mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
           <button
             onClick={onLogoClick}
@@ -36,6 +51,22 @@ export const Header = ({ showProgress, currentStep = 0, totalSteps = 7, onLogoCl
               PitchDeck<span className="text-primary">AI</span>
             </span>
           </button>
+
+          {/* Navigation Links - Only show on landing page */}
+          {showNavigation && !showProgress && (
+            <nav className="hidden md:flex items-center gap-6">
+              {navItems.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  onClick={(e) => handleNavClick(e, item.href)}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {item.label}
+                </a>
+              ))}
+            </nav>
+          )}
 
           <div className="flex items-center gap-3">
             {showProgress && (
