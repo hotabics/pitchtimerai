@@ -433,7 +433,7 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
     eventsJson: DetectedEvents | null,
     primaryIssueKey: string | null
   ): Promise<JuryQuestionsResult | null> => {
-    if (track !== 'hackathon_jury') return null;
+    if (track !== 'hackathon-no-demo') return null;
     
     try {
       console.log('Generating jury questions for session:', sessionId);
@@ -686,7 +686,7 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
       const sessionId = await saveSession(analysisResult, recordingSeconds);
       
       // For hackathon tracks, run the jury evaluation
-      if (sessionId && (track === 'hackathon_jury' || track === 'hackathon_no_demo')) {
+      if (sessionId && (track === 'hackathon-no-demo' || track === 'hackathon-with-demo')) {
         // Create segments from transcription result for evaluation
         // ElevenLabs returns words with timestamps, we'll create sentence-level segments
         const segments = createSegmentsFromTranscription(transcriptionResult, recordingSeconds);
@@ -706,8 +706,8 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
           analysisResult.improvementSummary = evalResult.improvementSummary;
         }
         
-        // Generate jury questions for hackathon_jury track (runs async, updates state when ready)
-        if (track === 'hackathon_jury') {
+        // Generate jury questions for hackathon-no-demo track (runs async, updates state when ready)
+        if (track === 'hackathon-no-demo') {
           generateJuryQuestions(
             sessionId,
             transcription,
@@ -983,7 +983,7 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        {(track === 'hackathon_jury' || track === 'hackathon_no_demo') && (
+                        {(track === 'hackathon-no-demo' || track === 'hackathon-with-demo') && (
                           <Button
                             variant={baselineSessionId === session.id ? "default" : "outline"}
                             size="sm"
@@ -1472,8 +1472,8 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
           </motion.div>
         )}
 
-        {/* Hackathon Jury Questions (hackathon_jury track only) */}
-        {track === 'hackathon_jury' && (
+        {/* Hackathon Jury Questions (hackathon-no-demo track only) */}
+        {track === 'hackathon-no-demo' && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
