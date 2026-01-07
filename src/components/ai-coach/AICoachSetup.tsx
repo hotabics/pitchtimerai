@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Video, Mic, Camera, AlertCircle, Check, Settings } from 'lucide-react';
+import { Video, Mic, Camera, AlertCircle, Check, Settings, FileText, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AICoachSettings } from './AICoachSettings';
@@ -19,6 +19,13 @@ export const AICoachSetup = ({ onReady }: AICoachSetupProps) => {
   const [error, setError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const hasKey = hasApiKey();
+  
+  const { scriptBlocks, setScriptBlocks } = useAICoachStore();
+  const hasScript = scriptBlocks.length > 0;
+
+  const handleClearScript = () => {
+    setScriptBlocks([]);
+  };
 
   useEffect(() => {
     requestPermissions();
@@ -78,6 +85,39 @@ export const AICoachSetup = ({ onReady }: AICoachSetupProps) => {
           </p>
         </div>
         <AICoachSettings />
+      </div>
+
+      {/* Script Mode Indicator */}
+      <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border border-border">
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+            hasScript ? 'bg-primary/10' : 'bg-muted'
+          }`}>
+            <FileText className={`w-5 h-5 ${hasScript ? 'text-primary' : 'text-muted-foreground'}`} />
+          </div>
+          <div>
+            <p className="font-medium">
+              {hasScript ? 'Teleprompter Mode' : 'Live Transcription Mode'}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {hasScript 
+                ? `${scriptBlocks.length} script blocks loaded`
+                : 'Speech will be transcribed in real-time'
+              }
+            </p>
+          </div>
+        </div>
+        {hasScript && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleClearScript}
+            className="text-destructive hover:text-destructive"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Clear Script
+          </Button>
+        )}
       </div>
 
       {/* API Key Status */}

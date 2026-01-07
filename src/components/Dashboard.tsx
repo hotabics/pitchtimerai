@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { TrackType, trackConfigs } from "@/lib/tracks";
 import { SpeechCoach } from "./SpeechCoach";
+import { useAICoachStore } from "@/stores/aiCoachStore";
 import jsPDF from "jspdf";
 
 interface SpeechBlock {
@@ -725,6 +726,14 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
                 setActiveTab(tab.id);
                 if (tab.id !== "practice") {
                   setIsPlaying(false);
+                }
+                // Pass speechBlocks to AI Coach store when clicking AI Coach tab
+                if (tab.id === "coach" && speechBlocks.length > 0) {
+                  const { setScriptBlocks } = useAICoachStore.getState();
+                  setScriptBlocks(speechBlocks.map(block => ({
+                    title: block.title,
+                    content: block.content,
+                  })));
                 }
               }}
               className={cn(
