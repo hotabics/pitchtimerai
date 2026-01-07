@@ -70,14 +70,11 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         url: formattedUrl,
-        formats: [
-          'markdown',
-          { 
-            type: 'json', 
-            schema: projectSchema,
-            prompt: 'Extract comprehensive information about this company/project for a pitch presentation. Focus on their value proposition, problem they solve, target market, and any traction or team info.'
-          }
-        ],
+        formats: ['markdown', 'extract'],
+        extract: {
+          schema: projectSchema,
+          prompt: 'Extract comprehensive information about this company/project for a pitch presentation. Focus on their value proposition, problem they solve, target market, and any traction or team info.'
+        },
         onlyMainContent: true,
       }),
     });
@@ -92,28 +89,28 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Extract structured JSON data
-    const jsonData = data.data?.json || data.json || {};
+    // Extract structured data from response
+    const extractData = data.data?.extract || data.extract || {};
     const markdown = data.data?.markdown || data.markdown || '';
     const metadata = data.data?.metadata || data.metadata || {};
     
     // Build enhanced response
     const extractedData = {
-      name: jsonData.company_name || metadata.title || extractDomainName(formattedUrl),
-      tagline: jsonData.tagline || metadata.description || '',
-      problem: jsonData.problem || '',
-      solution: jsonData.solution || '',
-      audience: detectAudience(jsonData, markdown),
-      targetAudience: jsonData.target_audience || '',
-      keyFeatures: jsonData.key_features || [],
-      pricingInfo: jsonData.pricing_info || '',
-      techStack: jsonData.tech_stack || [],
-      teamInfo: jsonData.team_info || '',
-      traction: jsonData.traction || '',
-      callToAction: jsonData.call_to_action || '',
+      name: extractData.company_name || metadata.title || extractDomainName(formattedUrl),
+      tagline: extractData.tagline || metadata.description || '',
+      problem: extractData.problem || '',
+      solution: extractData.solution || '',
+      audience: detectAudience(extractData, markdown),
+      targetAudience: extractData.target_audience || '',
+      keyFeatures: extractData.key_features || [],
+      pricingInfo: extractData.pricing_info || '',
+      techStack: extractData.tech_stack || [],
+      teamInfo: extractData.team_info || '',
+      traction: extractData.traction || '',
+      callToAction: extractData.call_to_action || '',
     };
 
-    console.log('Scrape successful with JSON extraction:', extractedData.name);
+    console.log('Scrape successful with extraction:', extractedData.name);
     
     return new Response(
       JSON.stringify({ 
@@ -122,7 +119,7 @@ Deno.serve(async (req) => {
         raw: { 
           markdown: markdown.slice(0, 2000), 
           metadata,
-          json: jsonData
+          extract: extractData
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
