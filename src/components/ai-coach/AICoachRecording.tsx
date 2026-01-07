@@ -1,18 +1,23 @@
-// AI Coach Recording View - Real-time MediaPipe face mesh + live transcription
+// AI Coach Recording View - Professional Teleprompter + Face Mesh + HUD
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   AlertTriangle,
   Camera,
   Eye,
+  EyeOff,
   Globe,
   Mic,
+  Pause,
+  Play,
   Smile,
   Square,
+  Volume2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import {
@@ -32,7 +37,6 @@ interface AICoachRecordingProps {
 }
 
 type SpeechRecognitionCtor = new () => any;
-
 type SpeechRecognitionInstance = any;
 
 const getSpeechRecognitionCtor = (): SpeechRecognitionCtor | null => {
@@ -40,7 +44,6 @@ const getSpeechRecognitionCtor = (): SpeechRecognitionCtor | null => {
   return w.SpeechRecognition || w.webkitSpeechRecognition || null;
 };
 
-// Available languages for speech recognition
 const LANGUAGES = [
   { code: "en-US", label: "English (US)" },
   { code: "en-GB", label: "English (UK)" },
@@ -57,7 +60,6 @@ const LANGUAGES = [
 ];
 
 export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) => {
-  // Get script and transcription settings from store
   const { 
     scriptBlocks, 
     transcriptionSettings, 
@@ -68,16 +70,26 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
 
   const hasScript = scriptBlocks.length > 0;
 
-  // Initialization stages
+  // Initialization
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [mediaPipeReady, setMediaPipeReady] = useState(false);
   const [mediaPipeFailed, setMediaPipeFailed] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
   const [duration, setDuration] = useState(0);
-  const [currentMetrics, setCurrentMetrics] = useState<FaceMetrics | null>(null);
-  const [warnings, setWarnings] = useState<string[]>([]);
-  const [loadingMessage, setLoadingMessage] = useState("Requesting camera access...");
+  const [loadingMessage, setLoadingMessage] = useState("Initializing AI Vision...");
+
+  // Teleprompter state
+  const [teleprompterPaused, setTeleprompterPaused] = useState(false);
+  const [scrollSpeed, setScrollSpeed] = useState(1); // 0.5 to 2
+
+  // HUD metrics (updated less frequently to prevent flicker)
+  const [hudMetrics, setHudMetrics] = useState<{
+    eyeContact: boolean;
+    eyeScore: number;
+    smiling: boolean;
+    micLevel: number;
+  }>({ eyeContact: false, eyeScore: 0, smiling: false, micLevel: 0 });
 
   // Live transcription
   const [liveTranscript, setLiveTranscript] = useState("");
@@ -86,10 +98,10 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
   const liveTranscriptRef = useRef<HTMLDivElement>(null);
   const speechRecognitionRef = useRef<SpeechRecognitionInstance | null>(null);
 
-  // Refs for metrics to avoid re-renders during animation loop
-  const currentMetricsRef = useRef<FaceMetrics | null>(null);
-  const warningsRef = useRef<string[]>([]);
-  const lastMetricsUpdateRef = useRef(0);
+  // Refs for high-frequency updates
+  const metricsRef = useRef<FaceMetrics | null>(null);
+  const micLevelRef = useRef(0);
+  const lastHudUpdateRef = useRef(0);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -104,52 +116,35 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
   const startTimeRef = useRef<number>(0);
   const lastFrameTimeRef = useRef<number>(0);
 
-  // Mic analyser
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const micDataRef = useRef<Uint8Array | null>(null);
 
   const teleprompterRef = useRef<HTMLDivElement>(null);
+  const scrollIntervalRef = useRef<number | null>(null);
 
+  // Video element attachment
   const attachVideoEl = useCallback((el: HTMLVideoElement | null) => {
     videoRef.current = el;
-
     if (!el) return;
-
-    // Ensure visible + correctly layered
     el.style.opacity = "1";
-
-    // Re-attach stream when the video element mounts/remounts
     if (streamRef.current) {
       el.srcObject = streamRef.current;
-      const maybePlay = () => {
-        el.play().catch(() => {
-          // autoplay can fail in some browsers; user gesture exists anyway (Start Recording)
-        });
-      };
-
-      if (el.readyState >= 2) {
-        maybePlay();
-      } else {
-        el.onloadedmetadata = maybePlay;
-      }
+      const maybePlay = () => { el.play().catch(() => {}); };
+      if (el.readyState >= 2) maybePlay();
+      else el.onloadedmetadata = maybePlay;
     }
   }, []);
 
-  // 1) Initialize camera + mic FIRST
+  // 1) Initialize camera + mic
   useEffect(() => {
     let mounted = true;
 
     const initializeCamera = async () => {
       try {
         setLoadingMessage("Requesting camera access...");
-
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            facingMode: "user",
-          },
+          video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" },
           audio: true,
         });
 
@@ -160,111 +155,87 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
 
         streamRef.current = stream;
 
-        // Attach stream to the current video element (and future remounts are handled by attachVideoEl)
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           videoRef.current.onloadeddata = () => {
-            if (!mounted) return;
-            setIsCameraReady(true);
-            setLoadingMessage("Camera ready! Loading face tracking...");
+            if (mounted) {
+              setIsCameraReady(true);
+              setLoadingMessage("Loading AI face tracking...");
+            }
           };
-
-          // Some browsers never fire onloadeddata reliably; add a fallback
           videoRef.current.onplaying = () => {
-            if (!mounted) return;
-            setIsCameraReady(true);
-            setLoadingMessage("Camera ready! Loading face tracking...");
+            if (mounted) {
+              setIsCameraReady(true);
+              setLoadingMessage("Loading AI face tracking...");
+            }
           };
         }
 
-        // Set up mic level analyser
+        // Mic analyser
         try {
           audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
           const source = audioContextRef.current.createMediaStreamSource(stream);
           analyserRef.current = audioContextRef.current.createAnalyser();
-          analyserRef.current.fftSize = 512;
+          analyserRef.current.fftSize = 256;
           source.connect(analyserRef.current);
           micDataRef.current = new Uint8Array(analyserRef.current.fftSize);
         } catch (e) {
-          // If AudioContext fails (iOS quirks), we just won't show mic level.
           console.warn("Mic analyser init failed", e);
         }
       } catch (err) {
-        console.error("Camera initialization error:", err);
         if (mounted) {
-          setInitError(
-            err instanceof Error
-              ? `Camera access denied: ${err.message}`
-              : "Failed to access camera. Please grant permission."
-          );
+          setInitError(err instanceof Error ? `Camera access denied: ${err.message}` : "Failed to access camera.");
         }
       }
     };
 
     initializeCamera();
-
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
 
-  // 2) Initialize MediaPipe AFTER camera is ready
+  // 2) Initialize MediaPipe
   useEffect(() => {
     if (!isCameraReady) return;
-
     let mounted = true;
 
-    const initializeMediaPipe = async () => {
+    const init = async () => {
       try {
-        setLoadingMessage("Loading AI face tracking...");
+        setLoadingMessage("Initializing AI Vision...");
         await initializeFaceLandmarker();
-
         if (mounted) {
           setMediaPipeReady(true);
-          setLoadingMessage("Starting recording...");
+          setLoadingMessage("Ready!");
         }
       } catch (err) {
-        console.error("MediaPipe initialization failed:", err);
+        console.error("MediaPipe init failed:", err);
         if (mounted) {
           setMediaPipeFailed(true);
-          setMediaPipeReady(true); // Continue without face mesh
+          setMediaPipeReady(true);
         }
       }
     };
 
-    initializeMediaPipe();
-
-    return () => {
-      mounted = false;
-    };
+    init();
+    return () => { mounted = false; };
   }, [isCameraReady]);
 
-  // 3) Start recording once ready
+  // 3) Start recording
   useEffect(() => {
     if (!isCameraReady || !mediaPipeReady || isRecording) return;
-
     const stream = streamRef.current;
     if (!stream) return;
 
     try {
       const videoRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
-          ? "video/webm;codecs=vp9"
-          : "video/webm",
+        mimeType: MediaRecorder.isTypeSupported("video/webm;codecs=vp9") ? "video/webm;codecs=vp9" : "video/webm",
       });
-
-      videoRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) videoChunksRef.current.push(e.data);
-      };
+      videoRecorder.ondataavailable = (e) => { if (e.data.size > 0) videoChunksRef.current.push(e.data); };
 
       const audioStream = new MediaStream(stream.getAudioTracks());
       const audioRecorder = new MediaRecorder(audioStream, {
         mimeType: MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4",
       });
-
-      audioRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunksRef.current.push(e.data);
-      };
+      audioRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
 
       mediaRecorderRef.current = videoRecorder;
       (mediaRecorderRef.current as any).audioRecorder = audioRecorder;
@@ -296,30 +267,38 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
     return () => clearInterval(interval);
   }, [isRecording]);
 
-  // Teleprompter auto-scroll
+  // Teleprompter auto-scroll with speed control
   useEffect(() => {
-    if (!isRecording || !hasScript || !teleprompterRef.current) return;
+    if (!isRecording || !hasScript || teleprompterPaused || !teleprompterRef.current) {
+      if (scrollIntervalRef.current) {
+        clearInterval(scrollIntervalRef.current);
+        scrollIntervalRef.current = null;
+      }
+      return;
+    }
 
-    const id = window.setInterval(() => {
-      if (teleprompterRef.current) teleprompterRef.current.scrollTop += 1;
-    }, 100);
+    const baseInterval = 50; // ms
+    const pixelsPerTick = scrollSpeed;
 
-    return () => window.clearInterval(id);
-  }, [hasScript, isRecording]);
+    scrollIntervalRef.current = window.setInterval(() => {
+      if (teleprompterRef.current) {
+        teleprompterRef.current.scrollTop += pixelsPerTick;
+      }
+    }, baseInterval);
 
-  // Live transcription with Web Speech API (only when no script AND transcription is enabled)
+    return () => {
+      if (scrollIntervalRef.current) clearInterval(scrollIntervalRef.current);
+    };
+  }, [hasScript, isRecording, teleprompterPaused, scrollSpeed]);
+
+  // Live transcription
   useEffect(() => {
     if (!isRecording || hasScript || !transcriptionSettings.enabled) return;
 
     const Ctor = getSpeechRecognitionCtor();
-
-    if (!Ctor) {
-      setSpeechSupported(false);
-      return;
-    }
+    if (!Ctor) { setSpeechSupported(false); return; }
 
     setSpeechSupported(true);
-
     const recognition = new Ctor();
     recognition.continuous = true;
     recognition.interimResults = true;
@@ -331,23 +310,15 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
     recognition.onresult = (event: any) => {
       let finalText = "";
       let interimText = "";
-
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const res = event.results[i];
         const text = res[0]?.transcript ?? "";
         if (res.isFinal) finalText += text;
         else interimText += text;
       }
-
-      // Append final chunks; show interim as a tail
-      if (finalText.trim()) {
-        setLiveTranscript((prev) => (prev + " " + finalText).trim());
-      }
-
+      if (finalText.trim()) setLiveTranscript((prev) => (prev + " " + finalText).trim());
       if (interimText.trim()) {
         setLiveTranscript((prev) => {
-          // Keep prev, but add interim separated by a special marker
-          // (We avoid storing interim permanently.)
           const base = prev.replace(/\s*\[interim\][\s\S]*$/m, "").trim();
           return `${base} [interim] ${interimText}`.trim();
         });
@@ -356,43 +327,33 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
       }
     };
 
-    recognition.onerror = () => {
-      // Keep recording; just stop listening UI
-      setIsListening(false);
-    };
+    recognition.onerror = () => setIsListening(false);
+    speechRecognitionRef.current = recognition;
 
-    speechRecognitionRef.current = recognition as any;
-
-    try {
-      recognition.start();
-    } catch {
-      // Some browsers throw if start called twice
-    }
-
-    return () => {
-      try {
-        recognition.stop();
-      } catch {
-        // ignore
-      }
-      speechRecognitionRef.current = null;
-    };
+    try { recognition.start(); } catch {}
+    return () => { try { recognition.stop(); } catch {} speechRecognitionRef.current = null; };
   }, [hasScript, isRecording, transcriptionSettings.enabled, transcriptionSettings.language]);
 
-  // Keep transcript scrolled to bottom
+  // Scroll transcript to bottom
   useEffect(() => {
-    if (!liveTranscriptRef.current) return;
-    liveTranscriptRef.current.scrollTop = liveTranscriptRef.current.scrollHeight;
+    if (liveTranscriptRef.current) liveTranscriptRef.current.scrollTop = liveTranscriptRef.current.scrollHeight;
   }, [liveTranscript]);
 
+  // Face mesh loop
   const startFaceMeshLoop = useCallback(() => {
     const tick = () => {
       const video = videoRef.current;
       const canvas = canvasRef.current;
 
-      // Mic level calculation (no longer displayed, but kept for potential future use)
+      // Mic level
       if (analyserRef.current && micDataRef.current) {
-        analyserRef.current.getByteTimeDomainData(micDataRef.current as any);
+        analyserRef.current.getByteTimeDomainData(micDataRef.current as Uint8Array<ArrayBuffer>);
+        let sumSquares = 0;
+        for (let i = 0; i < micDataRef.current.length; i++) {
+          const v = (micDataRef.current[i] - 128) / 128;
+          sumSquares += v * v;
+        }
+        micLevelRef.current = Math.round(Math.min(100, Math.sqrt(sumSquares / micDataRef.current.length) * 200));
       }
 
       if (!video || !canvas || video.readyState < 2) {
@@ -402,14 +363,14 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
 
       const now = performance.now();
 
-      // ~15fps for face mesh
-      if (now - lastFrameTimeRef.current < 66) {
+      // ~20fps for face mesh
+      if (now - lastFrameTimeRef.current < 50) {
         animationFrameRef.current = requestAnimationFrame(tick);
         return;
       }
       lastFrameTimeRef.current = now;
 
-      // Match canvas to video resolution
+      // Match canvas size
       if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
@@ -421,39 +382,33 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
         return;
       }
 
-      // CRITICAL: clear before drawing markers (transparent)
+      // Clear canvas (transparent)
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       try {
         const metrics = drawFaceMesh(ctx, video, now);
+        metricsRef.current = metrics;
 
         if (metrics) {
-          currentMetricsRef.current = metrics;
-
           const frame: FrameData = {
             timestamp: now - startTimeRef.current,
             eyeContact: metrics.isLookingAtCamera,
             smiling: metrics.isSmiling,
             headDeviation: metrics.headPoseDeviation,
           };
-
           frameDataRef.current.push(frame);
           addFrameData(frame);
-
-          // Calculate warnings
-          const nextWarnings: string[] = [];
-          if (!metrics.isLookingAtCamera && metrics.headPoseDeviation > 20) nextWarnings.push("Look at the camera");
-          if (metrics.eyeContactScore < 50) nextWarnings.push("Maintain eye contact");
-          warningsRef.current = nextWarnings;
         }
 
-        // Update React state only every 500ms to prevent re-render blinking
-        if (now - lastMetricsUpdateRef.current > 500) {
-          lastMetricsUpdateRef.current = now;
-          if (currentMetricsRef.current) {
-            setCurrentMetrics(currentMetricsRef.current);
-          }
-          setWarnings([...warningsRef.current]);
+        // Update HUD every 300ms
+        if (now - lastHudUpdateRef.current > 300) {
+          lastHudUpdateRef.current = now;
+          setHudMetrics({
+            eyeContact: metricsRef.current?.isLookingAtCamera ?? false,
+            eyeScore: metricsRef.current?.eyeContactScore ?? 0,
+            smiling: metricsRef.current?.isSmiling ?? false,
+            micLevel: micLevelRef.current,
+          });
         }
       } catch (e) {
         console.error("Face mesh error:", e);
@@ -466,31 +421,17 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
   }, [addFrameData]);
 
   const cleanup = useCallback(() => {
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-
-    if (speechRecognitionRef.current) {
-      try {
-        (speechRecognitionRef.current as any).stop?.();
-      } catch {
-        // ignore
-      }
-      speechRecognitionRef.current = null;
-    }
-
-    if (audioContextRef.current) {
-      audioContextRef.current.close().catch(() => {});
-      audioContextRef.current = null;
-    }
+    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    if (scrollIntervalRef.current) clearInterval(scrollIntervalRef.current);
+    if (speechRecognitionRef.current) try { speechRecognitionRef.current.stop?.(); } catch {}
+    if (audioContextRef.current) audioContextRef.current.close().catch(() => {});
+    if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
+    animationFrameRef.current = null;
+    scrollIntervalRef.current = null;
+    speechRecognitionRef.current = null;
+    audioContextRef.current = null;
     analyserRef.current = null;
-    micDataRef.current = null;
-
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-    }
+    streamRef.current = null;
   }, []);
 
   useEffect(() => cleanup, [cleanup]);
@@ -498,7 +439,6 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
   const handleStop = () => {
     const recorder = mediaRecorderRef.current;
     const audioRecorder = (recorder as any)?.audioRecorder as MediaRecorder | undefined;
-
     if (!recorder || !audioRecorder) return;
 
     recorder.stop();
@@ -508,16 +448,12 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
       const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
       const videoBlob = new Blob(videoChunksRef.current, { type: "video/webm" });
       const finalDuration = Math.floor((performance.now() - startTimeRef.current) / 1000);
-
       cleanup();
       onStop(audioBlob, videoBlob, finalDuration, frameDataRef.current);
     }, 500);
   };
 
-  const handleCancel = () => {
-    cleanup();
-    onCancel();
-  };
+  const handleCancel = () => { cleanup(); onCancel(); };
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -557,247 +493,255 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleCancel}>
-            Cancel
-          </Button>
+          <Button variant="outline" size="sm" onClick={handleCancel}>Cancel</Button>
           <Button variant="destructive" size="sm" onClick={handleStop} disabled={!isRecording}>
             <Square className="w-4 h-4 mr-2 fill-current" />
-            Stop Recording
+            Stop
           </Button>
         </div>
       </div>
 
-      {/* Stacked layout: Video on top, teleprompter below */}
-      <div className="space-y-4">
-        {/* VIDEO: Full width */}
-        <section className="space-y-3">
-          <div className="relative aspect-video rounded-xl overflow-hidden bg-muted w-full">
-            {/* Layer 1: Video */}
-            <video
-              ref={attachVideoEl}
-              autoPlay
-              playsInline
-              muted
-              className="absolute top-0 left-0 w-full h-full object-cover"
-              style={{
-                zIndex: 10,
-                transform: "scaleX(-1)",
-                opacity: 1,
-              }}
-            />
+      {/* Main Recording Container - Layered Architecture */}
+      <div className="relative w-full rounded-xl overflow-hidden bg-black" style={{ aspectRatio: "16/9" }}>
+        
+        {/* Layer 0: Video */}
+        <video
+          ref={attachVideoEl}
+          autoPlay
+          playsInline
+          muted
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ zIndex: 0, transform: "scaleX(-1)" }}
+        />
 
-            {/* Layer 2: Face mesh canvas */}
-            {!mediaPipeFailed && (
-              <canvas
-                ref={canvasRef}
-                className="absolute top-0 left-0 w-full h-full object-cover pointer-events-none"
-                style={{
-                  zIndex: 20,
-                  backgroundColor: "transparent",
-                  transform: "scaleX(-1)",
-                }}
-              />
-            )}
+        {/* Layer 10: Face Mesh Canvas */}
+        {!mediaPipeFailed && (
+          <canvas
+            ref={canvasRef}
+            className="absolute inset-0 w-full h-full pointer-events-none"
+            style={{ zIndex: 10, backgroundColor: "transparent", transform: "scaleX(-1)" }}
+          />
+        )}
 
-            {/* Loading overlay until camera is ready */}
-            {!isCameraReady && (
-              <div
-                className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm"
-                style={{ zIndex: 30 }}
+        {/* Layer 20: UI Overlays */}
+        <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 20 }}>
+          
+          {/* Loading Overlay */}
+          <AnimatePresence>
+            {(!isCameraReady || !mediaPipeReady) && (
+              <motion.div
+                initial={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm pointer-events-auto"
               >
                 <div className="text-center space-y-4">
                   <div className="relative">
-                    <div className="w-16 h-16 mx-auto border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                    <Camera className="w-6 h-6 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-primary" />
+                    <div className="w-20 h-20 mx-auto border-4 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                    <Camera className="w-8 h-8 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-cyan-400" />
                   </div>
-                  <p className="text-muted-foreground">Loading Camera...</p>
+                  <p className="text-cyan-400 font-medium">{loadingMessage}</p>
                 </div>
-              </div>
+              </motion.div>
             )}
+          </AnimatePresence>
 
-            {/* Status overlay while MediaPipe loads */}
-            {isCameraReady && !mediaPipeReady && (
-              <div
-                className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm"
-                style={{ zIndex: 30 }}
-              >
-                <p className="text-muted-foreground">{loadingMessage}</p>
-              </div>
-            )}
-
-
-            {/* MediaPipe disabled notice */}
-            {mediaPipeFailed && (
-              <div
-                className="absolute top-4 right-4 px-3 py-1.5 rounded-lg bg-warning/80 text-warning-foreground text-xs font-medium"
-                style={{ zIndex: 30 }}
-              >
-                Face tracking unavailable
-              </div>
-            )}
-
-            {/* Real-time warnings */}
-            {warnings.length > 0 && !mediaPipeFailed && (
-              <div className="absolute top-4 left-1/2 -translate-x-1/2" style={{ zIndex: 30 }}>
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="px-4 py-2 rounded-full bg-warning/90 text-warning-foreground text-sm font-medium"
-                >
-                  {warnings[0]}
-                </motion.div>
-              </div>
-            )}
-
-            {/* Live metrics overlay */}
-            <div className="absolute bottom-4 left-4 right-4 flex justify-between" style={{ zIndex: 30 }}>
-              <div className="flex items-center gap-4">
-                {!mediaPipeFailed && (
-                  <>
-                    <div
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg backdrop-blur-sm ${
-                        currentMetrics?.isLookingAtCamera ? "bg-success/20 text-success" : "bg-foreground/60 text-background"
-                      }`}
-                    >
-                      <Eye className="w-4 h-4" />
-                      <span className="text-sm font-medium">{currentMetrics?.eyeContactScore?.toFixed(0) || 0}%</span>
-                    </div>
-
-                    <div
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg backdrop-blur-sm ${
-                        currentMetrics?.isSmiling ? "bg-primary/20 text-primary" : "bg-foreground/60 text-background"
-                      }`}
-                    >
-                      <Smile className="w-4 h-4" />
-                      <span className="text-sm font-medium">{currentMetrics?.isSmiling ? "Smiling" : "Neutral"}</span>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-foreground/60 backdrop-blur-sm text-background">
-                <Mic className="w-4 h-4 text-destructive animate-pulse" />
-                <span className="text-sm font-medium">Recording audio…</span>
-              </div>
+          {/* HUD: Top-Left - Audio Level */}
+          <div className="absolute top-4 left-4 flex items-center gap-2 px-3 py-2 rounded-lg bg-black/60 backdrop-blur-sm pointer-events-auto">
+            <Volume2 className="w-4 h-4 text-cyan-400" />
+            <div className="w-16 h-2 bg-white/20 rounded-full overflow-hidden">
+              <motion.div
+                className="h-full bg-gradient-to-r from-cyan-400 to-green-400"
+                animate={{ width: `${hudMetrics.micLevel}%` }}
+                transition={{ duration: 0.1 }}
+              />
             </div>
           </div>
 
-          <p className="text-center text-sm text-muted-foreground">
-            Deliver your pitch naturally. {!mediaPipeFailed && "The AI is tracking your eye contact and expressions."}
-          </p>
-        </section>
+          {/* HUD: Top-Right - Eye Contact Status */}
+          <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-2 rounded-lg bg-black/60 backdrop-blur-sm pointer-events-auto">
+            {hudMetrics.eyeContact ? (
+              <>
+                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                <Eye className="w-4 h-4 text-green-400" />
+                <span className="text-xs font-medium text-green-400">Locked On</span>
+              </>
+            ) : (
+              <>
+                <div className="w-2 h-2 rounded-full bg-red-400" />
+                <EyeOff className="w-4 h-4 text-red-400" />
+                <span className="text-xs font-medium text-red-400">Looking Away</span>
+              </>
+            )}
+          </div>
 
-        {/* TELEPROMPTER / LIVE TRANSCRIPTION: Below video */}
-        <section className="rounded-xl border border-border overflow-hidden bg-card">
-          {hasScript ? (
-            <>
-              <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-                <span className="text-sm font-medium text-muted-foreground">Teleprompter</span>
-                <span className="text-xs text-muted-foreground">Auto-scroll</span>
-              </div>
-              <div ref={teleprompterRef} className="p-5 h-[200px] overflow-y-auto scroll-smooth">
-                {scriptBlocks.map((b, idx) => (
-                  <div key={idx} className="mb-6">
-                    <div className="text-xs text-primary font-medium mb-2">{b.title}</div>
-                    <p className="text-xl leading-relaxed text-foreground font-medium">{b.content}</p>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="px-4 py-3 border-b border-border space-y-3">
-                {/* Transcription toggle + status */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        id="transcription-toggle"
-                        checked={transcriptionSettings.enabled}
-                        onCheckedChange={(checked) => 
-                          setTranscriptionSettings({ ...transcriptionSettings, enabled: checked })
-                        }
-                        disabled={isRecording}
-                      />
-                      <Label htmlFor="transcription-toggle" className="text-sm font-medium cursor-pointer">
-                        Live Transcription
-                      </Label>
-                    </div>
-                    {transcriptionSettings.enabled && (
-                      <span className="text-xs text-muted-foreground">
-                        {speechSupported 
-                          ? (isListening ? "Listening..." : "Starting...") 
-                          : "Not supported"}
-                      </span>
-                    )}
-                  </div>
-                  {transcriptionSettings.enabled && speechSupported && (
-                    <div className={`h-2 w-2 rounded-full ${isListening ? "bg-destructive animate-pulse" : "bg-muted"}`} />
-                  )}
-                </div>
+          {/* HUD: Bottom-Center - System Status */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2 rounded-full bg-black/60 backdrop-blur-sm pointer-events-auto">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+              <span className="text-xs text-cyan-400 font-medium">AI Tracking Active</span>
+            </div>
+            <div className="w-px h-4 bg-white/20" />
+            <div className="flex items-center gap-2">
+              <Smile className={`w-4 h-4 ${hudMetrics.smiling ? "text-yellow-400" : "text-white/50"}`} />
+              <span className={`text-xs ${hudMetrics.smiling ? "text-yellow-400" : "text-white/50"}`}>
+                {hudMetrics.smiling ? "Smiling" : "Neutral"}
+              </span>
+            </div>
+            <div className="w-px h-4 bg-white/20" />
+            <div className="flex items-center gap-2">
+              <Mic className="w-4 h-4 text-red-400 animate-pulse" />
+              <span className="text-xs text-red-400">REC</span>
+            </div>
+          </div>
 
-                {/* Language selector */}
-                {transcriptionSettings.enabled && (
-                  <div className="flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-muted-foreground" />
-                    <Select
-                      value={transcriptionSettings.language}
-                      onValueChange={(value) => 
-                        setTranscriptionSettings({ ...transcriptionSettings, language: value })
-                      }
-                      disabled={isRecording}
-                    >
-                      <SelectTrigger className="h-8 w-[180px] text-xs">
-                        <SelectValue placeholder="Select language" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {LANGUAGES.map((lang) => (
-                          <SelectItem key={lang.code} value={lang.code} className="text-xs">
-                            {lang.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {isRecording && (
-                      <span className="text-xs text-muted-foreground">(locked during recording)</span>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="p-4">
-                {transcriptionSettings.enabled ? (
-                  <div
-                    ref={liveTranscriptRef}
-                    className="h-[160px] overflow-y-auto rounded-lg bg-foreground text-background p-4 text-base leading-relaxed"
-                  >
-                    {speechSupported ? (
-                      <>
-                        <p className="whitespace-pre-wrap">{liveTranscriptDisplay.base || "\n\nSay something to see subtitles here."}</p>
-                        {liveTranscriptDisplay.interim ? (
-                          <p className="whitespace-pre-wrap opacity-70">{liveTranscriptDisplay.interim}</p>
-                        ) : null}
-                      </>
-                    ) : (
-                      <p className="opacity-80">
-                        Your browser doesn&apos;t support SpeechRecognition. (Try Chrome / Edge on desktop.)
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="h-[160px] flex items-center justify-center rounded-lg bg-muted/50 text-muted-foreground">
-                    <div className="text-center space-y-2">
-                      <Mic className="w-8 h-8 mx-auto opacity-50" />
-                      <p className="text-sm">Live transcription is disabled</p>
-                      <p className="text-xs">Enable it above to see your speech in real-time</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </>
+          {/* MediaPipe failed notice */}
+          {mediaPipeFailed && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg bg-yellow-500/80 text-black text-xs font-medium pointer-events-auto">
+              Face tracking unavailable
+            </div>
           )}
-        </section>
+        </div>
+
+        {/* Layer 25: Teleprompter Overlay (only when script exists) */}
+        {hasScript && isRecording && (
+          <div
+            className="absolute bottom-20 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl pointer-events-auto"
+            style={{ zIndex: 25 }}
+          >
+            <div className="relative rounded-xl bg-black/70 backdrop-blur-md border border-white/10 overflow-hidden">
+              {/* Teleprompter Controls */}
+              <div className="flex items-center justify-between px-4 py-2 border-b border-white/10">
+                <span className="text-xs text-cyan-400 font-medium uppercase tracking-wider">Teleprompter</span>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-white/50">Speed</span>
+                    <Slider
+                      value={[scrollSpeed]}
+                      onValueChange={([v]) => setScrollSpeed(v)}
+                      min={0.5}
+                      max={3}
+                      step={0.5}
+                      className="w-20"
+                    />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-white/70 hover:text-white"
+                    onClick={() => setTeleprompterPaused(!teleprompterPaused)}
+                  >
+                    {teleprompterPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Reading Zone Indicator */}
+              <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-12 bg-cyan-400/10 border-y border-cyan-400/30 pointer-events-none z-10" />
+
+              {/* Script Content */}
+              <div
+                ref={teleprompterRef}
+                className="p-6 h-[180px] overflow-y-auto scroll-smooth"
+                style={{ scrollbarWidth: "none" }}
+              >
+                <div className="space-y-6 py-16">
+                  {scriptBlocks.map((block, idx) => (
+                    <div key={idx}>
+                      <p className="text-xs text-cyan-400/80 mb-1 uppercase tracking-wide">{block.title}</p>
+                      <p className="text-2xl leading-relaxed text-white font-medium">{block.content}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Live Transcription Section (when no script) */}
+      {!hasScript && (
+        <section className="rounded-xl border border-border overflow-hidden bg-card">
+          <div className="px-4 py-3 border-b border-border space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="transcription-toggle"
+                    checked={transcriptionSettings.enabled}
+                    onCheckedChange={(checked) => setTranscriptionSettings({ ...transcriptionSettings, enabled: checked })}
+                    disabled={isRecording}
+                  />
+                  <Label htmlFor="transcription-toggle" className="text-sm font-medium cursor-pointer">
+                    Live Transcription
+                  </Label>
+                </div>
+                {transcriptionSettings.enabled && (
+                  <span className="text-xs text-muted-foreground">
+                    {speechSupported ? (isListening ? "Listening..." : "Starting...") : "Not supported"}
+                  </span>
+                )}
+              </div>
+              {transcriptionSettings.enabled && speechSupported && (
+                <div className={`h-2 w-2 rounded-full ${isListening ? "bg-destructive animate-pulse" : "bg-muted"}`} />
+              )}
+            </div>
+
+            {transcriptionSettings.enabled && (
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-muted-foreground" />
+                <Select
+                  value={transcriptionSettings.language}
+                  onValueChange={(value) => setTranscriptionSettings({ ...transcriptionSettings, language: value })}
+                  disabled={isRecording}
+                >
+                  <SelectTrigger className="h-8 w-[180px] text-xs">
+                    <SelectValue placeholder="Select language" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LANGUAGES.map((lang) => (
+                      <SelectItem key={lang.code} value={lang.code} className="text-xs">
+                        {lang.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+
+          <div className="p-4">
+            {transcriptionSettings.enabled ? (
+              <div
+                ref={liveTranscriptRef}
+                className="h-[120px] overflow-y-auto rounded-lg bg-foreground text-background p-4 text-base leading-relaxed"
+              >
+                {speechSupported ? (
+                  <>
+                    <p className="whitespace-pre-wrap">{liveTranscriptDisplay.base || "Say something to see subtitles here..."}</p>
+                    {liveTranscriptDisplay.interim && (
+                      <p className="whitespace-pre-wrap opacity-70">{liveTranscriptDisplay.interim}</p>
+                    )}
+                  </>
+                ) : (
+                  <p className="opacity-80">Your browser does not support SpeechRecognition. Try Chrome or Edge.</p>
+                )}
+              </div>
+            ) : (
+              <div className="h-[120px] flex items-center justify-center rounded-lg bg-muted/50 text-muted-foreground">
+                <div className="text-center space-y-2">
+                  <Mic className="w-8 h-8 mx-auto opacity-50" />
+                  <p className="text-sm">Live transcription disabled</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Tip */}
+      <p className="text-center text-sm text-muted-foreground">
+        Deliver your pitch naturally. {!mediaPipeFailed && "AI is tracking your eye contact and expressions."}
+      </p>
     </motion.div>
   );
 };
