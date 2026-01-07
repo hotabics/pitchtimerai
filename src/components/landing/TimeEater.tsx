@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { isUrl, scrapeUrl, ScrapedProjectData } from "@/lib/api/firecrawl";
 import { toast } from "@/hooks/use-toast";
+import { trackEvent } from "@/utils/analytics";
 // Custom hook for counting animation
 const useCountUp = (end: number, duration: number = 1500, start: boolean = false) => {
   const [count, setCount] = useState(0);
@@ -180,6 +181,7 @@ export const TimeEater = ({
   const handleCustomize = () => {
     const idea = scrapedData?.name || projectName.trim();
     if (idea) {
+      trackEvent('Onboarding: Started');
       onSubmit(idea, scrapedData || undefined);
     }
   };
@@ -187,6 +189,7 @@ export const TimeEater = ({
   const handleAutoGenerate = () => {
     const idea = scrapedData?.name || projectName.trim();
     if (idea) {
+      trackEvent('Onboarding: Magic URL Used', { url: inputIsUrl ? projectName : undefined });
       onAutoGenerate(idea, scrapedData || undefined);
     }
   };

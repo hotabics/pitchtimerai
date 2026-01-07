@@ -5,6 +5,7 @@ import { BentoGrid } from "@/components/landing/BentoGrid";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrapedData } from "@/services/mockScraper";
+import { trackEvent } from "@/utils/analytics";
 
 export type EntryMode = "generate" | "custom_script";
 
@@ -364,7 +365,7 @@ export const Step1Hook = ({ onNext, onAutoGenerate, onPracticeOwn, onOpenAICoach
               transition={{ delay: 0.4 }}
               className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8"
             >
-              <Button size="lg" onClick={onOpenAICoach} className="gap-2">
+              <Button size="lg" onClick={() => { trackEvent('Onboarding: Started'); onOpenAICoach(); }} className="gap-2">
                 <Video className="w-5 h-5" />
                 Try AI Coach Now
               </Button>

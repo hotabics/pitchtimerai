@@ -16,6 +16,7 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrapedProjectData } from "@/lib/api/firecrawl";
 import { generateAutoPitch, isUrl } from "@/services/mockScraper";
+import { trackEvent } from "@/utils/analytics";
 // Track-specific step imports
 import { 
   HackathonPainStep, 
@@ -312,6 +313,7 @@ const Index = () => {
     setData({ ...data, audience, audienceLabel, track, trackData: {} });
     setStep(2);
     setTrackStep(0);
+    trackEvent('Onboarding: Step Completed', { step: 'Audience Selection' });
     toast({
       title: "Track Selected!",
       description: `${trackConfigs[track].name} mode activated`,
@@ -327,6 +329,7 @@ const Index = () => {
     
     const maxTrackSteps = trackConfig?.stepCount || 4;
     if (trackStep + 1 >= maxTrackSteps) {
+      trackEvent('Onboarding: Step Completed', { step: 'Track Details' });
       setStep(3);
     } else {
       setTrackStep(trackStep + 1);
@@ -337,6 +340,7 @@ const Index = () => {
   const handleGeneration = (tier: string, tierLabel: string) => {
     setData({ ...data, generationTier: tier });
     setShowDashboard(true);
+    trackEvent('Onboarding: Step Completed', { step: 'Generation' });
     toast({
       title: "🎉 Pitch Generated!",
       description: `${tierLabel} package ready. You saved hours!`,
