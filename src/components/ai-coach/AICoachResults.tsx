@@ -25,6 +25,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { useAICoachStore } from '@/stores/aiCoachStore';
 import { trackEvent } from '@/utils/analytics';
+import { MetricFlagButton } from '@/components/feedback/MetricFlagButton';
+import { VerdictFeedback } from '@/components/feedback/VerdictFeedback';
 
 interface AICoachResultsProps {
   onReRecord: () => void;
@@ -130,6 +132,7 @@ export const AICoachResults = ({ onReRecord, onEditScript }: AICoachResultsProps
                 <div className="flex items-center gap-2">
                   <Eye className="w-4 h-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Eye Contact</span>
+                  <MetricFlagButton metricName="Eye Contact" />
                 </div>
                 <span className={`text-lg font-bold ${
                   deliveryMetrics.eyeContactPercent >= 70 ? 'text-success' : 
@@ -152,6 +155,7 @@ export const AICoachResults = ({ onReRecord, onEditScript }: AICoachResultsProps
                 <div className="flex items-center gap-2">
                   <Gauge className="w-4 h-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Pace (WPM)</span>
+                  <MetricFlagButton metricName="WPM" />
                 </div>
                 <span className={`text-lg font-bold ${wpmStatus.color}`}>
                   {deliveryMetrics.wpm}
@@ -183,6 +187,7 @@ export const AICoachResults = ({ onReRecord, onEditScript }: AICoachResultsProps
                 <div className="flex items-center gap-2">
                   <MessageSquare className="w-4 h-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Filler Words</span>
+                  <MetricFlagButton metricName="Filler Words" />
                 </div>
                 <span className={`text-lg font-bold ${
                   deliveryMetrics.fillerCount <= 3 ? 'text-success' : 
@@ -344,6 +349,9 @@ export const AICoachResults = ({ onReRecord, onEditScript }: AICoachResultsProps
                 </ul>
               </div>
             )}
+
+            {/* Verdict Feedback */}
+            <VerdictFeedback />
           </CardContent>
         </Card>
       </div>
