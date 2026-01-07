@@ -26,6 +26,8 @@ import { AICoachPage } from "./ai-coach/AICoachPage";
 import { useAICoachStore } from "@/stores/aiCoachStore";
 import jsPDF from "jspdf";
 import { trackEvent } from "@/utils/analytics";
+import { ScriptFeedbackBar } from "./feedback/ScriptFeedbackBar";
+import { VersionComparisonBar } from "./feedback/VersionComparisonBar";
 
 interface SpeechBlock {
   timeStart: string;
@@ -142,6 +144,9 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
   // Editing state
   const [editingBlockIndex, setEditingBlockIndex] = useState<number | null>(null);
   const [editingContent, setEditingContent] = useState("");
+
+  // Feedback state
+  const [showVersionComparison, setShowVersionComparison] = useState(false);
 
   const trackConfig = trackConfigs[data.track];
 
@@ -550,6 +555,7 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
 
   const handleRegenerate = async (option: string) => {
     setIsRegenerating(true);
+    setShowVersionComparison(false);
     toast({
       title: "Regenerating...",
       description: `Making it ${option === 'shorter' ? 'more concise' : option === 'funnier' ? 'more engaging' : 'more technical'}`,
@@ -557,6 +563,7 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
     await generateSpeech(option);
     setIsRegenerating(false);
     handleRestart();
+    setShowVersionComparison(true); // Show comparison bar after regeneration
     toast({
       title: "Speech Updated!",
       description: "Your new speech is ready",
@@ -914,6 +921,18 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
                   <Download className="w-4 h-4" />
                   Export to PDF
                 </Button>
+
+                {/* Version Comparison Bar (shows after regeneration) */}
+                <AnimatePresence>
+                  {showVersionComparison && (
+                    <VersionComparisonBar 
+                      onDismiss={() => setShowVersionComparison(false)} 
+                    />
+                  )}
+                </AnimatePresence>
+
+                {/* Script Feedback Bar */}
+                <ScriptFeedbackBar />
               </motion.div>
             </motion.div>
           )}
