@@ -1,16 +1,49 @@
-import { motion } from "framer-motion";
-import { Eye, Smile, Volume2, Timer, Target, TrendingUp } from "lucide-react";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Eye, Smile, Volume2, Timer, Target, TrendingUp, Play, Pause } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-const metrics = [
-  { label: "Eye Contact", value: "87%", icon: Eye, color: "text-emerald-400", bg: "bg-emerald-500/20" },
-  { label: "Smile Score", value: "72%", icon: Smile, color: "text-amber-400", bg: "bg-amber-500/20" },
-  { label: "Speaking Pace", value: "142 WPM", icon: Volume2, color: "text-cyan-400", bg: "bg-cyan-500/20" },
-  { label: "Filler Words", value: "3", icon: Timer, color: "text-rose-400", bg: "bg-rose-500/20" },
+const metricsData = [
+  { label: "Eye Contact", baseValue: 87, icon: Eye, color: "text-emerald-400", bg: "bg-emerald-500/20", unit: "%" },
+  { label: "Smile Score", baseValue: 72, icon: Smile, color: "text-amber-400", bg: "bg-amber-500/20", unit: "%" },
+  { label: "Speaking Pace", baseValue: 142, icon: Volume2, color: "text-cyan-400", bg: "bg-cyan-500/20", unit: " WPM" },
+  { label: "Filler Words", baseValue: 3, icon: Timer, color: "text-rose-400", bg: "bg-rose-500/20", unit: "" },
+];
+
+const demoTranscript = [
+  { time: 0, text: "Hey everyone, I'm excited to show you..." },
+  { time: 2, text: "...our AI-powered pitch coach that helps you..." },
+  { time: 4, text: "...practice and perfect your delivery in real-time." },
+  { time: 6, text: "The computer vision tracks your eye contact..." },
+  { time: 8, text: "...while speech analysis monitors your pace." },
 ];
 
 export const AICoachSpotlight = () => {
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [metrics, setMetrics] = useState(metricsData.map(m => ({ ...m, value: m.baseValue })));
+  
+  // Simulate live metrics updates
+  useEffect(() => {
+    if (!isPlaying) return;
+    
+    const interval = setInterval(() => {
+      setCurrentTime(prev => (prev + 0.5) % 10);
+      setMetrics(prev => prev.map(m => ({
+        ...m,
+        value: m.label === "Filler Words" 
+          ? Math.max(0, m.baseValue + Math.floor(Math.random() * 2 - 0.5))
+          : Math.min(100, Math.max(60, m.baseValue + Math.floor(Math.random() * 10 - 5)))
+      })));
+    }, 500);
+    
+    return () => clearInterval(interval);
+  }, [isPlaying]);
+
+  const currentTranscript = demoTranscript.filter(t => t.time <= currentTime);
+
   return (
-    <section className="py-20 px-4 bg-gradient-to-b from-transparent via-muted/20 to-transparent">
+    <section id="ai-coach" className="py-20 px-4 bg-gradient-to-b from-transparent via-muted/20 to-transparent scroll-mt-16">
       <div className="max-w-6xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -49,9 +82,29 @@ export const AICoachSpotlight = () => {
               <div className="md:col-span-3 aspect-video bg-muted/30 rounded-2xl overflow-hidden relative flex items-center justify-center">
                 {/* Recording indicator */}
                 <div className="absolute top-4 left-4 flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                  <span className="text-xs font-medium text-muted-foreground">LIVE ANALYSIS</span>
+                  <motion.div 
+                    className="w-2 h-2 rounded-full bg-red-500"
+                    animate={isPlaying ? { opacity: [1, 0.3, 1] } : { opacity: 0.3 }}
+                    transition={{ duration: 1, repeat: Infinity }}
+                  />
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {isPlaying ? "LIVE DEMO" : "PAUSED"}
+                  </span>
                 </div>
+                
+                {/* Play/Pause button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsPlaying(!isPlaying)}
+                  className="absolute top-4 right-4 h-8 w-8 rounded-full bg-background/50 hover:bg-background/80"
+                >
+                  {isPlaying ? (
+                    <Pause className="w-4 h-4 text-foreground" />
+                  ) : (
+                    <Play className="w-4 h-4 text-foreground" />
+                  )}
+                </Button>
                 
                 {/* Face mesh SVG */}
                 <svg className="w-40 h-52" viewBox="0 0 100 130">
@@ -142,14 +195,36 @@ export const AICoachSpotlight = () => {
                   <motion.line x1="70" y1="32" x2="80" y2="40" stroke="hsl(var(--primary) / 0.3)" strokeWidth="0.5" />
                 </svg>
                 
-                {/* Bottom metrics overlay */}
+                {/* Bottom metrics overlay - now live */}
                 <div className="absolute bottom-4 left-4 right-4 flex justify-between">
-                  <div className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-medium backdrop-blur-sm">
-                    Eye Contact: 87%
-                  </div>
+                  <motion.div 
+                    key={metrics[0].value}
+                    initial={{ scale: 0.95 }}
+                    animate={{ scale: 1 }}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-xs font-medium backdrop-blur-sm"
+                  >
+                    Eye Contact: {metrics[0].value}%
+                  </motion.div>
                   <div className="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-400 text-xs font-medium backdrop-blur-sm">
                     😊 Engaged
                   </div>
+                </div>
+                
+                {/* Live transcript overlay */}
+                <div className="absolute bottom-16 left-4 right-4">
+                  <AnimatePresence mode="popLayout">
+                    {currentTranscript.slice(-2).map((item, i) => (
+                      <motion.div
+                        key={item.time}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: i === currentTranscript.slice(-2).length - 1 ? 1 : 0.5, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="text-xs text-foreground/80 backdrop-blur-sm bg-background/30 px-2 py-1 rounded mb-1"
+                      >
+                        {item.text}
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                 </div>
               </div>
               
@@ -174,7 +249,14 @@ export const AICoachSpotlight = () => {
                     </div>
                     <div className="flex-1">
                       <p className="text-xs text-muted-foreground">{metric.label}</p>
-                      <p className={`text-lg font-bold ${metric.color}`}>{metric.value}</p>
+                      <motion.p 
+                        key={metric.value}
+                        initial={{ scale: 1.1 }}
+                        animate={{ scale: 1 }}
+                        className={`text-lg font-bold ${metric.color}`}
+                      >
+                        {metric.value}{metric.unit}
+                      </motion.p>
                     </div>
                   </motion.div>
                 ))}

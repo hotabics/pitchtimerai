@@ -479,6 +479,7 @@ const Index = () => {
   if (step === 0) {
     return (
       <>
+        <Header showNavigation onLogoClick={handleLogoClick} />
         <Step1Hook 
           onNext={handleStep1}
           onAutoGenerate={handleAutoGenerate}
