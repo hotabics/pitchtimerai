@@ -194,46 +194,46 @@ export const drawFaceMesh = (
 
     // Draw face mesh connectors ONLY (no background fill!)
     for (const landmarks of results.faceLandmarks) {
-      // Tessellation - subtle mesh
+      // Tessellation - subtle cyan mesh
       drawingUtils.drawConnectors(
         landmarks,
         FaceLandmarker.FACE_LANDMARKS_TESSELATION,
-        { color: 'rgba(99, 102, 241, 0.2)', lineWidth: 0.5 }
+        { color: 'rgba(34, 211, 238, 0.18)', lineWidth: 0.6 }
       );
-      // Face oval - more visible
+      // Face oval - bright cyan
       drawingUtils.drawConnectors(
         landmarks,
         FaceLandmarker.FACE_LANDMARKS_FACE_OVAL,
-        { color: 'rgba(99, 102, 241, 0.6)', lineWidth: 2 }
+        { color: 'rgba(34, 211, 238, 0.75)', lineWidth: 2 }
       );
-      // Eyes - green
+      // Eyes - lime
       drawingUtils.drawConnectors(
         landmarks,
         FaceLandmarker.FACE_LANDMARKS_LEFT_EYE,
-        { color: 'rgba(34, 197, 94, 0.7)', lineWidth: 1.5 }
+        { color: 'rgba(163, 230, 53, 0.8)', lineWidth: 1.6 }
       );
       drawingUtils.drawConnectors(
         landmarks,
         FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE,
-        { color: 'rgba(34, 197, 94, 0.7)', lineWidth: 1.5 }
+        { color: 'rgba(163, 230, 53, 0.8)', lineWidth: 1.6 }
       );
       // Left iris
       drawingUtils.drawConnectors(
         landmarks,
         FaceLandmarker.FACE_LANDMARKS_LEFT_IRIS,
-        { color: 'rgba(34, 197, 94, 0.9)', lineWidth: 1 }
+        { color: 'rgba(163, 230, 53, 0.95)', lineWidth: 1.2 }
       );
       // Right iris
       drawingUtils.drawConnectors(
         landmarks,
         FaceLandmarker.FACE_LANDMARKS_RIGHT_IRIS,
-        { color: 'rgba(34, 197, 94, 0.9)', lineWidth: 1 }
+        { color: 'rgba(163, 230, 53, 0.95)', lineWidth: 1.2 }
       );
-      // Lips - red
+      // Lips - subtle
       drawingUtils.drawConnectors(
         landmarks,
         FaceLandmarker.FACE_LANDMARKS_LIPS,
-        { color: 'rgba(239, 68, 68, 0.5)', lineWidth: 1.5 }
+        { color: 'rgba(34, 211, 238, 0.45)', lineWidth: 1.4 }
       );
     }
 
