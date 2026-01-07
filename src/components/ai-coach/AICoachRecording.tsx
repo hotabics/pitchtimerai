@@ -453,7 +453,26 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
     }, 500);
   };
 
-  const handleCancel = () => { cleanup(); onCancel(); };
+  const handleCancel = useCallback(() => { cleanup(); onCancel(); }, [cleanup, onCancel]);
+
+  // Keyboard shortcuts: Space = toggle teleprompter, Escape = cancel
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      if (e.code === "Space" && hasScript) {
+        e.preventDefault();
+        setTeleprompterPaused((prev) => !prev);
+      } else if (e.code === "Escape") {
+        e.preventDefault();
+        handleCancel();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [hasScript, handleCancel]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
