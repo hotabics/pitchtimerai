@@ -1,13 +1,13 @@
 // AI Coach Recording View - Real-time MediaPipe face mesh
+// Fixed: Camera initialization, layering, and fallback handling
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Square, Mic, Eye, Smile, Timer, AlertTriangle } from 'lucide-react';
+import { Square, Mic, Eye, Smile, AlertTriangle, Camera, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { useAICoachStore } from '@/stores/aiCoachStore';
 import type { FrameData } from '@/services/mediapipe';
-import { initializeFaceLandmarker, drawFaceMesh, disposeFaceLandmarker, type FaceMetrics } from '@/services/mediapipe';
+import { initializeFaceLandmarker, drawFaceMesh, type FaceMetrics } from '@/services/mediapipe';
 
 interface AICoachRecordingProps {
   onStop: (audioBlob: Blob, videoBlob: Blob, duration: number, frameData: FrameData[]) => void;
@@ -15,11 +15,16 @@ interface AICoachRecordingProps {
 }
 
 export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) => {
-  const [isInitialized, setIsInitialized] = useState(false);
+  // State for initialization stages
+  const [cameraReady, setCameraReady] = useState(false);
+  const [mediaPipeReady, setMediaPipeReady] = useState(false);
+  const [mediaPipeFailed, setMediaPipeFailed] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
   const [duration, setDuration] = useState(0);
   const [currentMetrics, setCurrentMetrics] = useState<FaceMetrics | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [loadingMessage, setLoadingMessage] = useState('Requesting camera access...');
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -34,16 +39,15 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
   
   const { addFrameData, clearFrameData } = useAICoachStore();
 
-  // Initialize MediaPipe and start recording
+  // Step 1: Initialize camera FIRST (before MediaPipe)
   useEffect(() => {
     let mounted = true;
 
-    const initialize = async () => {
+    const initializeCamera = async () => {
       try {
-        // Initialize MediaPipe
-        await initializeFaceLandmarker();
+        setLoadingMessage('Requesting camera access...');
         
-        // Get media stream
+        // Get media stream FIRST
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { 
             width: { ideal: 1280 },
@@ -60,78 +64,148 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
         
         streamRef.current = stream;
         
+        // Set video source
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
+          
+          // Wait for video to be ready
+          videoRef.current.onloadedmetadata = () => {
+            if (mounted && videoRef.current) {
+              videoRef.current.play().then(() => {
+                setCameraReady(true);
+                setLoadingMessage('Camera ready! Loading face tracking...');
+              });
+            }
+          };
         }
-
-        // Set up MediaRecorder for video+audio
-        const videoRecorder = new MediaRecorder(stream, {
-          mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-            ? 'video/webm;codecs=vp9'
-            : 'video/webm'
-        });
-        
-        videoRecorder.ondataavailable = (e) => {
-          if (e.data.size > 0) {
-            videoChunksRef.current.push(e.data);
-          }
-        };
-        
-        // Set up audio-only recorder for Whisper
-        const audioStream = new MediaStream(stream.getAudioTracks());
-        const audioRecorder = new MediaRecorder(audioStream, {
-          mimeType: MediaRecorder.isTypeSupported('audio/webm')
-            ? 'audio/webm'
-            : 'audio/mp4'
-        });
-        
-        audioRecorder.ondataavailable = (e) => {
-          if (e.data.size > 0) {
-            audioChunksRef.current.push(e.data);
-          }
-        };
-        
-        mediaRecorderRef.current = videoRecorder;
-        (mediaRecorderRef.current as any).audioRecorder = audioRecorder;
-        
-        // Start recording
-        videoRecorder.start(1000);
-        audioRecorder.start(1000);
-        startTimeRef.current = performance.now();
-        clearFrameData();
-        frameDataRef.current = [];
-        
-        setIsInitialized(true);
-        
-        // Start face mesh loop
-        startFaceMeshLoop();
         
       } catch (err) {
-        console.error('Initialization error:', err);
+        console.error('Camera initialization error:', err);
         if (mounted) {
-          setInitError(err instanceof Error ? err.message : 'Failed to initialize');
+          setInitError(
+            err instanceof Error 
+              ? `Camera access denied: ${err.message}`
+              : 'Failed to access camera. Please grant permission.'
+          );
         }
       }
     };
 
-    initialize();
+    initializeCamera();
 
     return () => {
       mounted = false;
-      cleanup();
     };
   }, []);
 
+  // Step 2: Initialize MediaPipe AFTER camera is ready
+  useEffect(() => {
+    if (!cameraReady) return;
+    
+    let mounted = true;
+
+    const initializeMediaPipe = async () => {
+      try {
+        setLoadingMessage('Loading AI face tracking...');
+        await initializeFaceLandmarker();
+        
+        if (mounted) {
+          setMediaPipeReady(true);
+          setLoadingMessage('Starting recording...');
+        }
+      } catch (err) {
+        console.error('MediaPipe initialization failed:', err);
+        if (mounted) {
+          // Don't fail completely - just disable face mesh
+          setMediaPipeFailed(true);
+          setMediaPipeReady(true); // Continue without face mesh
+          console.warn('Continuing without face tracking');
+        }
+      }
+    };
+
+    initializeMediaPipe();
+
+    return () => {
+      mounted = false;
+    };
+  }, [cameraReady]);
+
+  // Step 3: Start recording when both are ready
+  useEffect(() => {
+    if (!cameraReady || !mediaPipeReady || isRecording) return;
+    
+    const stream = streamRef.current;
+    if (!stream) return;
+
+    try {
+      // Set up MediaRecorder for video+audio
+      const videoRecorder = new MediaRecorder(stream, {
+        mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+          ? 'video/webm;codecs=vp9'
+          : 'video/webm'
+      });
+      
+      videoRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          videoChunksRef.current.push(e.data);
+        }
+      };
+      
+      // Set up audio-only recorder for Whisper
+      const audioStream = new MediaStream(stream.getAudioTracks());
+      const audioRecorder = new MediaRecorder(audioStream, {
+        mimeType: MediaRecorder.isTypeSupported('audio/webm')
+          ? 'audio/webm'
+          : 'audio/mp4'
+      });
+      
+      audioRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+      
+      mediaRecorderRef.current = videoRecorder;
+      (mediaRecorderRef.current as any).audioRecorder = audioRecorder;
+      
+      // Start recording
+      videoRecorder.start(1000);
+      audioRecorder.start(1000);
+      startTimeRef.current = performance.now();
+      clearFrameData();
+      frameDataRef.current = [];
+      
+      setIsRecording(true);
+      
+      // Start face mesh loop (only if MediaPipe loaded)
+      if (!mediaPipeFailed) {
+        startFaceMeshLoop();
+      }
+      
+    } catch (err) {
+      console.error('Recording setup error:', err);
+      setInitError('Failed to start recording');
+    }
+  }, [cameraReady, mediaPipeReady, isRecording, mediaPipeFailed]);
+
   // Duration timer
   useEffect(() => {
-    if (!isInitialized) return;
+    if (!isRecording) return;
     
     const interval = setInterval(() => {
       setDuration(Math.floor((performance.now() - startTimeRef.current) / 1000));
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isInitialized]);
+  }, [isRecording]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      cleanup();
+    };
+  }, []);
 
   const startFaceMeshLoop = useCallback(() => {
     const processFrame = () => {
@@ -152,9 +226,11 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
       }
       lastFrameTimeRef.current = now;
 
-      // Set canvas size
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      // Set canvas size to match video
+      if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+      }
       
       const ctx = canvas.getContext('2d');
       if (!ctx) {
@@ -162,41 +238,38 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
         return;
       }
 
-      // Draw mirrored video
-      ctx.save();
-      ctx.scale(-1, 1);
-      ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
-      ctx.restore();
+      // CRITICAL: Clear canvas with transparent background (NOT black!)
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Draw face mesh and get metrics
-      ctx.save();
-      ctx.scale(-1, 1);
-      ctx.translate(-canvas.width, 0);
-      const metrics = drawFaceMesh(ctx, video, now);
-      ctx.restore();
+      // Draw face mesh only (video is shown via video element, not canvas)
+      try {
+        const metrics = drawFaceMesh(ctx, video, now);
 
-      if (metrics) {
-        setCurrentMetrics(metrics);
-        
-        // Store frame data
-        const frameData: FrameData = {
-          timestamp: now - startTimeRef.current,
-          eyeContact: metrics.isLookingAtCamera,
-          smiling: metrics.isSmiling,
-          headDeviation: metrics.headPoseDeviation,
-        };
-        frameDataRef.current.push(frameData);
-        addFrameData(frameData);
-        
-        // Update warnings
-        const newWarnings: string[] = [];
-        if (!metrics.isLookingAtCamera && metrics.headPoseDeviation > 20) {
-          newWarnings.push('Look at the camera');
+        if (metrics) {
+          setCurrentMetrics(metrics);
+          
+          // Store frame data
+          const frameData: FrameData = {
+            timestamp: now - startTimeRef.current,
+            eyeContact: metrics.isLookingAtCamera,
+            smiling: metrics.isSmiling,
+            headDeviation: metrics.headPoseDeviation,
+          };
+          frameDataRef.current.push(frameData);
+          addFrameData(frameData);
+          
+          // Update warnings
+          const newWarnings: string[] = [];
+          if (!metrics.isLookingAtCamera && metrics.headPoseDeviation > 20) {
+            newWarnings.push('Look at the camera');
+          }
+          if (metrics.eyeContactScore < 50) {
+            newWarnings.push('Maintain eye contact');
+          }
+          setWarnings(newWarnings);
         }
-        if (metrics.eyeContactScore < 50) {
-          newWarnings.push('Maintain eye contact');
-        }
-        setWarnings(newWarnings);
+      } catch (error) {
+        console.error('Face mesh error:', error);
       }
 
       animationFrameRef.current = requestAnimationFrame(processFrame);
@@ -208,9 +281,11 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
   const cleanup = () => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
     }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
     }
   };
 
@@ -245,6 +320,7 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Error state
   if (initError) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -253,24 +329,55 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
             <AlertTriangle className="w-8 h-8 text-destructive" />
           </div>
           <h3 className="font-semibold">Initialization Failed</h3>
-          <p className="text-sm text-muted-foreground">{initError}</p>
+          <p className="text-sm text-muted-foreground max-w-md">{initError}</p>
           <Button onClick={onCancel}>Go Back</Button>
         </div>
       </div>
     );
   }
 
-  if (!isInitialized) {
+  // Loading state - show camera preview while loading MediaPipe
+  if (!isRecording) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 mx-auto border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-muted-foreground">Initializing AI Coach...</p>
+      <div className="space-y-4">
+        {/* Video container - always visible during loading */}
+        <div className="relative aspect-video bg-muted rounded-xl overflow-hidden">
+          {/* Video element - visible immediately when camera ready */}
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className={`absolute inset-0 w-full h-full object-cover scale-x-[-1] transition-opacity duration-300 ${
+              cameraReady ? 'opacity-100' : 'opacity-0'
+            }`}
+            style={{ zIndex: 10 }}
+          />
+          
+          {/* Loading overlay */}
+          <div className={`absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm transition-opacity duration-300 ${
+            cameraReady && mediaPipeReady ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          }`} style={{ zIndex: 30 }}>
+            <div className="text-center space-y-4">
+              <div className="relative">
+                <div className="w-16 h-16 mx-auto border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                <Camera className="w-6 h-6 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-primary" />
+              </div>
+              <p className="text-muted-foreground">{loadingMessage}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-center gap-2">
+          <Button variant="outline" onClick={handleCancel}>
+            Cancel
+          </Button>
         </div>
       </div>
     );
   }
 
+  // Recording state
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -295,23 +402,44 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
         </div>
       </div>
 
-      {/* Video with face mesh overlay */}
-      <div className="relative aspect-video bg-black rounded-xl overflow-hidden">
+      {/* Video with face mesh overlay - FIXED LAYERING */}
+      <div className="relative aspect-video rounded-xl overflow-hidden" style={{ minHeight: '400px' }}>
+        {/* Layer 1: Video (z-index: 10) */}
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted
-          className="absolute inset-0 w-full h-full object-cover opacity-0"
-        />
-        <canvas
-          ref={canvasRef}
           className="absolute inset-0 w-full h-full object-cover"
+          style={{ 
+            zIndex: 10,
+            transform: 'scaleX(-1)' // Mirror the video
+          }}
         />
+        
+        {/* Layer 2: Canvas for face mesh (z-index: 20) - TRANSPARENT background */}
+        {!mediaPipeFailed && (
+          <canvas
+            ref={canvasRef}
+            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+            style={{ 
+              zIndex: 20,
+              backgroundColor: 'transparent',
+              transform: 'scaleX(-1)' // Mirror to match video
+            }}
+          />
+        )}
+
+        {/* MediaPipe disabled notice */}
+        {mediaPipeFailed && (
+          <div className="absolute top-4 right-4 px-3 py-1.5 rounded-lg bg-warning/80 text-warning-foreground text-xs font-medium" style={{ zIndex: 30 }}>
+            Face tracking unavailable
+          </div>
+        )}
 
         {/* Real-time warnings */}
-        {warnings.length > 0 && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2">
+        {warnings.length > 0 && !mediaPipeFailed && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2" style={{ zIndex: 30 }}>
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -323,35 +451,39 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
         )}
 
         {/* Live metrics overlay */}
-        <div className="absolute bottom-4 left-4 right-4 flex justify-between">
+        <div className="absolute bottom-4 left-4 right-4 flex justify-between" style={{ zIndex: 30 }}>
           <div className="flex items-center gap-4">
             {/* Eye contact indicator */}
-            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg backdrop-blur-sm ${
-              currentMetrics?.isLookingAtCamera 
-                ? 'bg-success/20 text-success' 
-                : 'bg-muted/50 text-muted-foreground'
-            }`}>
-              <Eye className="w-4 h-4" />
-              <span className="text-sm font-medium">
-                {currentMetrics?.eyeContactScore?.toFixed(0) || 0}%
-              </span>
-            </div>
+            {!mediaPipeFailed && (
+              <>
+                <div className={`flex items-center gap-2 px-3 py-2 rounded-lg backdrop-blur-sm ${
+                  currentMetrics?.isLookingAtCamera 
+                    ? 'bg-success/20 text-success' 
+                    : 'bg-black/50 text-white'
+                }`}>
+                  <Eye className="w-4 h-4" />
+                  <span className="text-sm font-medium">
+                    {currentMetrics?.eyeContactScore?.toFixed(0) || 0}%
+                  </span>
+                </div>
 
-            {/* Smile indicator */}
-            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg backdrop-blur-sm ${
-              currentMetrics?.isSmiling 
-                ? 'bg-primary/20 text-primary' 
-                : 'bg-muted/50 text-muted-foreground'
-            }`}>
-              <Smile className="w-4 h-4" />
-              <span className="text-sm font-medium">
-                {currentMetrics?.isSmiling ? 'Smiling' : 'Neutral'}
-              </span>
-            </div>
+                {/* Smile indicator */}
+                <div className={`flex items-center gap-2 px-3 py-2 rounded-lg backdrop-blur-sm ${
+                  currentMetrics?.isSmiling 
+                    ? 'bg-primary/20 text-primary' 
+                    : 'bg-black/50 text-white'
+                }`}>
+                  <Smile className="w-4 h-4" />
+                  <span className="text-sm font-medium">
+                    {currentMetrics?.isSmiling ? 'Smiling' : 'Neutral'}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Audio level indicator */}
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 backdrop-blur-sm">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/50 backdrop-blur-sm text-white">
             <Mic className="w-4 h-4 text-destructive animate-pulse" />
             <span className="text-sm font-medium">Recording audio...</span>
           </div>
@@ -360,7 +492,7 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
 
       {/* Tips */}
       <div className="text-center text-sm text-muted-foreground">
-        <p>Deliver your pitch naturally. The AI is tracking your eye contact and expressions.</p>
+        <p>Deliver your pitch naturally. {!mediaPipeFailed && 'The AI is tracking your eye contact and expressions.'}</p>
       </div>
     </motion.div>
   );
