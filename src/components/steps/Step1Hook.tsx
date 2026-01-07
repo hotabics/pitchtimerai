@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, AlertCircle, Wand2, Mic } from "lucide-react";
+import { Sparkles, AlertCircle, Wand2, Mic, Video, Brain, Target } from "lucide-react";
 import { TimeEater } from "@/components/landing/TimeEater";
 import { BentoGrid } from "@/components/landing/BentoGrid";
 import { useState, useEffect } from "react";
@@ -10,6 +10,7 @@ export type EntryMode = "generate" | "custom_script";
 interface Step1HookProps {
   onNext: (idea: string) => void;
   onPracticeOwn: () => void;
+  onOpenAICoach?: () => void;
 }
 
 const sloganVariations = [
@@ -19,7 +20,7 @@ const sloganVariations = [
   { subject: "Investments", contrast: "features" },
 ];
 
-export const Step1Hook = ({ onNext, onPracticeOwn }: Step1HookProps) => {
+export const Step1Hook = ({ onNext, onPracticeOwn, onOpenAICoach }: Step1HookProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showOptions, setShowOptions] = useState(false);
 
