@@ -77,6 +77,7 @@ serve(async (req) => {
     apiFormData.append('tag_audio_events', 'false');
     apiFormData.append('diarize', 'false');
     apiFormData.append('language_code', 'eng');
+    apiFormData.append('timestamps_granularity', 'word'); // Request word-level timestamps
 
     const response = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
       method: 'POST',

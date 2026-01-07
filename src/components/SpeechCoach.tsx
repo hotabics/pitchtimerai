@@ -39,6 +39,22 @@ interface AnalysisResult {
   feedback: string[];
   tone: "energetic" | "confident" | "monotone" | "nervous";
   missedSections: string[];
+  primaryIssue?: PrimaryIssue | null;
+}
+
+interface PrimaryIssue {
+  key: string;
+  title: string;
+  evidence_timestamp: number | null;
+  evidence_quote: string | null;
+  next_action: string;
+  severity: number;
+}
+
+interface TranscriptionSegment {
+  start: number;
+  end: number;
+  text: string;
 }
 
 interface PracticeSession {
@@ -137,6 +153,67 @@ const analyzeTranscription = (
   };
 };
 
+// Create segments from transcription for hackathon evaluation
+// ElevenLabs may return word timestamps, or we can create artificial segments based on text
+const createSegmentsFromTranscription = (
+  transcriptionResult: { text?: string; words?: Array<{ text: string; start: number; end: number }> },
+  totalDuration: number
+): TranscriptionSegment[] => {
+  // If we have word-level timestamps, group them into sentence segments
+  if (transcriptionResult.words && transcriptionResult.words.length > 0) {
+    const segments: TranscriptionSegment[] = [];
+    let currentSegment: { start: number; end: number; words: string[] } | null = null;
+    
+    for (const word of transcriptionResult.words) {
+      if (!currentSegment) {
+        currentSegment = { start: word.start, end: word.end, words: [word.text] };
+      } else {
+        currentSegment.words.push(word.text);
+        currentSegment.end = word.end;
+        
+        // Split on sentence-ending punctuation
+        if (word.text.match(/[.!?]$/)) {
+          segments.push({
+            start: currentSegment.start,
+            end: currentSegment.end,
+            text: currentSegment.words.join(' '),
+          });
+          currentSegment = null;
+        }
+      }
+    }
+    
+    // Add any remaining words
+    if (currentSegment && currentSegment.words.length > 0) {
+      segments.push({
+        start: currentSegment.start,
+        end: currentSegment.end,
+        text: currentSegment.words.join(' '),
+      });
+    }
+    
+    return segments;
+  }
+  
+  // Fallback: create artificial segments based on sentences and estimated timing
+  const text = transcriptionResult.text || '';
+  const sentences = text.split(/(?<=[.!?])\s+/).filter(s => s.trim());
+  const totalWords = text.split(/\s+/).length;
+  let currentTime = 0;
+  
+  return sentences.map(sentence => {
+    const wordsInSentence = sentence.split(/\s+/).length;
+    const duration = (wordsInSentence / totalWords) * totalDuration;
+    const segment = {
+      start: currentTime,
+      end: currentTime + duration,
+      text: sentence,
+    };
+    currentTime += duration;
+    return segment;
+  });
+};
+
 // Determine tone based on WPM and filler count
 const determineTone = (wpm: number, fillerCount: number): AnalysisResult["tone"] => {
   if (wpm > 160 && fillerCount < 3) return "energetic";
@@ -216,10 +293,10 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
     }
   }, [sessionGroupId]);
 
-  // Save session to database
-  const saveSession = useCallback(async (analysisResult: AnalysisResult, recordingSeconds: number) => {
+  // Save session to database and return session ID
+  const saveSession = useCallback(async (analysisResult: AnalysisResult, recordingSeconds: number): Promise<string | null> => {
     try {
-      const { error } = await supabase.from('practice_sessions').insert({
+      const { data, error } = await supabase.from('practice_sessions').insert({
         idea,
         track,
         duration_minutes: duration,
@@ -235,14 +312,52 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
         feedback: analysisResult.feedback,
         original_script: originalScript,
         session_group_id: sessionGroupId,
-      });
+      }).select('id').single();
 
       if (error) throw error;
       toast({ title: "Session saved!", description: "Your practice session has been recorded." });
+      return data?.id || null;
     } catch (err) {
       console.error('Failed to save session:', err);
+      return null;
     }
   }, [idea, track, duration, originalScript, sessionGroupId]);
+
+  // Evaluate hackathon jury pitch
+  const evaluateHackathonPitch = useCallback(async (sessionId: string, segments: TranscriptionSegment[]) => {
+    try {
+      console.log('Evaluating hackathon jury pitch for session:', sessionId);
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evaluate-hackathon-jury-pitch`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            session_id: sessionId,
+            track,
+            segments,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Evaluation failed');
+      }
+
+      const result = await response.json();
+      console.log('Hackathon evaluation result:', result);
+      return result.primary_issue as PrimaryIssue;
+    } catch (err) {
+      console.error('Failed to evaluate hackathon pitch:', err);
+      return null;
+    }
+  }, [track]);
 
   // Real audio visualization using Web Audio API
   const updateWaveform = useCallback(() => {
@@ -445,13 +560,26 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
         feedback,
         tone,
         missedSections,
+        primaryIssue: null,
       };
+      
+      // Save to database first to get session ID
+      const sessionId = await saveSession(analysisResult, recordingSeconds);
+      
+      // For hackathon tracks, run the jury evaluation
+      if (sessionId && (track === 'hackathon_jury' || track === 'hackathon_no_demo')) {
+        // Create segments from transcription result for evaluation
+        // ElevenLabs returns words with timestamps, we'll create sentence-level segments
+        const segments = createSegmentsFromTranscription(transcriptionResult, recordingSeconds);
+        
+        const primaryIssue = await evaluateHackathonPitch(sessionId, segments);
+        if (primaryIssue) {
+          analysisResult.primaryIssue = primaryIssue;
+        }
+      }
       
       setAnalysis(analysisResult);
       setState("results");
-      
-      // Save to database
-      await saveSession(analysisResult, recordingSeconds);
       
     } catch (error) {
       console.error("Analysis failed:", error);
@@ -462,7 +590,7 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
       });
       setState("idle");
     }
-  }, [recordingTime, originalScript, saveSession]);
+  }, [recordingTime, originalScript, saveSession, track, evaluateHackathonPitch]);
 
   const handleReset = useCallback(() => {
     setState("idle");
@@ -905,6 +1033,52 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
             </CardContent>
           </Card>
         </div>
+
+        {/* Hackathon Jury: Next Improvement Card */}
+        {analysis.primaryIssue && analysis.primaryIssue.key !== 'none' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <Card className="glass-card border-2 border-primary/50 bg-primary/5">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Target className="w-5 h-5 text-primary" />
+                  Next Improvement
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">
+                    {analysis.primaryIssue.title}
+                  </h3>
+                  {analysis.primaryIssue.evidence_quote && (
+                    <div className="bg-muted/50 rounded-lg p-3 mb-3">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                        <Clock className="w-3 h-3" />
+                        <span>
+                          {analysis.primaryIssue.evidence_timestamp !== null 
+                            ? `at ${Math.round(analysis.primaryIssue.evidence_timestamp)}s`
+                            : 'Evidence'}
+                        </span>
+                      </div>
+                      <p className="text-sm text-foreground italic">
+                        "{analysis.primaryIssue.evidence_quote}"
+                      </p>
+                    </div>
+                  )}
+                  <div className="flex items-start gap-2">
+                    <Zap className="w-4 h-4 text-warning mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-muted-foreground">
+                      {analysis.primaryIssue.next_action}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
         {/* Feedback Summary */}
         <Card className="glass-card">

@@ -5,6 +5,17 @@ All notable changes to PitchPal will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-01-07
+
+### Added
+- **Hackathon Jury Pitch Evaluation Engine v1**: Automated pitch structure analysis for hackathon tracks
+- Event detectors for: Problem statement, Innovation/Differentiation, Technical feasibility, Business model, Solution intro
+- Primary issue selection with priority ranking and severity scoring
+- "Next Improvement" coaching card with evidence timestamps and actionable next steps
+- New `evaluate-hackathon-jury-pitch` edge function
+- Database fields: `events_json`, `primary_issue_key`, `primary_issue_json`
+- Word-level timestamps in STT for precise event detection
+
 ## [1.2.0] - 2026-01-06
 
 ### Added
