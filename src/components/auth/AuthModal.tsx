@@ -1,12 +1,13 @@
-// Auth Modal Component - Lazy Registration Trigger
+// Auth Modal Component - Real Supabase Authentication
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Sparkles } from 'lucide-react';
+import { X, Mail, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useUserStore } from '@/stores/userStore';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
 // Simple SVG icons for social providers
@@ -31,6 +32,7 @@ export const AuthModal = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
 
   const triggerMessages = {
     save: 'Save your winning pitch',
@@ -38,53 +40,105 @@ export const AuthModal = () => {
     export: 'Export your script',
   };
 
-  const handleSocialLogin = (provider: 'google' | 'github') => {
-    setIsLoading(true);
-    
-    // Mock social login
-    setTimeout(() => {
-      const mockUser = {
-        id: `${provider}-${Date.now()}`,
-        email: `demo@${provider}.com`,
-        name: provider === 'google' ? 'Google User' : 'GitHub User',
-        provider,
-      };
-      
-      login(mockUser);
-      setIsLoading(false);
-      closeAuthModal();
-      
-      toast({
-        title: 'Welcome! 🎉',
-        description: `Signed in with ${provider === 'google' ? 'Google' : 'GitHub'}`,
+  const handleGoogleLogin = async () => {
+    setLoadingProvider('google');
+    try {
+      const redirectUrl = `${window.location.origin}/`;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+        },
       });
-    }, 1000);
+      if (error) throw error;
+      // OAuth will redirect, no need to close modal
+    } catch (error: any) {
+      toast({
+        title: 'Google login failed',
+        description: error.message || 'Could not sign in with Google',
+        variant: 'destructive',
+      });
+      setLoadingProvider(null);
+    }
   };
 
-  const handleEmailAuth = (e: React.FormEvent) => {
+  const handleGitHubLogin = async () => {
+    setLoadingProvider('github');
+    toast({
+      title: 'GitHub OAuth not available',
+      description: 'GitHub OAuth is not yet supported in Lovable Cloud. Please use Google or email.',
+      variant: 'destructive',
+    });
+    setLoadingProvider(null);
+  };
+
+  const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;
 
     setIsLoading(true);
     
-    // Mock email auth
-    setTimeout(() => {
-      const mockUser = {
-        id: `email-${Date.now()}`,
-        email,
-        name: email.split('@')[0],
-        provider: 'email' as const,
-      };
-      
-      login(mockUser);
-      setIsLoading(false);
-      closeAuthModal();
-      
+    try {
+      if (mode === 'signup') {
+        const redirectUrl = `${window.location.origin}/`;
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: redirectUrl,
+          },
+        });
+        
+        if (error) throw error;
+        
+        if (data.user) {
+          login({
+            id: data.user.id,
+            email: data.user.email || email,
+            name: email.split('@')[0],
+            provider: 'email',
+          });
+          closeAuthModal();
+          toast({
+            title: 'Account created! 🎉',
+            description: 'You are now signed in.',
+          });
+        }
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        
+        if (error) throw error;
+        
+        if (data.user) {
+          login({
+            id: data.user.id,
+            email: data.user.email || email,
+            name: data.user.user_metadata?.name || email.split('@')[0],
+            provider: 'email',
+          });
+          closeAuthModal();
+          toast({
+            title: 'Welcome back!',
+            description: `Signed in as ${email}`,
+          });
+        }
+      }
+    } catch (error: any) {
+      let message = error.message || 'Authentication failed';
+      if (error.message?.includes('already registered')) {
+        message = 'This email is already registered. Try signing in instead.';
+      }
       toast({
-        title: mode === 'signup' ? 'Account created! 🎉' : 'Welcome back!',
-        description: `Signed in as ${email}`,
+        title: mode === 'signup' ? 'Signup failed' : 'Login failed',
+        description: message,
+        variant: 'destructive',
       });
-    }, 1000);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!showAuthModal) return null;
@@ -133,20 +187,28 @@ export const AuthModal = () => {
               <Button
                 variant="outline"
                 className="w-full h-12 gap-3 text-base font-medium"
-                onClick={() => handleSocialLogin('google')}
-                disabled={isLoading}
+                onClick={handleGoogleLogin}
+                disabled={!!loadingProvider || isLoading}
               >
-                <GoogleIcon />
+                {loadingProvider === 'google' ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <GoogleIcon />
+                )}
                 Continue with Google
               </Button>
               
               <Button
                 variant="outline"
                 className="w-full h-12 gap-3 text-base font-medium"
-                onClick={() => handleSocialLogin('github')}
-                disabled={isLoading}
+                onClick={handleGitHubLogin}
+                disabled={!!loadingProvider || isLoading}
               >
-                <GitHubIcon />
+                {loadingProvider === 'github' ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <GitHubIcon />
+                )}
                 Continue with GitHub
               </Button>
             </div>
@@ -171,7 +233,7 @@ export const AuthModal = () => {
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  disabled={isLoading}
+                  disabled={isLoading || !!loadingProvider}
                 />
               </div>
               
@@ -183,16 +245,20 @@ export const AuthModal = () => {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  disabled={isLoading}
+                  disabled={isLoading || !!loadingProvider}
                 />
               </div>
 
               <Button
                 type="submit"
                 className="w-full h-12 text-base font-medium"
-                disabled={isLoading || !email || !password}
+                disabled={isLoading || !!loadingProvider || !email || !password}
               >
-                <Mail className="w-4 h-4 mr-2" />
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Mail className="w-4 h-4 mr-2" />
+                )}
                 {mode === 'signup' ? 'Create Account' : 'Sign In'}
               </Button>
             </form>

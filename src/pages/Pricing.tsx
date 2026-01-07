@@ -1,14 +1,17 @@
 // Pricing Page Component
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Check, X, Sparkles, Zap, Crown, Clock } from 'lucide-react';
+import { Check, X, Sparkles, Zap, Crown, Clock, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useUserStore } from '@/stores/userStore';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 import { Header } from '@/components/Header';
+import { supabase } from '@/integrations/supabase/client';
+import { STRIPE_PLANS } from '@/config/stripe';
 
 interface PlanFeature {
   text: string;
@@ -83,40 +86,75 @@ const plans: PricingPlan[] = [
 
 export const Pricing = () => {
   const navigate = useNavigate();
-  const { userPlan, setUserPlan, isLoggedIn, openAuthModal } = useUserStore();
+  const [searchParams] = useSearchParams();
+  const { userPlan, setUserPlan, isLoggedIn, openAuthModal, checkSubscription } = useUserStore();
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
 
-  const handleSelectPlan = (plan: PricingPlan) => {
-    if (plan.id === 'free') {
-      // Already on free
-      return;
+  // Handle success/cancel redirects from Stripe
+  useEffect(() => {
+    const success = searchParams.get('success');
+    const plan = searchParams.get('plan');
+    const canceled = searchParams.get('canceled');
+
+    if (success === 'true' && plan) {
+      toast({
+        title: '🎉 Payment successful!',
+        description: `You now have access to ${plan === 'pass_48h' ? 'Hackathon Pass' : 'Founder Pro'}`,
+      });
+      checkSubscription();
+      navigate('/pricing', { replace: true });
+    } else if (canceled === 'true') {
+      toast({
+        title: 'Payment canceled',
+        description: 'You can try again anytime.',
+        variant: 'destructive',
+      });
+      navigate('/pricing', { replace: true });
     }
+  }, [searchParams, checkSubscription, navigate]);
+
+  const handleSelectPlan = async (plan: PricingPlan) => {
+    if (plan.id === 'free') return;
 
     if (!isLoggedIn) {
       openAuthModal('save');
       return;
     }
 
-    // Mock Stripe checkout
-    toast({
-      title: 'Redirecting to checkout...',
-      description: `Setting up payment for ${plan.name}`,
-    });
+    setLoadingPlan(plan.id);
 
-    // Simulate checkout completion
-    setTimeout(() => {
-      const expiresAt = plan.id === 'pass_48h' 
-        ? new Date(Date.now() + 48 * 60 * 60 * 1000) 
-        : null;
-      
-      setUserPlan(plan.id, expiresAt);
-      
-      toast({
-        title: '🎉 Payment successful!',
-        description: `You now have access to ${plan.name}`,
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        openAuthModal('save');
+        return;
+      }
+
+      const priceId = plan.id === 'pass_48h' 
+        ? STRIPE_PLANS.hackathon_pass.priceId 
+        : STRIPE_PLANS.founder_pro.priceId;
+
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { priceId, planType: plan.id },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
-      
-      navigate('/');
-    }, 1500);
+
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, '_blank');
+      }
+    } catch (error: any) {
+      console.error('Checkout error:', error);
+      toast({
+        title: 'Checkout failed',
+        description: error.message || 'Could not start checkout. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingPlan(null);
+    }
   };
 
   return (
@@ -216,9 +254,12 @@ export const Pricing = () => {
                       }`}
                       variant={userPlan === plan.id ? 'outline' : plan.popular ? 'default' : 'secondary'}
                       onClick={() => handleSelectPlan(plan)}
-                      disabled={userPlan === plan.id}
+                      disabled={userPlan === plan.id || loadingPlan === plan.id}
                     >
-                      {userPlan === plan.id ? 'Current Plan' : plan.buttonText}
+                      {loadingPlan === plan.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : null}
+                      {userPlan === plan.id ? 'Current Plan' : loadingPlan === plan.id ? 'Redirecting...' : plan.buttonText}
                     </Button>
                   </CardContent>
                 </Card>
