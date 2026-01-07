@@ -1,6 +1,7 @@
 // Main AI Coach Page Component
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,12 +12,13 @@ import { AICoachResults } from './AICoachResults';
 import { useAICoachStore } from '@/stores/aiCoachStore';
 import type { FrameData } from '@/services/mediapipe';
 
-interface AICoachPageProps {
-  onBack: () => void;
+export interface AICoachPageProps {
+  onBack?: () => void;
   onEditScript?: () => void;
 }
 
 export const AICoachPage = ({ onBack, onEditScript }: AICoachPageProps) => {
+  const navigate = useNavigate();
   const [view, setView] = useState<'setup' | 'recording' | 'processing' | 'results'>('setup');
   const [recordingData, setRecordingData] = useState<{
     audioBlob: Blob;
@@ -55,11 +57,19 @@ export const AICoachPage = ({ onBack, onEditScript }: AICoachPageProps) => {
     setView('setup');
   };
 
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      navigate('/');
+    }
+  };
+
   const handleEditScript = () => {
     if (onEditScript) {
       onEditScript();
     } else {
-      onBack();
+      handleBack();
     }
   };
 
@@ -68,7 +78,7 @@ export const AICoachPage = ({ onBack, onEditScript }: AICoachPageProps) => {
       {/* Header */}
       <header className="border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={onBack}>
+          <Button variant="ghost" size="icon" onClick={handleBack}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
