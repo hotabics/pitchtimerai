@@ -1,7 +1,7 @@
-// AI Coach Settings Modal - API Key Configuration
+// AI Coach Settings Modal - API Key & Model Configuration
 
 import { useState } from 'react';
-import { Settings, Key, Check, X, ExternalLink } from 'lucide-react';
+import { Settings, Key, Check, X, ExternalLink, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +14,23 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { getApiKey, setApiKey, removeApiKey, hasApiKey } from '@/services/openai';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { 
+  getApiKey, 
+  setApiKey, 
+  removeApiKey, 
+  hasApiKey,
+  getSelectedModel,
+  setSelectedModel,
+  OPENAI_MODELS,
+  type OpenAIModel 
+} from '@/services/openai';
 import { toast } from '@/hooks/use-toast';
 
 interface AICoachSettingsProps {
@@ -25,19 +41,29 @@ export const AICoachSettings = ({ trigger }: AICoachSettingsProps) => {
   const [open, setOpen] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [showKey, setShowKey] = useState(false);
+  const [selectedModel, setSelectedModelState] = useState<OpenAIModel>(getSelectedModel());
   const hasKey = hasApiKey();
   const currentKey = getApiKey();
 
   const handleSave = () => {
+    // Save model selection
+    setSelectedModel(selectedModel);
+    
+    // Save API key if provided
     if (apiKeyInput.trim()) {
       setApiKey(apiKeyInput.trim());
       toast({
-        title: 'API Key Saved',
-        description: 'Your OpenAI API key has been stored locally.',
+        title: 'Settings Saved',
+        description: 'Your API key and model preference have been saved.',
       });
       setApiKeyInput('');
-      setOpen(false);
+    } else {
+      toast({
+        title: 'Settings Saved',
+        description: `Model set to ${OPENAI_MODELS.find(m => m.value === selectedModel)?.label}.`,
+      });
     }
+    setOpen(false);
   };
 
   const handleRemove = () => {
@@ -118,6 +144,32 @@ export const AICoachSettings = ({ trigger }: AICoachSettingsProps) => {
             </p>
           </div>
 
+          {/* Model Selection */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              AI Model
+            </Label>
+            <Select value={selectedModel} onValueChange={(v) => setSelectedModelState(v as OpenAIModel)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {OPENAI_MODELS.map((model) => (
+                  <SelectItem key={model.value} value={model.value}>
+                    <div className="flex items-center justify-between gap-4">
+                      <span>{model.label}</span>
+                      <span className="text-xs text-muted-foreground">{model.description}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              GPT-4o provides higher quality analysis. GPT-4o Mini is faster and more cost-effective.
+            </p>
+          </div>
+
           {/* Get API key link */}
           <a
             href="https://platform.openai.com/api-keys"
@@ -136,8 +188,8 @@ export const AICoachSettings = ({ trigger }: AICoachSettingsProps) => {
               Remove Key
             </Button>
           )}
-          <Button onClick={handleSave} disabled={!apiKeyInput.trim()}>
-            Save Key
+          <Button onClick={handleSave}>
+            Save Settings
           </Button>
         </DialogFooter>
       </DialogContent>
