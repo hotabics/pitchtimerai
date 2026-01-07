@@ -395,6 +395,15 @@ interface CoachFeedback {
   encouragement: string;
 }
 
+interface ImprovementSummary {
+  issue_key: string;
+  before: string;
+  after: string;
+  improved: boolean;
+  before_timestamp: number | null;
+  after_timestamp: number | null;
+}
+
 async function generateCoachFeedback(
   primaryIssue: PrimaryIssue,
   durationSeconds: number
@@ -498,15 +507,130 @@ Constraints:
   }
 }
 
+// Compare current session with baseline and generate improvement summary
+async function compareWithBaseline(
+  supabase: any,
+  baselineSessionId: string,
+  currentEvents: Record<string, DetectedEvent>,
+  currentPrimaryIssue: PrimaryIssue
+): Promise<ImprovementSummary | null> {
+  try {
+    const { data: baseline, error } = await supabase
+      .from('practice_sessions')
+      .select('events_json, primary_issue_key')
+      .eq('id', baselineSessionId)
+      .single();
+    
+    if (error || !baseline) {
+      console.error('Failed to fetch baseline session:', error);
+      return null;
+    }
+    
+    const baselineData = baseline as { events_json: Record<string, DetectedEvent>; primary_issue_key: string | null };
+    if (!baselineData.events_json) {
+      return null;
+    }
+    
+    const baselineEvents = baselineData.events_json;
+    const issueKey = baselineData.primary_issue_key || currentPrimaryIssue.key;
+    
+    // Get the event that corresponds to the primary issue
+    const eventKeyMap: Record<string, string> = {
+      'problem_missing': 'problem',
+      'problem_late': 'problem',
+      'innovation_missing': 'innovation',
+      'business_model_missing': 'business_model',
+      'technical_feasibility_missing': 'technical',
+      'structure_out_of_order': 'solution',
+    };
+    
+    const eventKey = eventKeyMap[issueKey] || 'problem';
+    const baselineEvent = baselineEvents[eventKey];
+    const currentEvent = currentEvents[eventKey];
+    
+    if (!baselineEvent || !currentEvent) {
+      return null;
+    }
+    
+    const formatEventLabel = (key: string): string => {
+      const labels: Record<string, string> = {
+        problem: 'Problem statement',
+        innovation: 'Innovation',
+        technical: 'Technical approach',
+        business_model: 'Business model',
+        solution: 'Solution',
+      };
+      return labels[key] || key;
+    };
+    
+    const formatTimestamp = (ts: number): string => {
+      if (ts < 0) return 'not mentioned';
+      const mins = Math.floor(ts / 60);
+      const secs = Math.round(ts % 60);
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+    
+    const label = formatEventLabel(eventKey);
+    const baselineTs = baselineEvent.timestamp;
+    const currentTs = currentEvent.timestamp;
+    
+    // Determine improvement
+    let improved = false;
+    let before = '';
+    let after = '';
+    
+    if (baselineEvent.status === 'missing' && currentEvent.status !== 'missing') {
+      // Was missing, now present
+      improved = true;
+      before = `${label} was missing`;
+      after = `${label} explained at ${formatTimestamp(currentTs)}`;
+    } else if (baselineEvent.status !== 'missing' && currentEvent.status === 'missing') {
+      // Was present, now missing (regression)
+      improved = false;
+      before = `${label} explained at ${formatTimestamp(baselineTs)}`;
+      after = `${label} is now missing`;
+    } else if (baselineEvent.status === 'late' && currentEvent.status === 'found') {
+      // Was late, now on time
+      improved = true;
+      before = `${label} explained at ${formatTimestamp(baselineTs)}`;
+      after = `${label} explained at ${formatTimestamp(currentTs)}`;
+    } else if (baselineTs > 0 && currentTs > 0 && currentTs < baselineTs) {
+      // Both present, but now earlier
+      improved = true;
+      before = `${label} explained at ${formatTimestamp(baselineTs)}`;
+      after = `${label} explained at ${formatTimestamp(currentTs)}`;
+    } else if (baselineTs > 0 && currentTs > 0) {
+      // Both present, compare
+      improved = currentTs <= baselineTs;
+      before = `${label} explained at ${formatTimestamp(baselineTs)}`;
+      after = `${label} explained at ${formatTimestamp(currentTs)}`;
+    } else {
+      return null;
+    }
+    
+    return {
+      issue_key: issueKey,
+      before,
+      after,
+      improved,
+      before_timestamp: baselineTs > 0 ? baselineTs : null,
+      after_timestamp: currentTs > 0 ? currentTs : null,
+    };
+  } catch (error) {
+    console.error('Error comparing with baseline:', error);
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { session_id, track, segments, duration_seconds } = await req.json();
+    const { session_id, track, segments, duration_seconds, baseline_session_id } = await req.json();
     
-    console.log('Evaluating hackathon jury pitch:', { session_id, track, segmentCount: segments?.length, duration_seconds });
+    console.log('Evaluating hackathon jury pitch:', { session_id, track, segmentCount: segments?.length, duration_seconds, baseline_session_id });
     
     if (!session_id || !segments || !Array.isArray(segments)) {
       throw new Error('Missing required fields: session_id and segments');
@@ -545,6 +669,13 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
     
+    // Compare with baseline if provided
+    let improvementSummary: ImprovementSummary | null = null;
+    if (baseline_session_id) {
+      improvementSummary = await compareWithBaseline(supabase, baseline_session_id, events, primaryIssue);
+      console.log('Improvement summary:', improvementSummary);
+    }
+    
     const { error: updateError } = await supabase
       .from('practice_sessions')
       .update({
@@ -554,6 +685,8 @@ serve(async (req) => {
           ...primaryIssue,
           coach_feedback: coachFeedback,
         },
+        baseline_session_id: baseline_session_id || null,
+        improvement_summary_json: improvementSummary,
       })
       .eq('id', session_id);
     
@@ -567,6 +700,7 @@ serve(async (req) => {
         events,
         primary_issue: primaryIssue,
         coach_feedback: coachFeedback,
+        improvement_summary: improvementSummary,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

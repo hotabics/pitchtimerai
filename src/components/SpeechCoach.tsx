@@ -38,6 +38,15 @@ interface CoachFeedback {
   encouragement: string;
 }
 
+interface ImprovementSummary {
+  issue_key: string;
+  before: string;
+  after: string;
+  improved: boolean;
+  before_timestamp: number | null;
+  after_timestamp: number | null;
+}
+
 interface AnalysisResult {
   score: number;
   wpm: number;
@@ -52,6 +61,7 @@ interface AnalysisResult {
   events?: DetectedEvents | null;
   recordingDuration?: number;
   coachFeedback?: CoachFeedback | null;
+  improvementSummary?: ImprovementSummary | null;
 }
 
 interface DetectedEvent {
@@ -93,6 +103,7 @@ interface PracticeSession {
   filler_count: number;
   tone: string;
   recording_duration_seconds: number;
+  primary_issue_key?: string | null;
 }
 
 type CoachState = "idle" | "recording" | "processing" | "results" | "history";
@@ -286,6 +297,7 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
   const [waveformBars, setWaveformBars] = useState<number[]>(Array(40).fill(0.1));
   const [pastSessions, setPastSessions] = useState<PracticeSession[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [baselineSessionId, setBaselineSessionId] = useState<string | null>(null);
   
   // Audio recording refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -307,7 +319,7 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
     try {
       const { data, error } = await supabase
         .from('practice_sessions')
-        .select('id, created_at, score, wpm, filler_count, tone, recording_duration_seconds')
+        .select('id, created_at, score, wpm, filler_count, tone, recording_duration_seconds, primary_issue_key')
         .eq('session_group_id', sessionGroupId)
         .order('created_at', { ascending: false })
         .limit(10);
@@ -355,10 +367,11 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
   const evaluateHackathonPitch = useCallback(async (
     sessionId: string, 
     segments: TranscriptionSegment[], 
-    durationSecs: number
-  ): Promise<{ primaryIssue: PrimaryIssue | null; events: DetectedEvents | null; coachFeedback: CoachFeedback | null }> => {
+    durationSecs: number,
+    baselineId: string | null
+  ): Promise<{ primaryIssue: PrimaryIssue | null; events: DetectedEvents | null; coachFeedback: CoachFeedback | null; improvementSummary: ImprovementSummary | null }> => {
     try {
-      console.log('Evaluating hackathon jury pitch for session:', sessionId);
+      console.log('Evaluating hackathon jury pitch for session:', sessionId, 'baseline:', baselineId);
       
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evaluate-hackathon-jury-pitch`,
@@ -374,6 +387,7 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
             track,
             segments,
             duration_seconds: durationSecs,
+            baseline_session_id: baselineId,
           }),
         }
       );
@@ -389,10 +403,11 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
         primaryIssue: result.primary_issue as PrimaryIssue,
         events: result.events as DetectedEvents,
         coachFeedback: result.coach_feedback as CoachFeedback | null,
+        improvementSummary: result.improvement_summary as ImprovementSummary | null,
       };
     } catch (err) {
       console.error('Failed to evaluate hackathon pitch:', err);
-      return { primaryIssue: null, events: null, coachFeedback: null };
+      return { primaryIssue: null, events: null, coachFeedback: null, improvementSummary: null };
     }
   }, [track]);
 
@@ -609,7 +624,7 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
         // ElevenLabs returns words with timestamps, we'll create sentence-level segments
         const segments = createSegmentsFromTranscription(transcriptionResult, recordingSeconds);
         
-        const evalResult = await evaluateHackathonPitch(sessionId, segments, recordingSeconds);
+        const evalResult = await evaluateHackathonPitch(sessionId, segments, recordingSeconds, baselineSessionId);
         if (evalResult.primaryIssue) {
           analysisResult.primaryIssue = evalResult.primaryIssue;
         }
@@ -619,6 +634,9 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
         }
         if (evalResult.coachFeedback) {
           analysisResult.coachFeedback = evalResult.coachFeedback;
+        }
+        if (evalResult.improvementSummary) {
+          analysisResult.improvementSummary = evalResult.improvementSummary;
         }
       }
       
@@ -856,7 +874,10 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.05 }}
               >
-                <Card className="glass-card">
+                <Card className={cn(
+                  "glass-card transition-all",
+                  baselineSessionId === session.id && "ring-2 ring-primary"
+                )}>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
@@ -880,8 +901,22 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
                           </div>
                         </div>
                       </div>
-                      <div className="text-2xl">
-                        {getToneEmoji(session.tone as AnalysisResult["tone"])}
+                      <div className="flex items-center gap-3">
+                        {(track === 'hackathon_jury' || track === 'hackathon_no_demo') && (
+                          <Button
+                            variant={baselineSessionId === session.id ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setBaselineSessionId(
+                              baselineSessionId === session.id ? null : session.id
+                            )}
+                            className="text-xs"
+                          >
+                            {baselineSessionId === session.id ? "✓ Baseline" : "Use as Baseline"}
+                          </Button>
+                        )}
+                        <div className="text-2xl">
+                          {getToneEmoji(session.tone as AnalysisResult["tone"])}
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -1028,6 +1063,48 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
                         </div>
                       );
                     })}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Improvement Summary (when comparing to baseline) */}
+        {analysis.improvementSummary && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+          >
+            <Card className={cn(
+              "glass-card border-2",
+              analysis.improvementSummary.improved 
+                ? "border-success/50 bg-success/5" 
+                : "border-warning/50 bg-warning/5"
+            )}>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  {analysis.improvementSummary.improved ? (
+                    <div className="flex items-center gap-2 bg-success/20 text-success px-3 py-1 rounded-full text-sm font-semibold">
+                      <CheckCircle2 className="w-4 h-4" />
+                      Improved!
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 bg-warning/20 text-warning px-3 py-1 rounded-full text-sm font-semibold">
+                      <TrendingUp className="w-4 h-4" />
+                      Keep Practicing
+                    </div>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Before</p>
+                    <p className="text-foreground">{analysis.improvementSummary.before}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">After</p>
+                    <p className="text-foreground">{analysis.improvementSummary.after}</p>
                   </div>
                 </div>
               </CardContent>
