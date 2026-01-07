@@ -173,7 +173,7 @@ const calculateHeadPoseDeviation = (landmarks: { x: number; y: number; z: number
   return Math.min(90, (horizontalDeviation + verticalDeviation) * 30);
 };
 
-// Draw face mesh on canvas
+// Draw face mesh on canvas (ONLY draws mesh, does NOT draw video or fill background)
 export const drawFaceMesh = (
   ctx: CanvasRenderingContext2D,
   video: HTMLVideoElement,
@@ -192,32 +192,48 @@ export const drawFaceMesh = (
 
     const drawingUtils = new DrawingUtils(ctx);
 
-    // Draw face mesh
+    // Draw face mesh connectors ONLY (no background fill!)
     for (const landmarks of results.faceLandmarks) {
+      // Tessellation - subtle mesh
       drawingUtils.drawConnectors(
         landmarks,
         FaceLandmarker.FACE_LANDMARKS_TESSELATION,
-        { color: 'rgba(99, 102, 241, 0.3)', lineWidth: 0.5 }
+        { color: 'rgba(99, 102, 241, 0.2)', lineWidth: 0.5 }
       );
+      // Face oval - more visible
       drawingUtils.drawConnectors(
         landmarks,
         FaceLandmarker.FACE_LANDMARKS_FACE_OVAL,
-        { color: 'rgba(99, 102, 241, 0.8)', lineWidth: 2 }
+        { color: 'rgba(99, 102, 241, 0.6)', lineWidth: 2 }
       );
+      // Eyes - green
       drawingUtils.drawConnectors(
         landmarks,
         FaceLandmarker.FACE_LANDMARKS_LEFT_EYE,
-        { color: 'rgba(34, 197, 94, 0.8)', lineWidth: 1 }
+        { color: 'rgba(34, 197, 94, 0.7)', lineWidth: 1.5 }
       );
       drawingUtils.drawConnectors(
         landmarks,
         FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE,
-        { color: 'rgba(34, 197, 94, 0.8)', lineWidth: 1 }
+        { color: 'rgba(34, 197, 94, 0.7)', lineWidth: 1.5 }
       );
+      // Left iris
+      drawingUtils.drawConnectors(
+        landmarks,
+        FaceLandmarker.FACE_LANDMARKS_LEFT_IRIS,
+        { color: 'rgba(34, 197, 94, 0.9)', lineWidth: 1 }
+      );
+      // Right iris
+      drawingUtils.drawConnectors(
+        landmarks,
+        FaceLandmarker.FACE_LANDMARKS_RIGHT_IRIS,
+        { color: 'rgba(34, 197, 94, 0.9)', lineWidth: 1 }
+      );
+      // Lips - red
       drawingUtils.drawConnectors(
         landmarks,
         FaceLandmarker.FACE_LANDMARKS_LIPS,
-        { color: 'rgba(239, 68, 68, 0.6)', lineWidth: 1 }
+        { color: 'rgba(239, 68, 68, 0.5)', lineWidth: 1.5 }
       );
     }
 
