@@ -1,10 +1,10 @@
-// Script Feedback Bar - Thumbs up/down with "Why?" tag cloud
+// Script Feedback Bar - Thumbs up/down with "Why?" tag cloud and undo
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ThumbsUp, ThumbsDown } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { logFeedback, ScriptDislikeReason } from '@/services/feedbackService';
+import { logFeedback, undoFeedback, ScriptDislikeReason } from '@/services/feedbackService';
 import { cn } from '@/lib/utils';
 
 interface ScriptFeedbackBarProps {
@@ -19,16 +19,65 @@ const dislikeReasons: { id: ScriptDislikeReason; label: string }[] = [
   { id: 'inaccurate_info', label: 'Inaccurate Info' },
 ];
 
+const UNDO_TIMEOUT_MS = 5000;
+
 export const ScriptFeedbackBar = ({ scriptId, className }: ScriptFeedbackBarProps) => {
   const [feedbackGiven, setFeedbackGiven] = useState<'up' | 'down' | null>(null);
   const [showReasons, setShowReasons] = useState(false);
   const [selectedReason, setSelectedReason] = useState<ScriptDislikeReason | null>(null);
+  const [lastFeedbackId, setLastFeedbackId] = useState<string | null>(null);
+  const [showUndo, setShowUndo] = useState(false);
+  const [undoCountdown, setUndoCountdown] = useState(5);
+  const undoTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleThumbsUp = () => {
+  const clearTimers = () => {
+    if (undoTimerRef.current) {
+      clearTimeout(undoTimerRef.current);
+      undoTimerRef.current = null;
+    }
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+      countdownRef.current = null;
+    }
+  };
+
+  const startUndoTimer = () => {
+    setShowUndo(true);
+    setUndoCountdown(5);
+    
+    // Countdown interval
+    countdownRef.current = setInterval(() => {
+      setUndoCountdown(prev => {
+        if (prev <= 1) {
+          clearTimers();
+          setShowUndo(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    // Timeout to hide undo
+    undoTimerRef.current = setTimeout(() => {
+      clearTimers();
+      setShowUndo(false);
+    }, UNDO_TIMEOUT_MS);
+  };
+
+  useEffect(() => {
+    return () => clearTimers();
+  }, []);
+
+  const handleThumbsUp = async () => {
     if (feedbackGiven) return;
     setFeedbackGiven('up');
     setShowReasons(false);
-    logFeedback('script_thumbs_up', { scriptId });
+    const id = await logFeedback('script_thumbs_up', { scriptId });
+    if (id) {
+      setLastFeedbackId(id);
+      startUndoTimer();
+    }
   };
 
   const handleThumbsDown = () => {
@@ -37,10 +86,28 @@ export const ScriptFeedbackBar = ({ scriptId, className }: ScriptFeedbackBarProp
     setShowReasons(true);
   };
 
-  const handleReasonSelect = (reason: ScriptDislikeReason) => {
+  const handleReasonSelect = async (reason: ScriptDislikeReason) => {
     setSelectedReason(reason);
     setShowReasons(false);
-    logFeedback('script_thumbs_down', { scriptId, reason });
+    const id = await logFeedback('script_thumbs_down', { scriptId, reason });
+    if (id) {
+      setLastFeedbackId(id);
+      startUndoTimer();
+    }
+  };
+
+  const handleUndo = async () => {
+    if (!lastFeedbackId) return;
+    
+    clearTimers();
+    setShowUndo(false);
+    
+    const success = await undoFeedback(lastFeedbackId);
+    if (success) {
+      setFeedbackGiven(null);
+      setSelectedReason(null);
+      setLastFeedbackId(null);
+    }
   };
 
   return (
@@ -86,6 +153,27 @@ export const ScriptFeedbackBar = ({ scriptId, className }: ScriptFeedbackBarProp
             )} />
           </Button>
         </div>
+
+        {/* Undo button with countdown */}
+        <AnimatePresence>
+          {showUndo && (
+            <motion.div
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleUndo}
+                className="h-7 px-2 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
+              >
+                <Undo2 className="w-3.5 h-3.5" />
+                Undo ({undoCountdown}s)
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* "Why?" Tag Cloud */}
