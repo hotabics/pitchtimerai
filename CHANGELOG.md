@@ -5,6 +5,22 @@ All notable changes to PitchPal will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-01-07
+
+### Added
+- **Real URL Scraping with Firecrawl**: Replaced mock scraper with production Firecrawl API
+  - Extracts project name, problem, and solution from any website
+  - Intelligent content parsing with keyword-based extraction
+  - Automatic audience detection (Investors, Academic, Hackathon)
+  - New `firecrawl-scrape` edge function for secure API calls
+- **Getting Started Tutorial**: Interactive onboarding for first-time users
+  - 6-step guided tour of key features
+  - Progress dots with navigation
+  - Persists completion state in localStorage
+  - Skip option for returning users
+- New `src/lib/api/firecrawl.ts` API client for Firecrawl integration
+- New `GettingStartedTutorial.tsx` component with animations
+
 ## [1.4.0] - 2026-01-07
 
 ### Added
@@ -22,13 +38,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Keyboard Shortcuts**: Space to toggle teleprompter, Escape to cancel recording
 - **URL Scraping & Magic Input**: Paste a URL to auto-extract project data
   - Intelligent input detection (URL vs text)
-  - "Scanning Website..." animation with mock scraping
+  - "Scanning Website..." animation with scraping
   - Auto-fill project name, problem, and solution fields
 - **"Auto-Generate Pitch ⚡" Feature**: One-click instant pitch generation
   - Full-screen AI processing overlay with step animations
   - Skips wizard entirely and jumps to Dashboard
   - Randomly selects optimal track and tone
-- New `mockScraper.ts` service for URL detection and mock scraping
+- New `mockScraper.ts` service for URL detection (fallback)
 - New `AutoGenerateOverlay.tsx` component for instant generation flow
 
 ## [1.3.0] - 2026-01-07

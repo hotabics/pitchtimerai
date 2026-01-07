@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
 import { Header } from "@/components/Header";
 import { WizardLayout } from "@/components/WizardLayout";
@@ -10,10 +10,11 @@ import { CustomScriptStep } from "@/components/steps/CustomScriptStep";
 import { Dashboard } from "@/components/Dashboard";
 import { AICoachPage } from "@/components/ai-coach/AICoachPage";
 import { AutoGenerateOverlay } from "@/components/landing/AutoGenerateOverlay";
+import { GettingStartedTutorial } from "@/components/landing/GettingStartedTutorial";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ScrapedData, generateAutoPitch, isUrl } from "@/services/mockScraper";
-
+import { ScrapedProjectData } from "@/lib/api/firecrawl";
+import { generateAutoPitch, isUrl } from "@/services/mockScraper";
 // Track-specific step imports
 import { 
   HackathonPainStep, 
@@ -133,10 +134,23 @@ const Index = () => {
   const [showAutoGenerateOverlay, setShowAutoGenerateOverlay] = useState(false);
   const [autoGenerateInput, setAutoGenerateInput] = useState("");
   const [autoGenerateIsUrl, setAutoGenerateIsUrl] = useState(false);
-  const [pendingAutoData, setPendingAutoData] = useState<ScrapedData | undefined>(undefined);
+  const [pendingAutoData, setPendingAutoData] = useState<ScrapedProjectData | undefined>(undefined);
+  const [showTutorial, setShowTutorial] = useState(false);
   const [data, setData] = useState<Partial<PitchData>>({ entryMode: "generate" });
   const [trackStep, setTrackStep] = useState(0);
   const [isStructuring, setIsStructuring] = useState(false);
+
+  // Check for first-time user tutorial
+  useEffect(() => {
+    const tutorialCompleted = localStorage.getItem("pitchdeck-tutorial-completed");
+    if (!tutorialCompleted) {
+      setShowTutorial(true);
+    }
+  }, []);
+
+  const handleTutorialComplete = () => {
+    setShowTutorial(false);
+  };
 
   const currentTrack = data.track;
   const trackConfig = currentTrack ? trackConfigs[currentTrack] : null;
@@ -185,7 +199,7 @@ const Index = () => {
   };
 
   // Step 1: Landing with idea input (customize mode)
-  const handleStep1 = (idea: string, scrapedData?: ScrapedData) => {
+  const handleStep1 = (idea: string, scrapedData?: ScrapedProjectData) => {
     setData({ 
       ...data, 
       idea: scrapedData?.name || idea, 
@@ -206,7 +220,7 @@ const Index = () => {
   };
 
   // Auto-generate: Skip wizard entirely
-  const handleAutoGenerate = (idea: string, scrapedData?: ScrapedData) => {
+  const handleAutoGenerate = (idea: string, scrapedData?: ScrapedProjectData) => {
     setAutoGenerateInput(idea);
     setAutoGenerateIsUrl(isUrl(idea) || !!scrapedData);
     setPendingAutoData(scrapedData);
@@ -393,6 +407,11 @@ const Index = () => {
   };
 
   const briefData = buildBriefData();
+
+  // Tutorial overlay for first-time users
+  if (showTutorial) {
+    return <GettingStartedTutorial onComplete={handleTutorialComplete} />;
+  }
 
   // AI Coach view
   if (showAICoach) {
