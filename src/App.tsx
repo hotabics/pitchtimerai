@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import AdminAnalytics from "./pages/AdminAnalytics";
+import FeedbackAnalytics from "./pages/FeedbackAnalytics";
 import { AICoachPage } from "./components/ai-coach/AICoachPage";
 const queryClient = new QueryClient();
 
@@ -18,6 +19,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/admin/analytics" element={<AdminAnalytics />} />
+          <Route path="/admin/feedback" element={<FeedbackAnalytics />} />
           <Route path="/ai-coach" element={<AICoachPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

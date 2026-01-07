@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      feedback_logs: {
+        Row: {
+          additional_context: Json | null
+          created_at: string
+          feedback_type: string
+          id: string
+          is_new_version_better: boolean | null
+          metric_name: string | null
+          reason: string | null
+          script_id: string | null
+          session_id: string | null
+          undone: boolean | null
+        }
+        Insert: {
+          additional_context?: Json | null
+          created_at?: string
+          feedback_type: string
+          id?: string
+          is_new_version_better?: boolean | null
+          metric_name?: string | null
+          reason?: string | null
+          script_id?: string | null
+          session_id?: string | null
+          undone?: boolean | null
+        }
+        Update: {
+          additional_context?: Json | null
+          created_at?: string
+          feedback_type?: string
+          id?: string
+          is_new_version_better?: boolean | null
+          metric_name?: string | null
+          reason?: string | null
+          script_id?: string | null
+          session_id?: string | null
+          undone?: boolean | null
+        }
+        Relationships: []
+      }
       practice_sessions: {
         Row: {
           baseline_session_id: string | null
