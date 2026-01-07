@@ -79,7 +79,18 @@ Deno.serve(async (req) => {
       }),
     });
 
-    const data = await response.json();
+    // Handle non-JSON responses (like "Bad Gateway")
+    const responseText = await response.text();
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      console.error('Non-JSON response from Firecrawl:', responseText.slice(0, 200));
+      return new Response(
+        JSON.stringify({ success: false, error: `Firecrawl API error: ${responseText.slice(0, 100)}` }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     if (!response.ok) {
       console.error('Firecrawl API error:', data);
