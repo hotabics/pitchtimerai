@@ -1,13 +1,15 @@
 // AI Coach Setup View - Camera/Mic permissions and preview
 
 import { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
-import { Video, Mic, Camera, AlertCircle, Check, Settings, FileText, Trash2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Video, Mic, Camera, AlertCircle, Check, Settings, FileText, Trash2, Upload, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { AICoachSettings } from './AICoachSettings';
 import { hasApiKey } from '@/services/openai';
-import { useAICoachStore } from '@/stores/aiCoachStore';
+import { useAICoachStore, type ScriptBlock } from '@/stores/aiCoachStore';
 
 interface AICoachSetupProps {
   onReady: () => void;
@@ -17,6 +19,9 @@ export const AICoachSetup = ({ onReady }: AICoachSetupProps) => {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [permissionStatus, setPermissionStatus] = useState<'pending' | 'granted' | 'denied'>('pending');
   const [error, setError] = useState<string | null>(null);
+  const [showAllBlocks, setShowAllBlocks] = useState(false);
+  const [loadScriptOpen, setLoadScriptOpen] = useState(false);
+  const [pastedScript, setPastedScript] = useState('');
   const videoRef = useRef<HTMLVideoElement>(null);
   const hasKey = hasApiKey();
   
@@ -25,6 +30,36 @@ export const AICoachSetup = ({ onReady }: AICoachSetupProps) => {
 
   const handleClearScript = () => {
     setScriptBlocks([]);
+  };
+
+  const handleLoadScript = () => {
+    if (!pastedScript.trim()) return;
+    
+    // Parse the pasted script into blocks
+    // Split by double newlines or numbered sections
+    const lines = pastedScript.trim().split(/\n\n+/);
+    const blocks: ScriptBlock[] = lines
+      .filter(line => line.trim())
+      .map((line, index) => {
+        // Try to extract a title if line starts with a number, bullet, or has a colon
+        const titleMatch = line.match(/^(?:\d+[\.\)]\s*)?(?:[\*\-]\s*)?([^:]+):\s*(.+)$/s);
+        if (titleMatch) {
+          return {
+            title: titleMatch[1].trim(),
+            content: titleMatch[2].trim(),
+          };
+        }
+        return {
+          title: `Section ${index + 1}`,
+          content: line.trim(),
+        };
+      });
+    
+    if (blocks.length > 0) {
+      setScriptBlocks(blocks);
+      setPastedScript('');
+      setLoadScriptOpen(false);
+    }
   };
 
   useEffect(() => {
@@ -70,6 +105,10 @@ export const AICoachSetup = ({ onReady }: AICoachSetupProps) => {
     }
   };
 
+  // Determine how many blocks to show in preview
+  const previewBlocks = showAllBlocks ? scriptBlocks : scriptBlocks.slice(0, 3);
+  const hasMoreBlocks = scriptBlocks.length > 3;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -88,36 +127,127 @@ export const AICoachSetup = ({ onReady }: AICoachSetupProps) => {
       </div>
 
       {/* Script Mode Indicator */}
-      <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border border-border">
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-            hasScript ? 'bg-primary/10' : 'bg-muted'
-          }`}>
-            <FileText className={`w-5 h-5 ${hasScript ? 'text-primary' : 'text-muted-foreground'}`} />
+      <div className="rounded-lg bg-muted/50 border border-border overflow-hidden">
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+              hasScript ? 'bg-primary/10' : 'bg-muted'
+            }`}>
+              <FileText className={`w-5 h-5 ${hasScript ? 'text-primary' : 'text-muted-foreground'}`} />
+            </div>
+            <div>
+              <p className="font-medium">
+                {hasScript ? 'Teleprompter Mode' : 'Live Transcription Mode'}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {hasScript 
+                  ? `${scriptBlocks.length} script blocks loaded`
+                  : 'Speech will be transcribed in real-time'
+                }
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="font-medium">
-              {hasScript ? 'Teleprompter Mode' : 'Live Transcription Mode'}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {hasScript 
-                ? `${scriptBlocks.length} script blocks loaded`
-                : 'Speech will be transcribed in real-time'
-              }
-            </p>
+          <div className="flex items-center gap-2">
+            {hasScript ? (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleClearScript}
+                className="text-destructive hover:text-destructive"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Clear
+              </Button>
+            ) : (
+              <Dialog open={loadScriptOpen} onOpenChange={setLoadScriptOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Load Script
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Load Your Script</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <p className="text-sm text-muted-foreground">
+                      Paste your script below. Separate sections with blank lines. 
+                      Optionally use "Title: content" format for named sections.
+                    </p>
+                    <Textarea
+                      placeholder={`Example:\n\nHook: Welcome everyone! Today I'm going to show you something amazing.\n\nProblem: Have you ever struggled with...\n\nSolution: That's why we built...`}
+                      value={pastedScript}
+                      onChange={(e) => setPastedScript(e.target.value)}
+                      className="min-h-[200px] font-mono text-sm"
+                    />
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setLoadScriptOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleLoadScript} disabled={!pastedScript.trim()}>
+                      Load Script
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
         </div>
-        {hasScript && (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleClearScript}
-            className="text-destructive hover:text-destructive"
-          >
-            <Trash2 className="w-4 h-4 mr-2" />
-            Clear Script
-          </Button>
-        )}
+
+        {/* Script Preview */}
+        <AnimatePresence>
+          {hasScript && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="border-t border-border"
+            >
+              <div className="p-4 space-y-3">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Script Preview
+                </p>
+                <div className="space-y-2">
+                  {previewBlocks.map((block, index) => (
+                    <div 
+                      key={index}
+                      className="p-3 rounded-md bg-background border border-border"
+                    >
+                      <p className="text-xs font-medium text-primary mb-1">
+                        {block.title}
+                      </p>
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {block.content}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                {hasMoreBlocks && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAllBlocks(!showAllBlocks)}
+                    className="w-full text-muted-foreground"
+                  >
+                    {showAllBlocks ? (
+                      <>
+                        <ChevronUp className="w-4 h-4 mr-2" />
+                        Show Less
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="w-4 h-4 mr-2" />
+                        Show {scriptBlocks.length - 3} More Blocks
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* API Key Status */}
