@@ -129,6 +129,107 @@ export const AICoachSetup = ({ onReady }: AICoachSetupProps) => {
         <AICoachSettings />
       </div>
 
+      {/* API Key Status */}
+      {!hasKey && (
+        <Alert>
+          <AlertCircle className="w-4 h-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>No OpenAI API key configured. Using mock data for demo.</span>
+            <AICoachSettings 
+              trigger={
+                <Button variant="outline" size="sm" className="ml-2">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Add API Key
+                </Button>
+              } 
+            />
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Video Preview */}
+      <div className="relative aspect-video bg-muted rounded-xl overflow-hidden border border-border">
+        {permissionStatus === 'pending' && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 mx-auto border-4 border-primary border-t-transparent rounded-full animate-spin" />
+              <p className="text-muted-foreground">Requesting permissions...</p>
+            </div>
+          </div>
+        )}
+
+        {permissionStatus === 'denied' && (
+          <div className="absolute inset-0 flex items-center justify-center p-6">
+            <div className="text-center space-y-4 max-w-md">
+              <div className="w-16 h-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
+                <AlertCircle className="w-8 h-8 text-destructive" />
+              </div>
+              <h3 className="font-semibold text-lg">Permission Required</h3>
+              <p className="text-sm text-muted-foreground">
+                {error || 'Please allow camera and microphone access to use AI Coach.'}
+              </p>
+              <Button onClick={requestPermissions}>
+                Try Again
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {permissionStatus === 'granted' && (
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="w-full h-full object-cover scale-x-[-1]"
+          />
+        )}
+      </div>
+
+      {/* Permission indicators */}
+      <div className="flex items-center justify-center gap-6">
+        <div className="flex items-center gap-2">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+            permissionStatus === 'granted' ? 'bg-success/10' : 'bg-muted'
+          }`}>
+            <Camera className={`w-4 h-4 ${
+              permissionStatus === 'granted' ? 'text-success' : 'text-muted-foreground'
+            }`} />
+          </div>
+          <span className="text-sm">Camera</span>
+          {permissionStatus === 'granted' && (
+            <Check className="w-4 h-4 text-success" />
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+            permissionStatus === 'granted' ? 'bg-success/10' : 'bg-muted'
+          }`}>
+            <Mic className={`w-4 h-4 ${
+              permissionStatus === 'granted' ? 'text-success' : 'text-muted-foreground'
+            }`} />
+          </div>
+          <span className="text-sm">Microphone</span>
+          {permissionStatus === 'granted' && (
+            <Check className="w-4 h-4 text-success" />
+          )}
+        </div>
+      </div>
+
+      {/* Start button */}
+      <div className="flex justify-center">
+        <Button
+          size="lg"
+          onClick={handleStart}
+          disabled={permissionStatus !== 'granted'}
+          className="px-8"
+        >
+          <Video className="w-5 h-5 mr-2" />
+          Start Recording
+        </Button>
+      </div>
+
       {/* Script Mode Indicator */}
       <div className="rounded-lg bg-muted/50 border border-border overflow-hidden">
         <div className="flex items-center justify-between p-4">
@@ -251,107 +352,6 @@ export const AICoachSetup = ({ onReady }: AICoachSetupProps) => {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
-
-      {/* API Key Status */}
-      {!hasKey && (
-        <Alert>
-          <AlertCircle className="w-4 h-4" />
-          <AlertDescription className="flex items-center justify-between">
-            <span>No OpenAI API key configured. Using mock data for demo.</span>
-            <AICoachSettings 
-              trigger={
-                <Button variant="outline" size="sm" className="ml-2">
-                  <Settings className="w-4 h-4 mr-2" />
-                  Add API Key
-                </Button>
-              } 
-            />
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Video Preview */}
-      <div className="relative aspect-video bg-muted rounded-xl overflow-hidden border border-border">
-        {permissionStatus === 'pending' && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 mx-auto border-4 border-primary border-t-transparent rounded-full animate-spin" />
-              <p className="text-muted-foreground">Requesting permissions...</p>
-            </div>
-          </div>
-        )}
-
-        {permissionStatus === 'denied' && (
-          <div className="absolute inset-0 flex items-center justify-center p-6">
-            <div className="text-center space-y-4 max-w-md">
-              <div className="w-16 h-16 mx-auto rounded-full bg-destructive/10 flex items-center justify-center">
-                <AlertCircle className="w-8 h-8 text-destructive" />
-              </div>
-              <h3 className="font-semibold text-lg">Permission Required</h3>
-              <p className="text-sm text-muted-foreground">
-                {error || 'Please allow camera and microphone access to use AI Coach.'}
-              </p>
-              <Button onClick={requestPermissions}>
-                Try Again
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {permissionStatus === 'granted' && (
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="w-full h-full object-cover scale-x-[-1]"
-          />
-        )}
-      </div>
-
-      {/* Permission indicators */}
-      <div className="flex items-center justify-center gap-6">
-        <div className="flex items-center gap-2">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-            permissionStatus === 'granted' ? 'bg-success/10' : 'bg-muted'
-          }`}>
-            <Camera className={`w-4 h-4 ${
-              permissionStatus === 'granted' ? 'text-success' : 'text-muted-foreground'
-            }`} />
-          </div>
-          <span className="text-sm">Camera</span>
-          {permissionStatus === 'granted' && (
-            <Check className="w-4 h-4 text-success" />
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-            permissionStatus === 'granted' ? 'bg-success/10' : 'bg-muted'
-          }`}>
-            <Mic className={`w-4 h-4 ${
-              permissionStatus === 'granted' ? 'text-success' : 'text-muted-foreground'
-            }`} />
-          </div>
-          <span className="text-sm">Microphone</span>
-          {permissionStatus === 'granted' && (
-            <Check className="w-4 h-4 text-success" />
-          )}
-        </div>
-      </div>
-
-      {/* Start button */}
-      <div className="flex justify-center">
-        <Button
-          size="lg"
-          onClick={handleStart}
-          disabled={permissionStatus !== 'granted'}
-          className="px-8"
-        >
-          <Video className="w-5 h-5 mr-2" />
-          Start Recording
-        </Button>
       </div>
 
       {/* Tips */}
