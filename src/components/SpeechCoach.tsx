@@ -29,6 +29,15 @@ interface SpeechCoachProps {
   duration: number;
 }
 
+interface CoachFeedback {
+  headline: string;
+  what_i_noticed: string;
+  why_it_matters: string;
+  evidence: { timestamp: number; quote: string };
+  one_change_to_try: string;
+  encouragement: string;
+}
+
 interface AnalysisResult {
   score: number;
   wpm: number;
@@ -42,6 +51,7 @@ interface AnalysisResult {
   primaryIssue?: PrimaryIssue | null;
   events?: DetectedEvents | null;
   recordingDuration?: number;
+  coachFeedback?: CoachFeedback | null;
 }
 
 interface DetectedEvent {
@@ -342,7 +352,11 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
   }, [idea, track, duration, originalScript, sessionGroupId]);
 
   // Evaluate hackathon jury pitch
-  const evaluateHackathonPitch = useCallback(async (sessionId: string, segments: TranscriptionSegment[]): Promise<{ primaryIssue: PrimaryIssue | null; events: DetectedEvents | null }> => {
+  const evaluateHackathonPitch = useCallback(async (
+    sessionId: string, 
+    segments: TranscriptionSegment[], 
+    durationSecs: number
+  ): Promise<{ primaryIssue: PrimaryIssue | null; events: DetectedEvents | null; coachFeedback: CoachFeedback | null }> => {
     try {
       console.log('Evaluating hackathon jury pitch for session:', sessionId);
       
@@ -359,6 +373,7 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
             session_id: sessionId,
             track,
             segments,
+            duration_seconds: durationSecs,
           }),
         }
       );
@@ -373,10 +388,11 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
       return {
         primaryIssue: result.primary_issue as PrimaryIssue,
         events: result.events as DetectedEvents,
+        coachFeedback: result.coach_feedback as CoachFeedback | null,
       };
     } catch (err) {
       console.error('Failed to evaluate hackathon pitch:', err);
-      return { primaryIssue: null, events: null };
+      return { primaryIssue: null, events: null, coachFeedback: null };
     }
   }, [track]);
 
@@ -593,13 +609,16 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
         // ElevenLabs returns words with timestamps, we'll create sentence-level segments
         const segments = createSegmentsFromTranscription(transcriptionResult, recordingSeconds);
         
-        const evalResult = await evaluateHackathonPitch(sessionId, segments);
+        const evalResult = await evaluateHackathonPitch(sessionId, segments, recordingSeconds);
         if (evalResult.primaryIssue) {
           analysisResult.primaryIssue = evalResult.primaryIssue;
         }
         if (evalResult.events) {
           analysisResult.events = evalResult.events;
           analysisResult.recordingDuration = recordingSeconds;
+        }
+        if (evalResult.coachFeedback) {
+          analysisResult.coachFeedback = evalResult.coachFeedback;
         }
       }
       
@@ -1172,8 +1191,85 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
           </Card>
         </div>
 
-        {/* Hackathon Jury: Next Improvement Card */}
-        {analysis.primaryIssue && analysis.primaryIssue.key !== 'none' && (
+        {/* Hackathon Jury: Coach Feedback Card */}
+        {analysis.coachFeedback && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <Card className="glass-card border-2 border-primary/50 bg-primary/5">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Target className="w-5 h-5 text-primary" />
+                  Coach Feedback
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <h3 className="text-lg font-semibold text-foreground">
+                  {analysis.coachFeedback.headline}
+                </h3>
+                
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                      What I noticed
+                    </p>
+                    <p className="text-sm text-foreground">
+                      {analysis.coachFeedback.what_i_noticed}
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                      Why it matters
+                    </p>
+                    <p className="text-sm text-foreground">
+                      {analysis.coachFeedback.why_it_matters}
+                    </p>
+                  </div>
+                  
+                  {analysis.coachFeedback.evidence?.quote && (
+                    <div className="bg-muted/50 rounded-lg p-3">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+                        <Clock className="w-3 h-3" />
+                        <span>
+                          {analysis.coachFeedback.evidence.timestamp !== null 
+                            ? `at ${Math.round(analysis.coachFeedback.evidence.timestamp)}s`
+                            : 'Evidence'}
+                        </span>
+                      </div>
+                      <p className="text-sm text-foreground italic">
+                        "{analysis.coachFeedback.evidence.quote}"
+                      </p>
+                    </div>
+                  )}
+                  
+                  <div className="bg-success/10 rounded-lg p-3">
+                    <div className="flex items-start gap-2">
+                      <Zap className="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-medium text-success uppercase tracking-wide mb-1">
+                          One change to try
+                        </p>
+                        <p className="text-sm text-foreground">
+                          {analysis.coachFeedback.one_change_to_try}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <p className="text-sm text-muted-foreground italic border-l-2 border-primary/30 pl-3">
+                    {analysis.coachFeedback.encouragement}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Fallback: Basic Next Improvement Card (when coach feedback not available) */}
+        {!analysis.coachFeedback && analysis.primaryIssue && analysis.primaryIssue.key !== 'none' && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

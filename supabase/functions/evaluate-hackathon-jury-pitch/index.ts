@@ -330,36 +330,49 @@ function selectPrimaryIssue(events: Record<string, DetectedEvent>): PrimaryIssue
   return mapIssueToPrimaryIssue(topIssue.key, topIssue.event, events);
 }
 
+interface IssueGuideline {
+  title: string;
+  guideline: string;
+  next_action: string;
+}
+
+const ISSUE_GUIDELINES: Record<string, IssueGuideline> = {
+  problem_missing: {
+    title: 'State the problem clearly',
+    guideline: 'Every hackathon pitch must start with a clear problem statement within the first 20 seconds.',
+    next_action: 'Start with WHO has the problem and WHAT pain they experience. Example: "Developers waste 3 hours daily on manual code reviews."',
+  },
+  problem_late: {
+    title: 'Lead with the problem sooner',
+    guideline: 'The problem statement should appear in the first 20 seconds to hook the jury.',
+    next_action: 'Move your problem statement to the opening of your pitch to capture attention immediately.',
+  },
+  innovation_missing: {
+    title: 'Explain what makes this different',
+    guideline: 'Juries need to understand what sets your solution apart from existing approaches.',
+    next_action: 'Add a sentence comparing your approach to existing solutions. What\'s new or unique about your solution?',
+  },
+  business_model_missing: {
+    title: 'Show real-world impact',
+    guideline: 'Even hackathon projects should demonstrate potential real-world value or impact.',
+    next_action: 'Explain who will use this and how it creates value. Even for hackathons, juries want to see potential impact.',
+  },
+  technical_feasibility_missing: {
+    title: 'Mention your technical approach',
+    guideline: 'Technical details build credibility and show your solution is actually buildable.',
+    next_action: 'Briefly describe what you built and how. This builds confidence that your solution is real.',
+  },
+  structure_out_of_order: {
+    title: 'Reorder: Problem before Solution',
+    guideline: 'Always establish the problem context before presenting your solution.',
+    next_action: 'Lead with the pain point to create context for your solution.',
+  },
+};
+
 function mapIssueToPrimaryIssue(key: string, event: DetectedEvent, allEvents: Record<string, DetectedEvent>): PrimaryIssue {
-  const issueMap: Record<string, { title: string; next_action: string }> = {
-    problem_missing: {
-      title: 'State the problem clearly',
-      next_action: 'Start with WHO has the problem and WHAT pain they experience. Example: "Developers waste 3 hours daily on manual code reviews."',
-    },
-    problem_late: {
-      title: 'Lead with the problem sooner',
-      next_action: `Your problem statement came at ${Math.round(event.timestamp)}s. Move it to your first 20 seconds to hook the jury immediately.`,
-    },
-    innovation_missing: {
-      title: 'Explain what makes this different',
-      next_action: 'Add a sentence comparing your approach to existing solutions. What\'s new or unique about your solution?',
-    },
-    business_model_missing: {
-      title: 'Show real-world impact',
-      next_action: 'Explain who will use this and how it creates value. Even for hackathons, juries want to see potential impact.',
-    },
-    technical_feasibility_missing: {
-      title: 'Mention your technical approach',
-      next_action: 'Briefly describe what you built and how. This builds confidence that your solution is real.',
-    },
-    structure_out_of_order: {
-      title: 'Reorder: Problem before Solution',
-      next_action: 'You introduced your solution before the problem. Lead with the pain point to create context for your solution.',
-    },
-  };
-  
-  const info = issueMap[key] || {
+  const info = ISSUE_GUIDELINES[key] || {
     title: 'Improve your pitch',
+    guideline: 'Ensure all key elements are present in your pitch.',
     next_action: 'Review your pitch structure and ensure all key elements are present.',
   };
   
@@ -373,15 +386,127 @@ function mapIssueToPrimaryIssue(key: string, event: DetectedEvent, allEvents: Re
   };
 }
 
+interface CoachFeedback {
+  headline: string;
+  what_i_noticed: string;
+  why_it_matters: string;
+  evidence: { timestamp: number; quote: string };
+  one_change_to_try: string;
+  encouragement: string;
+}
+
+async function generateCoachFeedback(
+  primaryIssue: PrimaryIssue,
+  durationSeconds: number
+): Promise<CoachFeedback | null> {
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  
+  if (!LOVABLE_API_KEY || primaryIssue.key === 'none') {
+    return null;
+  }
+  
+  const guideline = ISSUE_GUIDELINES[primaryIssue.key]?.guideline || 'Ensure all key elements are present.';
+  
+  const systemPrompt = `You are an experienced hackathon pitch coach.
+
+You help teams impress juries by clarifying the problem, highlighting innovation, explaining feasibility, and showing real-world impact.
+
+Rules:
+- Do NOT grade or score.
+- Provide ONLY ONE improvement.
+- Do NOT mention AI or analysis.
+- Always cite the provided timestamp and quote.
+- Be practical, supportive, and jury-oriented.
+- Output valid JSON only.`;
+
+  const userPrompt = `Track: hackathon_jury
+Audience: Hackathon Jury
+Pitch duration seconds: ${durationSeconds}
+
+Primary issue:
+- issue_key: ${primaryIssue.key}
+- title: "${primaryIssue.title}"
+- guideline: "${guideline}"
+- evidence_timestamp: ${primaryIssue.evidence_timestamp ?? 'null'}
+- evidence_quote: "${primaryIssue.evidence_quote ?? ''}"
+- next_action: "${primaryIssue.next_action}"
+
+Write coach feedback in this JSON schema:
+
+{
+  "headline": string,
+  "what_i_noticed": string,
+  "why_it_matters": string,
+  "evidence": { "timestamp": number, "quote": string },
+  "one_change_to_try": string,
+  "encouragement": string
+}
+
+Constraints:
+- One improvement only.
+- One concrete action the team can apply immediately.
+- Keep each field 1–2 sentences.
+- Output JSON only.`;
+
+  try {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      console.error('Lovable AI error:', response.status, await response.text());
+      return null;
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    
+    if (!content) {
+      console.error('No content in AI response');
+      return null;
+    }
+
+    // Parse JSON from response (handle markdown code blocks)
+    let jsonStr = content.trim();
+    if (jsonStr.startsWith('```json')) {
+      jsonStr = jsonStr.slice(7);
+    } else if (jsonStr.startsWith('```')) {
+      jsonStr = jsonStr.slice(3);
+    }
+    if (jsonStr.endsWith('```')) {
+      jsonStr = jsonStr.slice(0, -3);
+    }
+    jsonStr = jsonStr.trim();
+
+    const feedback = JSON.parse(jsonStr) as CoachFeedback;
+    console.log('Generated coach feedback:', feedback);
+    return feedback;
+  } catch (error) {
+    console.error('Error generating coach feedback:', error);
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { session_id, track, segments } = await req.json();
+    const { session_id, track, segments, duration_seconds } = await req.json();
     
-    console.log('Evaluating hackathon jury pitch:', { session_id, track, segmentCount: segments?.length });
+    console.log('Evaluating hackathon jury pitch:', { session_id, track, segmentCount: segments?.length, duration_seconds });
     
     if (!session_id || !segments || !Array.isArray(segments)) {
       throw new Error('Missing required fields: session_id and segments');
@@ -410,6 +535,11 @@ serve(async (req) => {
     const primaryIssue = selectPrimaryIssue(events);
     console.log('Primary issue:', primaryIssue);
     
+    // Generate coach-style feedback using Lovable AI
+    const durationSecs = duration_seconds || 60;
+    const coachFeedback = await generateCoachFeedback(primaryIssue, durationSecs);
+    console.log('Coach feedback generated:', !!coachFeedback);
+    
     // Store results in database
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -420,7 +550,10 @@ serve(async (req) => {
       .update({
         events_json: events,
         primary_issue_key: primaryIssue.key,
-        primary_issue_json: primaryIssue,
+        primary_issue_json: {
+          ...primaryIssue,
+          coach_feedback: coachFeedback,
+        },
       })
       .eq('id', session_id);
     
@@ -433,6 +566,7 @@ serve(async (req) => {
       JSON.stringify({
         events,
         primary_issue: primaryIssue,
+        coach_feedback: coachFeedback,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
