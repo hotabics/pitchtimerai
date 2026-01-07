@@ -89,29 +89,10 @@ export const Step1Hook = ({ onNext, onPracticeOwn, onOpenAICoach }: Step1HookPro
             </AnimatePresence>
             .
           </h1>
-          <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed mb-6">
+          <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
             See exactly how much prep time you'll save with our{" "}
             <span className="text-foreground font-medium">AI-powered pitch builder</span>.
           </p>
-
-          {/* AI Coach CTA Button */}
-          {onOpenAICoach && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-            >
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={onOpenAICoach}
-                className="gap-2 border-primary/30 hover:border-primary/50 hover:bg-primary/5"
-              >
-                <Video className="w-5 h-5" />
-                Open AI Coach (Webcam)
-              </Button>
-            </motion.div>
-          )}
         </motion.div>
 
         {/* Entry Mode Selection or Time Eater */}
@@ -372,18 +353,27 @@ export const Step1Hook = ({ onNext, onPracticeOwn, onOpenAICoach }: Step1HookPro
             </div>
           </motion.div>
 
-          {/* CTA */}
+          {/* CTA Buttons */}
           {onOpenAICoach && (
             <motion.div
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
               transition={{ delay: 0.4 }}
-              className="text-center mt-8"
+              className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-8"
             >
               <Button size="lg" onClick={onOpenAICoach} className="gap-2">
                 <Video className="w-5 h-5" />
                 Try AI Coach Now
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={onOpenAICoach}
+                className="gap-2 border-primary/30 hover:border-primary/50 hover:bg-primary/5"
+              >
+                <Video className="w-5 h-5" />
+                Open AI Coach (Webcam)
               </Button>
             </motion.div>
           )}
