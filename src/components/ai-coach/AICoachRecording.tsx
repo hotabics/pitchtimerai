@@ -565,122 +565,11 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
         </div>
       </div>
 
-      {/* Split layout */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        {/* LEFT: Teleprompter or Live transcription */}
-        <section className="rounded-xl border border-border overflow-hidden bg-card">
-          {hasScript ? (
-            <>
-              <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-                <span className="text-sm font-medium text-muted-foreground">Teleprompter</span>
-                <span className="text-xs text-muted-foreground">Auto-scroll</span>
-              </div>
-              <div ref={teleprompterRef} className="p-5 h-[420px] overflow-y-auto scroll-smooth">
-                {scriptBlocks.map((b, idx) => (
-                  <div key={idx} className="mb-6">
-                    <div className="text-xs text-primary font-medium mb-2">{b.title}</div>
-                    <p className="text-xl leading-relaxed text-foreground font-medium">{b.content}</p>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="px-4 py-3 border-b border-border space-y-3">
-                {/* Transcription toggle + status */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        id="transcription-toggle"
-                        checked={transcriptionSettings.enabled}
-                        onCheckedChange={(checked) => 
-                          setTranscriptionSettings({ ...transcriptionSettings, enabled: checked })
-                        }
-                        disabled={isRecording}
-                      />
-                      <Label htmlFor="transcription-toggle" className="text-sm font-medium cursor-pointer">
-                        Live Transcription
-                      </Label>
-                    </div>
-                    {transcriptionSettings.enabled && (
-                      <span className="text-xs text-muted-foreground">
-                        {speechSupported 
-                          ? (isListening ? "Listening..." : "Starting...") 
-                          : "Not supported"}
-                      </span>
-                    )}
-                  </div>
-                  {transcriptionSettings.enabled && speechSupported && (
-                    <div className={`h-2 w-2 rounded-full ${isListening ? "bg-destructive animate-pulse" : "bg-muted"}`} />
-                  )}
-                </div>
-
-                {/* Language selector */}
-                {transcriptionSettings.enabled && (
-                  <div className="flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-muted-foreground" />
-                    <Select
-                      value={transcriptionSettings.language}
-                      onValueChange={(value) => 
-                        setTranscriptionSettings({ ...transcriptionSettings, language: value })
-                      }
-                      disabled={isRecording}
-                    >
-                      <SelectTrigger className="h-8 w-[180px] text-xs">
-                        <SelectValue placeholder="Select language" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {LANGUAGES.map((lang) => (
-                          <SelectItem key={lang.code} value={lang.code} className="text-xs">
-                            {lang.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {isRecording && (
-                      <span className="text-xs text-muted-foreground">(locked during recording)</span>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="p-4">
-                {transcriptionSettings.enabled ? (
-                  <div
-                    ref={liveTranscriptRef}
-                    className="h-[380px] overflow-y-auto rounded-lg bg-foreground text-background p-4 text-base leading-relaxed"
-                  >
-                    {speechSupported ? (
-                      <>
-                        <p className="whitespace-pre-wrap">{liveTranscriptDisplay.base || "\n\nSay something to see subtitles here."}</p>
-                        {liveTranscriptDisplay.interim ? (
-                          <p className="whitespace-pre-wrap opacity-70">{liveTranscriptDisplay.interim}</p>
-                        ) : null}
-                      </>
-                    ) : (
-                      <p className="opacity-80">
-                        Your browser doesn't support SpeechRecognition. (Try Chrome / Edge on desktop.)
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="h-[380px] flex items-center justify-center rounded-lg bg-muted/50 text-muted-foreground">
-                    <div className="text-center space-y-2">
-                      <Mic className="w-8 h-8 mx-auto opacity-50" />
-                      <p className="text-sm">Live transcription is disabled</p>
-                      <p className="text-xs">Enable it above to see your speech in real-time</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </section>
-
-        {/* RIGHT: Video + overlays */}
+      {/* Stacked layout: Video on top, teleprompter below */}
+      <div className="space-y-4">
+        {/* VIDEO: Full width */}
         <section className="space-y-3">
-          <div className="relative aspect-video rounded-xl overflow-hidden bg-muted" style={{ minHeight: "400px" }}>
+          <div className="relative aspect-video rounded-xl overflow-hidden bg-muted w-full">
             {/* Layer 1: Video */}
             <video
               ref={attachVideoEl}
@@ -803,6 +692,117 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
           <p className="text-center text-sm text-muted-foreground">
             Deliver your pitch naturally. {!mediaPipeFailed && "The AI is tracking your eye contact and expressions."}
           </p>
+        </section>
+
+        {/* TELEPROMPTER / LIVE TRANSCRIPTION: Below video */}
+        <section className="rounded-xl border border-border overflow-hidden bg-card">
+          {hasScript ? (
+            <>
+              <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                <span className="text-sm font-medium text-muted-foreground">Teleprompter</span>
+                <span className="text-xs text-muted-foreground">Auto-scroll</span>
+              </div>
+              <div ref={teleprompterRef} className="p-5 h-[200px] overflow-y-auto scroll-smooth">
+                {scriptBlocks.map((b, idx) => (
+                  <div key={idx} className="mb-6">
+                    <div className="text-xs text-primary font-medium mb-2">{b.title}</div>
+                    <p className="text-xl leading-relaxed text-foreground font-medium">{b.content}</p>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="px-4 py-3 border-b border-border space-y-3">
+                {/* Transcription toggle + status */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="transcription-toggle"
+                        checked={transcriptionSettings.enabled}
+                        onCheckedChange={(checked) => 
+                          setTranscriptionSettings({ ...transcriptionSettings, enabled: checked })
+                        }
+                        disabled={isRecording}
+                      />
+                      <Label htmlFor="transcription-toggle" className="text-sm font-medium cursor-pointer">
+                        Live Transcription
+                      </Label>
+                    </div>
+                    {transcriptionSettings.enabled && (
+                      <span className="text-xs text-muted-foreground">
+                        {speechSupported 
+                          ? (isListening ? "Listening..." : "Starting...") 
+                          : "Not supported"}
+                      </span>
+                    )}
+                  </div>
+                  {transcriptionSettings.enabled && speechSupported && (
+                    <div className={`h-2 w-2 rounded-full ${isListening ? "bg-destructive animate-pulse" : "bg-muted"}`} />
+                  )}
+                </div>
+
+                {/* Language selector */}
+                {transcriptionSettings.enabled && (
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-muted-foreground" />
+                    <Select
+                      value={transcriptionSettings.language}
+                      onValueChange={(value) => 
+                        setTranscriptionSettings({ ...transcriptionSettings, language: value })
+                      }
+                      disabled={isRecording}
+                    >
+                      <SelectTrigger className="h-8 w-[180px] text-xs">
+                        <SelectValue placeholder="Select language" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LANGUAGES.map((lang) => (
+                          <SelectItem key={lang.code} value={lang.code} className="text-xs">
+                            {lang.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {isRecording && (
+                      <span className="text-xs text-muted-foreground">(locked during recording)</span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="p-4">
+                {transcriptionSettings.enabled ? (
+                  <div
+                    ref={liveTranscriptRef}
+                    className="h-[160px] overflow-y-auto rounded-lg bg-foreground text-background p-4 text-base leading-relaxed"
+                  >
+                    {speechSupported ? (
+                      <>
+                        <p className="whitespace-pre-wrap">{liveTranscriptDisplay.base || "\n\nSay something to see subtitles here."}</p>
+                        {liveTranscriptDisplay.interim ? (
+                          <p className="whitespace-pre-wrap opacity-70">{liveTranscriptDisplay.interim}</p>
+                        ) : null}
+                      </>
+                    ) : (
+                      <p className="opacity-80">
+                        Your browser doesn&apos;t support SpeechRecognition. (Try Chrome / Edge on desktop.)
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="h-[160px] flex items-center justify-center rounded-lg bg-muted/50 text-muted-foreground">
+                    <div className="text-center space-y-2">
+                      <Mic className="w-8 h-8 mx-auto opacity-50" />
+                      <p className="text-sm">Live transcription is disabled</p>
+                      <p className="text-xs">Enable it above to see your speech in real-time</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </section>
       </div>
     </motion.div>
