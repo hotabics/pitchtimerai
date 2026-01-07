@@ -3,6 +3,7 @@ import { AlertCircle } from "lucide-react";
 import { ScrapedData } from "@/services/mockScraper";
 import { ScrapedProjectData } from "@/lib/api/firecrawl";
 import { HeroSection } from "@/components/landing/HeroSection";
+import { PathComparisonDemo } from "@/components/landing/PathComparisonDemo";
 import { ComparisonSection } from "@/components/landing/ComparisonSection";
 import { AICoachSpotlight } from "@/components/landing/AICoachSpotlight";
 import { TechStackBanner } from "@/components/landing/TechStackBanner";
@@ -35,6 +36,9 @@ export const Step1Hook = ({ onNext, onAutoGenerate, onPracticeOwn, onOpenAICoach
         onAutoGenerate={handleAutoGenerate}
         onOpenAICoach={onOpenAICoach}
       />
+
+      {/* Path Comparison Demo - Visual explainer */}
+      <PathComparisonDemo />
 
       {/* Comparison Section - "Why not just ChatGPT?" */}
       <ComparisonSection />
