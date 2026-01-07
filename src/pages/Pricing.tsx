@@ -116,46 +116,31 @@ export const Pricing = () => {
 
   const handleSelectPlan = async (plan: PricingPlan) => {
     if (plan.id === 'free') return;
-
-    if (!isLoggedIn) {
-      openAuthModal('save');
-      return;
-    }
+    if (userPlan === plan.id) return;
 
     setLoadingPlan(plan.id);
 
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        openAuthModal('save');
-        return;
-      }
+    // Simulate mock payment flow
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
-      const priceId = plan.id === 'pass_48h' 
-        ? STRIPE_PLANS.hackathon_pass.priceId 
-        : STRIPE_PLANS.founder_pro.priceId;
+    // Calculate expiration for 48h pass
+    const expiresAt = plan.id === 'pass_48h' 
+      ? new Date(Date.now() + 48 * 60 * 60 * 1000) 
+      : null;
 
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceId, planType: plan.id },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
+    // Update user plan in store (persisted to localStorage)
+    setUserPlan(plan.id, expiresAt);
 
-      if (error) throw error;
-      if (data?.url) {
-        window.open(data.url, '_blank');
-      }
-    } catch (error: any) {
-      console.error('Checkout error:', error);
-      toast({
-        title: 'Checkout failed',
-        description: error.message || 'Could not start checkout. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoadingPlan(null);
-    }
+    // Show success toast
+    toast({
+      title: '🚀 Payment Successful!',
+      description: `Premium features unlocked. ${plan.id === 'pass_48h' ? 'Your 48h access starts now!' : 'Welcome to Founder Pro!'}`,
+    });
+
+    setLoadingPlan(null);
+
+    // Redirect to AI Coach to experience unlocked features
+    navigate('/ai-coach');
   };
 
   const handleManageSubscription = async () => {
@@ -292,12 +277,18 @@ export const Pricing = () => {
                       }`}
                       variant={userPlan === plan.id ? 'outline' : plan.popular ? 'default' : 'secondary'}
                       onClick={() => handleSelectPlan(plan)}
-                      disabled={userPlan === plan.id || loadingPlan === plan.id}
+                      disabled={plan.id === 'free' || userPlan === plan.id || loadingPlan !== null}
                     >
                       {loadingPlan === plan.id ? (
                         <Loader2 className="w-4 h-4 animate-spin mr-2" />
                       ) : null}
-                      {userPlan === plan.id ? 'Current Plan' : loadingPlan === plan.id ? 'Redirecting...' : plan.buttonText}
+                      {userPlan === plan.id 
+                        ? '✓ Active Plan' 
+                        : loadingPlan === plan.id 
+                          ? 'Processing Payment...' 
+                          : plan.id === 'free' 
+                            ? 'Free Forever' 
+                            : plan.buttonText}
                     </Button>
                   </CardContent>
                 </Card>
