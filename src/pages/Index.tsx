@@ -10,8 +10,6 @@ import { CustomScriptStep } from "@/components/steps/CustomScriptStep";
 import { Dashboard } from "@/components/Dashboard";
 import { AICoachPage } from "@/components/ai-coach/AICoachPage";
 import { AutoGenerateOverlay } from "@/components/landing/AutoGenerateOverlay";
-import { GettingStartedTutorial } from "@/components/landing/GettingStartedTutorial";
-import { FloatingTutorialButton } from "@/components/landing/FloatingTutorialButton";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrapedProjectData } from "@/lib/api/firecrawl";
@@ -137,27 +135,11 @@ const Index = () => {
   const [autoGenerateInput, setAutoGenerateInput] = useState("");
   const [autoGenerateIsUrl, setAutoGenerateIsUrl] = useState(false);
   const [pendingAutoData, setPendingAutoData] = useState<ScrapedProjectData | undefined>(undefined);
-  const [showTutorial, setShowTutorial] = useState(false);
+  
   const [data, setData] = useState<Partial<PitchData>>({ entryMode: "generate" });
   const [trackStep, setTrackStep] = useState(0);
   const [isStructuring, setIsStructuring] = useState(false);
 
-  // Check for first-time user tutorial
-  useEffect(() => {
-    const tutorialCompleted = localStorage.getItem("pitchdeck-tutorial-completed");
-    if (!tutorialCompleted) {
-      setShowTutorial(true);
-    }
-  }, []);
-
-  const handleTutorialComplete = () => {
-    setShowTutorial(false);
-  };
-
-  const handleOpenTutorial = () => {
-    localStorage.removeItem("pitchdeck-tutorial-completed");
-    setShowTutorial(true);
-  };
 
   const currentTrack = data.track;
   const trackConfig = currentTrack ? trackConfigs[currentTrack] : null;
@@ -418,10 +400,6 @@ const Index = () => {
 
   const briefData = buildBriefData();
 
-  // Tutorial overlay for first-time users
-  if (showTutorial) {
-    return <GettingStartedTutorial onComplete={handleTutorialComplete} />;
-  }
 
   // AI Coach view
   if (showAICoach) {
@@ -492,8 +470,6 @@ const Index = () => {
           inputValue={autoGenerateInput}
           onComplete={handleAutoGenerateComplete}
         />
-        {/* Floating Tutorial Button */}
-        <FloatingTutorialButton onClick={handleOpenTutorial} />
       </>
     );
   }
