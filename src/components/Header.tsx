@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useUserStore } from "@/stores/userStore";
+import { PassCountdown } from "@/components/PassCountdown";
 
 interface HeaderProps {
   showProgress?: boolean;
@@ -123,6 +124,9 @@ export const Header = ({ showProgress, currentStep = 0, totalSteps = 7, onLogoCl
                   </div>
                 </div>
               )}
+
+              {/* 48h Pass Countdown */}
+              <PassCountdown />
 
               {/* User Avatar / Login Button */}
               {isLoggedIn ? (
