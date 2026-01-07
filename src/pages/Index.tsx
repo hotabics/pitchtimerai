@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { AnimatePresence } from "framer-motion";
 import { Header } from "@/components/Header";
 import { WizardLayout } from "@/components/WizardLayout";
@@ -9,8 +9,10 @@ import { Step7Generation } from "@/components/steps/Step7Generation";
 import { CustomScriptStep } from "@/components/steps/CustomScriptStep";
 import { Dashboard } from "@/components/Dashboard";
 import { AICoachPage } from "@/components/ai-coach/AICoachPage";
+import { AutoGenerateOverlay } from "@/components/landing/AutoGenerateOverlay";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { ScrapedData, generateAutoPitch, isUrl } from "@/services/mockScraper";
 
 // Track-specific step imports
 import { 
@@ -128,6 +130,10 @@ const Index = () => {
   const [step, setStep] = useState(0);
   const [showDashboard, setShowDashboard] = useState(false);
   const [showAICoach, setShowAICoach] = useState(false);
+  const [showAutoGenerateOverlay, setShowAutoGenerateOverlay] = useState(false);
+  const [autoGenerateInput, setAutoGenerateInput] = useState("");
+  const [autoGenerateIsUrl, setAutoGenerateIsUrl] = useState(false);
+  const [pendingAutoData, setPendingAutoData] = useState<ScrapedData | undefined>(undefined);
   const [data, setData] = useState<Partial<PitchData>>({ entryMode: "generate" });
   const [trackStep, setTrackStep] = useState(0);
   const [isStructuring, setIsStructuring] = useState(false);
@@ -178,15 +184,56 @@ const Index = () => {
     setShowAICoach(false);
   };
 
-  // Step 1: Landing with idea input (generate mode)
-  const handleStep1 = (idea: string) => {
-    setData({ ...data, idea, entryMode: "generate" });
+  // Step 1: Landing with idea input (customize mode)
+  const handleStep1 = (idea: string, scrapedData?: ScrapedData) => {
+    setData({ 
+      ...data, 
+      idea: scrapedData?.name || idea, 
+      entryMode: "generate",
+      // Pre-fill track data if we have scraped data
+      ...(scrapedData && {
+        trackData: {
+          pain: scrapedData.problem,
+          fix: scrapedData.solution,
+        }
+      })
+    });
     setStep(1);
     toast({
-      title: "Idea Captured!",
+      title: scrapedData ? "URL Data Imported!" : "Idea Captured!",
       description: "Let's customize your pitch...",
     });
   };
+
+  // Auto-generate: Skip wizard entirely
+  const handleAutoGenerate = (idea: string, scrapedData?: ScrapedData) => {
+    setAutoGenerateInput(idea);
+    setAutoGenerateIsUrl(isUrl(idea) || !!scrapedData);
+    setPendingAutoData(scrapedData);
+    setShowAutoGenerateOverlay(true);
+  };
+
+  // Called when auto-generate overlay completes
+  const handleAutoGenerateComplete = useCallback(() => {
+    const autoPitch = generateAutoPitch(autoGenerateInput, pendingAutoData);
+    
+    setData({
+      ...data,
+      idea: autoPitch.idea,
+      track: autoPitch.track,
+      audienceLabel: autoPitch.audienceLabel,
+      trackData: autoPitch.trackData,
+      entryMode: "generate",
+    });
+    
+    setShowAutoGenerateOverlay(false);
+    setShowDashboard(true);
+    
+    toast({
+      title: "🎉 Pitch Auto-Generated!",
+      description: `${autoPitch.audienceLabel} pitch ready. Skipped the wizard!`,
+    });
+  }, [autoGenerateInput, pendingAutoData, data]);
 
   // Entry: Practice your own pitch
   const handlePracticeOwn = () => {
@@ -402,11 +449,20 @@ const Index = () => {
   // Landing page (Step 0)
   if (step === 0) {
     return (
-      <Step1Hook 
-        onNext={handleStep1} 
-        onPracticeOwn={handlePracticeOwn}
-        onOpenAICoach={handleOpenAICoach}
-      />
+      <>
+        <Step1Hook 
+          onNext={handleStep1}
+          onAutoGenerate={handleAutoGenerate}
+          onPracticeOwn={handlePracticeOwn}
+          onOpenAICoach={handleOpenAICoach}
+        />
+        <AutoGenerateOverlay
+          isVisible={showAutoGenerateOverlay}
+          isUrlMode={autoGenerateIsUrl}
+          inputValue={autoGenerateInput}
+          onComplete={handleAutoGenerateComplete}
+        />
+      </>
     );
   }
 

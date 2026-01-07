@@ -4,11 +4,13 @@ import { TimeEater } from "@/components/landing/TimeEater";
 import { BentoGrid } from "@/components/landing/BentoGrid";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { ScrapedData } from "@/services/mockScraper";
 
 export type EntryMode = "generate" | "custom_script";
 
 interface Step1HookProps {
-  onNext: (idea: string) => void;
+  onNext: (idea: string, scrapedData?: ScrapedData) => void;
+  onAutoGenerate: (idea: string, scrapedData?: ScrapedData) => void;
   onPracticeOwn: () => void;
   onOpenAICoach?: () => void;
 }
@@ -20,7 +22,7 @@ const sloganVariations = [
   { subject: "Investments", contrast: "features" },
 ];
 
-export const Step1Hook = ({ onNext, onPracticeOwn, onOpenAICoach }: Step1HookProps) => {
+export const Step1Hook = ({ onNext, onAutoGenerate, onPracticeOwn, onOpenAICoach }: Step1HookProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showOptions, setShowOptions] = useState(false);
 
@@ -104,7 +106,7 @@ export const Step1Hook = ({ onNext, onPracticeOwn, onOpenAICoach }: Step1HookPro
               animate={{ opacity: 1 }}
               exit={{ opacity: 0, y: -20 }}
             >
-              <TimeEater onSubmit={onNext} />
+              <TimeEater onSubmit={onNext} onAutoGenerate={onAutoGenerate} />
               
               {/* Practice your own pitch link */}
               <motion.div

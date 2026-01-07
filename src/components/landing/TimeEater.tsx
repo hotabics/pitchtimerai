@@ -1,9 +1,11 @@
-import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence, useInView } from "framer-motion";
-import { Sparkles, Rocket, Clock, Zap, ChevronDown, Info, ArrowRight } from "lucide-react";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Sparkles, Rocket, Clock, Zap, Info, ArrowRight, Link2, Wand2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { isUrl, mockScrapeUrl, ScrapedData } from "@/services/mockScraper";
+import { toast } from "@/hooks/use-toast";
 
 // Custom hook for counting animation
 const useCountUp = (end: number, duration: number = 1500, start: boolean = false) => {
@@ -32,7 +34,8 @@ const useCountUp = (end: number, duration: number = 1500, start: boolean = false
   return count;
 };
 interface TimeEaterProps {
-  onSubmit: (idea: string) => void;
+  onSubmit: (idea: string, scrapedData?: ScrapedData) => void;
+  onAutoGenerate: (idea: string, scrapedData?: ScrapedData) => void;
 }
 interface TaskBreakdown {
   id: string;
@@ -95,13 +98,17 @@ const formatTime = (minutes: number): string => {
   return `${hours}h ${mins}m`;
 };
 export const TimeEater = ({
-  onSubmit
+  onSubmit,
+  onAutoGenerate
 }: TimeEaterProps) => {
   const [projectName, setProjectName] = useState("");
   const [pitchDuration, setPitchDuration] = useState("3");
   const [isFocused, setIsFocused] = useState(false);
   const [showVisualization, setShowVisualization] = useState(false);
   const [animateBars, setAnimateBars] = useState(false);
+  const [isScrapingUrl, setIsScrapingUrl] = useState(false);
+  const [scrapedData, setScrapedData] = useState<ScrapedData | null>(null);
+  
   const tasks = getTasksForDuration(parseInt(pitchDuration));
   const totalManual = tasks.reduce((sum, t) => sum + t.manualMinutes, 0);
   const totalAI = tasks.reduce((sum, t) => sum + t.aiMinutes, 0);
@@ -113,23 +120,73 @@ export const TimeEater = ({
   const animatedTimeSaved = useCountUp(timeSaved, 1500, animateBars);
   const animatedPercentage = useCountUp(percentageSaved, 1500, animateBars);
   const animatedTotalAI = useCountUp(totalAI, 1500, animateBars);
+  
+  // Check if input is a URL
+  const inputIsUrl = isUrl(projectName);
+  
+  // Handle URL scraping
+  const handleUrlScrape = async (url: string) => {
+    setIsScrapingUrl(true);
+    try {
+      const data = await mockScrapeUrl(url);
+      setScrapedData(data);
+      toast({
+        title: "Website Scanned!",
+        description: `Extracted data from ${url.slice(0, 30)}...`,
+      });
+    } catch (error) {
+      toast({
+        title: "Scan Failed",
+        description: "Could not extract data from this URL",
+        variant: "destructive",
+      });
+    } finally {
+      setIsScrapingUrl(false);
+    }
+  };
+  
+  // Trigger URL scraping when URL is detected
   useEffect(() => {
-    if (projectName.length > 3 && !showVisualization) {
+    if (inputIsUrl && projectName.length > 10 && !isScrapingUrl && !scrapedData) {
+      const debounce = setTimeout(() => {
+        handleUrlScrape(projectName);
+      }, 500);
+      return () => clearTimeout(debounce);
+    }
+    // Reset scraped data when input changes to non-URL
+    if (!inputIsUrl && scrapedData) {
+      setScrapedData(null);
+    }
+  }, [projectName, inputIsUrl, isScrapingUrl, scrapedData]);
+  
+  useEffect(() => {
+    const shouldShow = projectName.length > 3 || scrapedData;
+    if (shouldShow && !showVisualization) {
       setShowVisualization(true);
       setTimeout(() => setAnimateBars(true), 300);
-    } else if (projectName.length <= 3) {
+    } else if (!shouldShow) {
       setShowVisualization(false);
       setAnimateBars(false);
     }
-  }, [projectName, showVisualization]);
-  const handleSubmit = () => {
-    if (projectName.trim()) {
-      onSubmit(projectName.trim());
+  }, [projectName, scrapedData, showVisualization]);
+  
+  const handleCustomize = () => {
+    const idea = scrapedData?.name || projectName.trim();
+    if (idea) {
+      onSubmit(idea, scrapedData || undefined);
     }
   };
+  
+  const handleAutoGenerate = () => {
+    const idea = scrapedData?.name || projectName.trim();
+    if (idea) {
+      onAutoGenerate(idea, scrapedData || undefined);
+    }
+  };
+  
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && projectName.trim()) {
-      handleSubmit();
+      handleCustomize();
     }
   };
   return <div className="w-full max-w-5xl mx-auto px-4">
@@ -159,16 +216,34 @@ export const TimeEater = ({
               `}>
               <div className="flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-1">
-                  <Sparkles className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/60" />
-                  <input type="text" value={projectName} onChange={e => setProjectName(e.target.value)} onFocus={() => setIsFocused(true)} onBlur={() => setIsFocused(false)} onKeyDown={handleKeyDown} placeholder="What is your project name? (e.g. EcoTrash AI)" className="
-                      w-full h-14 pl-12 pr-4 
+                  {inputIsUrl ? (
+                    <Link2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/60" />
+                  ) : (
+                    <Sparkles className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/60" />
+                  )}
+                  {isScrapingUrl && (
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                      <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                    </div>
+                  )}
+                  <input 
+                    type="text" 
+                    value={projectName} 
+                    onChange={e => setProjectName(e.target.value)} 
+                    onFocus={() => setIsFocused(true)} 
+                    onBlur={() => setIsFocused(false)} 
+                    onKeyDown={handleKeyDown} 
+                    placeholder="Enter project name, description, or paste a URL..." 
+                    className="
+                      w-full h-14 pl-12 pr-12 
                       bg-background text-foreground text-base
                       placeholder:text-muted-foreground/60
                       focus:outline-none
                       rounded-xl
                       border-2 border-foreground/30 focus:border-primary
                       transition-colors duration-200
-                    " />
+                    " 
+                  />
                 </div>
 
                 {/* Pitch Duration Selector */}
@@ -439,7 +514,7 @@ export const TimeEater = ({
               </Accordion>
             </motion.div>
 
-            {/* CTA Button */}
+            {/* CTA Buttons - Two Options */}
             <motion.div initial={{
           opacity: 0,
           y: 20
@@ -449,33 +524,48 @@ export const TimeEater = ({
         }} transition={{
           delay: 1.1
         }} className="flex flex-col items-center gap-4">
-              <div className="flex items-center gap-3">
-                <motion.div animate={{
-              x: [0, 8, 0]
-            }} transition={{
-              duration: 1.5,
-              repeat: Infinity
-            }}>
-                  <ArrowRight className="w-5 h-5 text-emerald-400" />
+              {/* Scraped data preview */}
+              {scrapedData && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="w-full max-w-md mb-4 p-4 rounded-xl bg-primary/5 border border-primary/20"
+                >
+                  <p className="text-xs text-muted-foreground mb-1">Extracted from URL:</p>
+                  <p className="font-medium text-foreground">{scrapedData.name}</p>
+                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{scrapedData.problem}</p>
                 </motion.div>
-                <Button onClick={handleSubmit} disabled={!projectName.trim()} size="lg" className="
-                    h-14 px-8 rounded-xl
-                    bg-emerald-500 text-white
-                    hover:bg-emerald-600
-                    shadow-lg shadow-emerald-500/30
-                    disabled:opacity-50 disabled:cursor-not-allowed
-                    group text-base
-                    transition-all duration-300
-                  ">
-                  <Rocket className="w-5 h-5 mr-2 group-hover:animate-float" />
-                  <span className="font-semibold">Generate Pitch</span>
+              )}
+              
+              {/* Two CTA Buttons */}
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                {/* Customize Pitch - Primary */}
+                <Button 
+                  onClick={handleCustomize} 
+                  disabled={!projectName.trim() && !scrapedData} 
+                  size="lg" 
+                  className="h-14 px-8 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed group text-base transition-all duration-300"
+                >
+                  <Wand2 className="w-5 h-5 mr-2" />
+                  <span className="font-semibold">Customize Pitch</span>
+                </Button>
+                
+                {/* Auto-Generate - Gold/Gradient */}
+                <Button 
+                  onClick={handleAutoGenerate} 
+                  disabled={!projectName.trim() && !scrapedData} 
+                  size="lg" 
+                  className="h-14 px-8 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 shadow-lg shadow-amber-500/25 disabled:opacity-50 disabled:cursor-not-allowed group text-base transition-all duration-300"
+                >
+                  <Zap className="w-5 h-5 mr-2" />
+                  <span className="font-semibold">Auto-Generate ⚡</span>
                 </Button>
               </div>
 
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground text-center max-w-sm">
                 <span className="inline-flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  No signup required
+                  No signup required • Customize = step-by-step wizard • Auto = instant pitch
                 </span>
               </p>
             </motion.div>
@@ -490,18 +580,9 @@ export const TimeEater = ({
     }} transition={{
       delay: 0.8
     }} className="flex justify-center">
-          <Button onClick={handleSubmit} disabled={projectName.length <= 3} size="lg" className="
-              h-14 px-8 rounded-xl
-              bg-primary text-primary-foreground
-              hover:bg-primary/90
-              shadow-lg shadow-primary/25
-              disabled:opacity-50 disabled:cursor-not-allowed
-              group text-base
-              transition-all duration-300
-            ">
-            <Rocket className="w-5 h-5 mr-2 group-hover:animate-float" />
-            <span className="font-semibold">Generate Pitch</span>
-          </Button>
+          <p className="text-sm text-muted-foreground text-center">
+            Type your project name or paste a URL to get started
+          </p>
         </motion.div>}
     </div>;
 };
