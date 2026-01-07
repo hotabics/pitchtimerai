@@ -13,6 +13,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { AISuggestions, useSuggestions } from "@/components/shared/AISuggestions";
+import { trackEvent } from "@/utils/analytics";
 
 // Step 1: The Pain
 interface PainStepProps {
@@ -121,7 +122,10 @@ export const HackathonPainStep = ({ onNext, onBack, initialValue = "", idea = ""
           <Button
             variant="default"
             size="lg"
-            onClick={() => onNext(getCombinedValue(pain))}
+            onClick={() => {
+              trackEvent('Wizard Step: Completed', { track: 'hackathon', step: 'pain', hasAISuggestion: hasSelection });
+              onNext(getCombinedValue(pain));
+            }}
             disabled={!hasContent}
             className="w-full"
           >
@@ -247,7 +251,10 @@ export const HackathonFixStep = ({ onNext, onBack, initialValue = "", idea = "",
           <Button
             variant="default"
             size="lg"
-            onClick={() => onNext(getCombinedValue(fix))}
+            onClick={() => {
+              trackEvent('Wizard Step: Completed', { track: 'hackathon', step: 'fix', hasAISuggestion: hasSelection });
+              onNext(getCombinedValue(fix));
+            }}
             disabled={!hasContent}
             className="w-full"
           >
@@ -374,7 +381,10 @@ export const HackathonProgressStep = ({ onNext, onBack, initialValue = "", idea 
           <Button
             variant="default"
             size="lg"
-            onClick={() => onNext(getCombinedValue(progress))}
+            onClick={() => {
+              trackEvent('Wizard Step: Completed', { track: 'hackathon', step: 'progress', hasAISuggestion: hasSelection });
+              onNext(getCombinedValue(progress));
+            }}
             disabled={!hasContent}
             className="w-full"
           >
@@ -461,7 +471,10 @@ export const HackathonFeasibilityStep = ({ onNext, onBack, initialValue = "" }: 
           <Button
             variant="default"
             size="lg"
-            onClick={() => onNext(feasibility)}
+            onClick={() => {
+              trackEvent('Wizard Step: Completed', { track: 'hackathon', step: 'feasibility' });
+              onNext(feasibility);
+            }}
             disabled={!feasibility.trim()}
             className="w-full"
           >

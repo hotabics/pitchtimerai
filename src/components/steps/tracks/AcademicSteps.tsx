@@ -12,6 +12,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { AISuggestions, useSuggestions } from "@/components/shared/AISuggestions";
+import { trackEvent } from "@/utils/analytics";
 
 // Step 1: Topic & Context
 interface TopicStepProps {
@@ -93,7 +94,10 @@ export const AcademicTopicStep = ({ onNext, onBack, initialValue = "", idea = ""
         <div className="flex-1" />
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mt-6 space-y-3">
-          <Button variant="default" size="lg" onClick={() => onNext(getCombinedValue(topic))} disabled={!hasContent} className="w-full">
+          <Button variant="default" size="lg" onClick={() => {
+            trackEvent('Wizard Step: Completed', { track: 'academic', step: 'topic', hasAISuggestion: hasSelection });
+            onNext(getCombinedValue(topic));
+          }} disabled={!hasContent} className="w-full">
             Continue <ArrowRight className="w-5 h-5" />
           </Button>
           <Button variant="ghost" onClick={onBack} className="w-full"><ArrowLeft className="w-4 h-4" /> Back</Button>
@@ -183,7 +187,10 @@ export const AcademicResearchFrameStep = ({ onNext, onBack, initialValue = "", i
         <div className="flex-1" />
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mt-6 space-y-3">
-          <Button variant="default" size="lg" onClick={() => onNext(getCombinedValue(frame))} disabled={!hasContent} className="w-full">
+          <Button variant="default" size="lg" onClick={() => {
+            trackEvent('Wizard Step: Completed', { track: 'academic', step: 'research_frame', hasAISuggestion: hasSelection });
+            onNext(getCombinedValue(frame));
+          }} disabled={!hasContent} className="w-full">
             Continue <ArrowRight className="w-5 h-5" />
           </Button>
           <Button variant="ghost" onClick={onBack} className="w-full"><ArrowLeft className="w-4 h-4" /> Back</Button>
@@ -273,7 +280,10 @@ export const AcademicMethodologyStep = ({ onNext, onBack, initialValue = "", ide
         <div className="flex-1" />
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mt-6 space-y-3">
-          <Button variant="default" size="lg" onClick={() => onNext(getCombinedValue(methodology))} disabled={!hasContent} className="w-full">
+          <Button variant="default" size="lg" onClick={() => {
+            trackEvent('Wizard Step: Completed', { track: 'academic', step: 'methodology', hasAISuggestion: hasSelection });
+            onNext(getCombinedValue(methodology));
+          }} disabled={!hasContent} className="w-full">
             Continue <ArrowRight className="w-5 h-5" />
           </Button>
           <Button variant="ghost" onClick={onBack} className="w-full"><ArrowLeft className="w-4 h-4" /> Back</Button>
@@ -366,7 +376,10 @@ export const AcademicResultsStep = ({ onNext, onBack, initialValue = "", idea = 
         <div className="flex-1" />
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mt-6 space-y-3">
-          <Button variant="default" size="lg" onClick={() => onNext(getCombinedValue(results))} disabled={!hasContent} className="w-full">
+          <Button variant="default" size="lg" onClick={() => {
+            trackEvent('Wizard Step: Completed', { track: 'academic', step: 'results', hasAISuggestion: hasSelection });
+            onNext(getCombinedValue(results));
+          }} disabled={!hasContent} className="w-full">
             Continue <ArrowRight className="w-5 h-5" />
           </Button>
           <Button variant="ghost" onClick={onBack} className="w-full"><ArrowLeft className="w-4 h-4" /> Back</Button>
@@ -456,7 +469,10 @@ export const AcademicConclusionsStep = ({ onNext, onBack, initialValue = "", ide
         <div className="flex-1" />
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mt-6 space-y-3">
-          <Button variant="default" size="lg" onClick={() => onNext(getCombinedValue(conclusions))} disabled={!hasContent} className="w-full">
+          <Button variant="default" size="lg" onClick={() => {
+            trackEvent('Wizard Step: Completed', { track: 'academic', step: 'conclusions', hasAISuggestion: hasSelection });
+            onNext(getCombinedValue(conclusions));
+          }} disabled={!hasContent} className="w-full">
             Continue <ArrowRight className="w-5 h-5" />
           </Button>
           <Button variant="ghost" onClick={onBack} className="w-full"><ArrowLeft className="w-4 h-4" /> Back</Button>
