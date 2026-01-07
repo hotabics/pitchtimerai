@@ -25,6 +25,7 @@ import { SpeechCoach } from "./SpeechCoach";
 import { AICoachPage } from "./ai-coach/AICoachPage";
 import { useAICoachStore } from "@/stores/aiCoachStore";
 import jsPDF from "jspdf";
+import { trackEvent } from "@/utils/analytics";
 
 interface SpeechBlock {
   timeStart: string;
@@ -153,6 +154,9 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
   // Handle edit save
   const handleSaveEdit = () => {
     if (editingBlockIndex === null) return;
+    
+    // Track manual editing
+    trackEvent('Script: Manually Edited');
     
     setSpeechBlocks(prev => prev.map((block, index) => 
       index === editingBlockIndex 
@@ -499,6 +503,12 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
       setSpeechBlocks(result.speech.blocks);
       setMeta(result.meta);
       setCurrentBlock(0);
+      
+      // Track successful script generation
+      trackEvent('Script: Generated', { 
+        track: data.track, 
+        timeSaved: data.duration * 50 // Estimated time saved based on formula
+      });
     } catch (err) {
       console.error('Failed to generate speech:', err);
       toast({

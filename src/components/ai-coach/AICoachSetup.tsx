@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { AICoachSettings } from './AICoachSettings';
 import { hasApiKey } from '@/services/openai';
 import { useAICoachStore, type ScriptBlock } from '@/stores/aiCoachStore';
+import { trackEvent } from '@/utils/analytics';
 
 interface AICoachSetupProps {
   onReady: () => void;
@@ -72,6 +73,7 @@ export const AICoachSetup = ({ onReady }: AICoachSetupProps) => {
   }, []);
 
   const requestPermissions = async () => {
+    trackEvent('Camera: Permission Requested');
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: { 
@@ -101,6 +103,7 @@ export const AICoachSetup = ({ onReady }: AICoachSetupProps) => {
 
   const handleStart = () => {
     if (stream) {
+      trackEvent('Recording: Started');
       onReady();
     }
   };

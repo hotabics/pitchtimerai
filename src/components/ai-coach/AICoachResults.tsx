@@ -1,5 +1,6 @@
 // AI Coach Results View - The Feedback Dashboard
 
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Eye, 
@@ -23,6 +24,7 @@ import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAICoachStore } from '@/stores/aiCoachStore';
+import { trackEvent } from '@/utils/analytics';
 
 interface AICoachResultsProps {
   onReRecord: () => void;
@@ -31,6 +33,18 @@ interface AICoachResultsProps {
 
 export const AICoachResults = ({ onReRecord, onEditScript }: AICoachResultsProps) => {
   const { results } = useAICoachStore();
+
+  // Track when results are viewed
+  useEffect(() => {
+    if (results?.contentAnalysis?.score) {
+      trackEvent('Analysis: Viewed', { score: results.contentAnalysis.score });
+    }
+  }, [results]);
+
+  const handleReRecord = () => {
+    trackEvent('Analysis: Retry Clicked');
+    onReRecord();
+  };
 
   if (!results) {
     return (
@@ -87,7 +101,7 @@ export const AICoachResults = ({ onReRecord, onEditScript }: AICoachResultsProps
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={onReRecord}>
+          <Button variant="outline" onClick={handleReRecord}>
             <RotateCcw className="w-4 h-4 mr-2" />
             Re-Record
           </Button>

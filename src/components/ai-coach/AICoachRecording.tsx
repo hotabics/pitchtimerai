@@ -30,6 +30,7 @@ import {
 import { useAICoachStore } from "@/stores/aiCoachStore";
 import type { FrameData } from "@/services/mediapipe";
 import { drawFaceMesh, initializeFaceLandmarker, type FaceMetrics } from "@/services/mediapipe";
+import { trackEvent } from "@/utils/analytics";
 
 interface AICoachRecordingProps {
   onStop: (audioBlob: Blob, videoBlob: Blob, duration: number, frameData: FrameData[]) => void;
@@ -443,11 +444,14 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
 
     recorder.stop();
     audioRecorder.stop();
+    
+    const finalDuration = Math.floor((performance.now() - startTimeRef.current) / 1000);
+    trackEvent('Recording: Completed', { duration: finalDuration });
+    trackEvent('Analysis: Triggered');
 
     setTimeout(() => {
       const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
       const videoBlob = new Blob(videoChunksRef.current, { type: "video/webm" });
-      const finalDuration = Math.floor((performance.now() - startTimeRef.current) / 1000);
       cleanup();
       onStop(audioBlob, videoBlob, finalDuration, frameDataRef.current);
     }, 500);
