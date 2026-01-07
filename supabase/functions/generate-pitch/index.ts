@@ -10,6 +10,7 @@ const corsHeaders = {
 // Allowed generation types
 const ALLOWED_TYPES = [
   'problems', 'pain-suggestions', 'fix-suggestions', 'progress-suggestions',
+  'hackathon_next_steps',
   'investor-opportunity-suggestions', 'investor-market-suggestions',
   'investor-traction-suggestions', 'investor-business-model-suggestions',
   'investor-ask-suggestions', 'academic-topic-suggestions',
@@ -128,6 +129,23 @@ serve(async (req) => {
         
         Return a JSON object with a "suggestions" array containing 4 strings.
         Example format: {"suggestions": ["Built real-time sync using Supabase Realtime and React hooks", "Implemented AI categorization with OpenAI GPT-4 API", ...]}
+        Only return valid JSON, no markdown.`;
+        break;
+
+      case 'hackathon_next_steps':
+        systemPrompt = 'You are a hackathon mentor who helps teams plan realistic next steps after the event.';
+        const progressContext = sanitizedContext?.progress ? `Built so far: "${sanitizedContext.progress}". ` : '';
+        const problemContext = sanitizedContext?.painPoint ? `Problem: "${sanitizedContext.painPoint}". ` : '';
+        const solutionContext = sanitizedContext?.solution ? `Solution: "${sanitizedContext.solution}". ` : '';
+        userPrompt = `For a hackathon project about "${sanitizedIdea}". ${problemContext}${solutionContext}${progressContext}Generate 4 actionable next steps for after the hackathon.
+        Each suggestion should:
+        - Be specific and time-bound (mention timeframes like "next week", "30 days", etc.)
+        - Focus on validation, growth, or development milestones
+        - Be realistic for an early-stage project
+        - Be concise (1 sentence, max 20 words)
+        
+        Return a JSON object with a "suggestions" array containing 4 strings.
+        Example format: {"suggestions": ["Next week: onboard 10 beta users and gather feedback", "Within 30 days: launch on Product Hunt and secure 500 signups", ...]}
         Only return valid JSON, no markdown.`;
         break;
 
