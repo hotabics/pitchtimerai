@@ -29,24 +29,20 @@ A mobile-first web app that gamifies the process of creating and practicing hack
 - **AI-powered script structuring** - Automatically parses your script into logical sections (Opening, Problem, Solution, etc.)
 - **Seamless integration** - Works with all practice and coaching features
 
-### 🚀 URL Scraping & Auto-Generate (NEW in v1.5)
+### 💰 Pricing & Monetization (NEW in v1.6)
 
-**Magic Input with Firecrawl-powered scraping:**
+**Tiered access system with premium features:**
 
-- **Real website scraping** - Firecrawl API extracts content from any URL
-- **AI-powered extraction** - Automatically identifies project name, problem, and solution
-- **Audience detection** - Suggests optimal track (Investor, Academic, Hackathon)
-- **Two CTAs**: "Customize Pitch" (wizard) or "Auto-Generate Pitch ⚡" (instant)
-- **One-click generation** - Skips wizard entirely, jumps straight to Dashboard
+| Plan | Price | Features |
+|------|-------|----------|
+| **Free** | €0 | Script generation, basic teleprompter |
+| **Hackathon Pass** | €2.99/48h | Full AI analysis, no watermarks |
+| **Founder Pro** | €9.99/mo | Unlimited access, priority support |
 
-### 🎓 Getting Started Tutorial (NEW in v1.5)
-
-**Interactive onboarding for first-time users:**
-
-- 6-step guided tour of key features
-- Explains Magic Input, Auto-Generate, AI Coach, and more
-- Progress navigation with skip option
-- Only shows once (persisted in localStorage)
+- **48h Countdown Timer** - Real-time countdown in header for pass holders
+- **Expiration Warnings** - Toast notification when < 2 hours remaining
+- **PDF Watermark** - "Created with PitchDeck.ai" for free users only
+- **Premium Badge** - Gold "PREMIUM ANALYSIS" badge on results page
 
 ### 🎬 Professional Teleprompter (NEW in v1.4)
 
