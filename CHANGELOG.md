@@ -5,6 +5,32 @@ All notable changes to PitchPal will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-01-07
+
+### Added
+- **Professional Teleprompter Overlay**: Full-screen teleprompter during AI Coach recording
+  - Auto-scrolling with play/pause control
+  - Adjustable scroll speed slider
+  - "Reading Zone" indicator with gradient highlights
+  - Semi-transparent dark background for optimal readability
+- **Real-Time Feedback HUD**: Heads-up display during recording
+  - Eye contact detection (Locked On / Looking Away)
+  - Live audio level meter
+  - Smile detection indicator
+  - System status with recording timer
+- **Face Mesh Rendering Improvements**: Cyan high-tech mesh overlay with proper transparency
+- **Keyboard Shortcuts**: Space to toggle teleprompter, Escape to cancel recording
+- **URL Scraping & Magic Input**: Paste a URL to auto-extract project data
+  - Intelligent input detection (URL vs text)
+  - "Scanning Website..." animation with mock scraping
+  - Auto-fill project name, problem, and solution fields
+- **"Auto-Generate Pitch ⚡" Feature**: One-click instant pitch generation
+  - Full-screen AI processing overlay with step animations
+  - Skips wizard entirely and jumps to Dashboard
+  - Randomly selects optimal track and tone
+- New `mockScraper.ts` service for URL detection and mock scraping
+- New `AutoGenerateOverlay.tsx` component for instant generation flow
+
 ## [1.3.0] - 2026-01-07
 
 ### Added

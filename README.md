@@ -29,7 +29,34 @@ A mobile-first web app that gamifies the process of creating and practicing hack
 - **AI-powered script structuring** - Automatically parses your script into logical sections (Opening, Problem, Solution, etc.)
 - **Seamless integration** - Works with all practice and coaching features
 
-### 🎯 Hackathon Jury Pitch Evaluation (NEW in v1.3)
+### 🚀 URL Scraping & Auto-Generate (NEW in v1.4)
+
+**Magic Input with intelligent detection:**
+
+- **Paste any URL** - Automatically extracts project name, problem, and solution
+- **"Scanning Website..."** animation with visual feedback
+- **Two CTAs**: "Customize Pitch" (wizard) or "Auto-Generate Pitch ⚡" (instant)
+- **One-click generation** - Skips wizard entirely, jumps straight to Dashboard
+
+### 🎬 Professional Teleprompter (NEW in v1.4)
+
+**Full-screen teleprompter overlay during AI Coach recording:**
+
+- Auto-scrolling with play/pause control
+- Adjustable scroll speed slider
+- "Reading Zone" indicator with gradient highlights
+- Keyboard shortcuts: **Space** = toggle, **Escape** = cancel
+
+### 📊 Real-Time Feedback HUD (NEW in v1.4)
+
+**Heads-up display showing live analysis:**
+
+- **Eye Contact** - Green "Locked On" / Red "Looking Away"
+- **Audio Level** - Live microphone volume meter
+- **Smile Detection** - Real-time expression feedback
+- **System Status** - Recording timer and AI tracking status
+
+### 🎯 Hackathon Jury Pitch Evaluation (v1.3)
 
 **Automated pitch structure analysis specifically for hackathon tracks:**
 
@@ -75,13 +102,16 @@ Three integrated tabs for complete pitch preparation:
 
 3. **AI Speech Coach**
    - Voice recording with live waveform visualization
-   - **Real-time face mesh tracking** with MediaPipe
+   - **Professional teleprompter overlay** with auto-scroll
+   - **Real-time HUD** (eye contact, audio level, smile detection)
+   - **Real-time face mesh tracking** with MediaPipe (cyan overlay)
    - Speech-to-text transcription analysis
    - Accuracy scoring with highlighted matches/misses
    - Filler word detection and breakdown
    - WPM and pacing feedback
    - Tone analysis (confident, nervous, rushed, etc.)
    - Practice history with trend charts
+   - **Keyboard shortcuts** (Space, Escape)
 
 ---
 
@@ -124,7 +154,8 @@ src/
 │   └── AdminAnalytics.tsx   # Usage analytics
 ├── services/
 │   ├── openai.ts            # OpenAI API integration
-│   └── mediapipe.ts         # Face mesh detection
+│   ├── mediapipe.ts         # Face mesh detection
+│   └── mockScraper.ts       # URL scraping simulation
 ├── stores/
 │   └── aiCoachStore.ts      # AI Coach state management
 ├── lib/
