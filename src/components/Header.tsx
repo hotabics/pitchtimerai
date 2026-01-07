@@ -53,9 +53,9 @@ export const Header = ({ showProgress, currentStep = 0, totalSteps = 7, onLogoCl
   };
 
   const getPlanBadge = () => {
-    if (userPlan === 'pro') return { label: 'PRO', icon: Crown, variant: 'default' as const };
-    if (userPlan === 'pass_48h') return { label: '48H', icon: Zap, variant: 'secondary' as const };
-    return null;
+    if (userPlan === 'pro') return { label: 'Pro Member', icon: Crown, variant: 'default' as const, className: 'bg-gradient-to-r from-purple-500 to-violet-600 text-white border-0' };
+    if (userPlan === 'pass_48h') return { label: '48h Pass', icon: Zap, variant: 'secondary' as const, className: 'bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0' };
+    return { label: 'Free Plan', icon: User, variant: 'outline' as const, className: 'text-muted-foreground' };
   };
 
   const planBadge = getPlanBadge();
@@ -134,12 +134,10 @@ export const Header = ({ showProgress, currentStep = 0, totalSteps = 7, onLogoCl
                           {user?.name?.charAt(0)?.toUpperCase() || 'U'}
                         </AvatarFallback>
                       </Avatar>
-                      {planBadge && (
-                        <Badge variant={planBadge.variant} className="h-5 px-1.5 text-[10px] gap-0.5">
-                          <planBadge.icon className="w-3 h-3" />
-                          {planBadge.label}
-                        </Badge>
-                      )}
+                      <Badge variant={planBadge.variant} className={`h-5 px-1.5 text-[10px] gap-0.5 ${planBadge.className}`}>
+                        <planBadge.icon className="w-3 h-3" />
+                        {planBadge.label}
+                      </Badge>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">

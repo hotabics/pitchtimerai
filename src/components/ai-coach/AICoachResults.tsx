@@ -100,11 +100,19 @@ export const AICoachResults = ({ onReRecord, onEditScript }: AICoachResultsProps
     >
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">AI Coach Feedback</h2>
-          <p className="text-muted-foreground">
-            Analysis completed • {results.processedAt.toLocaleTimeString()}
-          </p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h2 className="text-2xl font-bold">AI Coach Feedback</h2>
+            <p className="text-muted-foreground">
+              Analysis completed • {results.processedAt.toLocaleTimeString()}
+            </p>
+          </div>
+          {hasAccess && (
+            <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 shadow-lg">
+              <Star className="w-3 h-3 mr-1" />
+              PREMIUM ANALYSIS
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={handleReRecord}>
