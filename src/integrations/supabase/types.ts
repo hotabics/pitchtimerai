@@ -19,6 +19,7 @@ export type Database = {
           created_at: string
           duration_minutes: number
           entry_mode: string | null
+          events_json: Json | null
           feedback: string[] | null
           filler_breakdown: Json | null
           filler_count: number
@@ -27,6 +28,8 @@ export type Database = {
           missed_sections: string[] | null
           original_script: string | null
           original_script_text: string | null
+          primary_issue_json: Json | null
+          primary_issue_key: string | null
           recording_duration_seconds: number
           score: number
           session_group_id: string | null
@@ -41,6 +44,7 @@ export type Database = {
           created_at?: string
           duration_minutes: number
           entry_mode?: string | null
+          events_json?: Json | null
           feedback?: string[] | null
           filler_breakdown?: Json | null
           filler_count?: number
@@ -49,6 +53,8 @@ export type Database = {
           missed_sections?: string[] | null
           original_script?: string | null
           original_script_text?: string | null
+          primary_issue_json?: Json | null
+          primary_issue_key?: string | null
           recording_duration_seconds: number
           score?: number
           session_group_id?: string | null
@@ -63,6 +69,7 @@ export type Database = {
           created_at?: string
           duration_minutes?: number
           entry_mode?: string | null
+          events_json?: Json | null
           feedback?: string[] | null
           filler_breakdown?: Json | null
           filler_count?: number
@@ -71,6 +78,8 @@ export type Database = {
           missed_sections?: string[] | null
           original_script?: string | null
           original_script_text?: string | null
+          primary_issue_json?: Json | null
+          primary_issue_key?: string | null
           recording_duration_seconds?: number
           score?: number
           session_group_id?: string | null

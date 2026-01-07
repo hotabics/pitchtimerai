@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.structure-script]
 verify_jwt = false
+
+[functions.evaluate-hackathon-jury-pitch]
+verify_jwt = false
