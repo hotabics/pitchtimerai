@@ -8,6 +8,7 @@ import { Step2Audience } from "@/components/steps/Step2Audience";
 import { Step7Generation } from "@/components/steps/Step7Generation";
 import { CustomScriptStep } from "@/components/steps/CustomScriptStep";
 import { Dashboard } from "@/components/Dashboard";
+import { AICoachPage } from "@/components/ai-coach/AICoachPage";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -126,6 +127,7 @@ interface PitchData {
 const Index = () => {
   const [step, setStep] = useState(0);
   const [showDashboard, setShowDashboard] = useState(false);
+  const [showAICoach, setShowAICoach] = useState(false);
   const [data, setData] = useState<Partial<PitchData>>({ entryMode: "generate" });
   const [trackStep, setTrackStep] = useState(0);
   const [isStructuring, setIsStructuring] = useState(false);
@@ -156,7 +158,17 @@ const Index = () => {
     setStep(0);
     setTrackStep(0);
     setShowDashboard(false);
+    setShowAICoach(false);
     setData({ entryMode: "generate" });
+  };
+
+  // Open AI Coach
+  const handleOpenAICoach = () => {
+    setShowAICoach(true);
+  };
+
+  const handleCloseAICoach = () => {
+    setShowAICoach(false);
   };
 
   // Step 1: Landing with idea input (generate mode)
@@ -328,6 +340,16 @@ const Index = () => {
 
   const briefData = buildBriefData();
 
+  // AI Coach view
+  if (showAICoach) {
+    return (
+      <AICoachPage 
+        onBack={handleCloseAICoach} 
+        onEditScript={handleCloseAICoach}
+      />
+    );
+  }
+
   // Dashboard view after generation
   if (showDashboard) {
     const td = data.trackData || {};
@@ -372,7 +394,13 @@ const Index = () => {
 
   // Landing page (Step 0)
   if (step === 0) {
-    return <Step1Hook onNext={handleStep1} onPracticeOwn={handlePracticeOwn} />;
+    return (
+      <Step1Hook 
+        onNext={handleStep1} 
+        onPracticeOwn={handlePracticeOwn}
+        onOpenAICoach={handleOpenAICoach}
+      />
+    );
   }
 
   // Custom script input (Step 1 for custom_script mode)
