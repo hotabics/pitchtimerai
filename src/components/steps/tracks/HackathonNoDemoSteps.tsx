@@ -406,10 +406,44 @@ interface FeasibilityStepProps {
   onNext: (feasibility: string) => void;
   onBack: () => void;
   initialValue?: string;
+  idea?: string;
+  painPoint?: string;
+  solution?: string;
+  progress?: string;
 }
 
-export const HackathonFeasibilityStep = ({ onNext, onBack, initialValue = "" }: FeasibilityStepProps) => {
+export const HackathonFeasibilityStep = ({ 
+  onNext, 
+  onBack, 
+  initialValue = "",
+  idea = "",
+  painPoint = "",
+  solution = "",
+  progress = ""
+}: FeasibilityStepProps) => {
   const [feasibility, setFeasibility] = useState(initialValue);
+  
+  const {
+    suggestions,
+    selectedSuggestions,
+    isLoading,
+    toggleSuggestion,
+    regenerate,
+    getCombinedValue,
+    isRateLimited,
+    remainingAttempts,
+    cooldownSeconds,
+  } = useSuggestions({
+    type: "hackathon_next_steps",
+    idea,
+    context: { painPoint, solution, progress },
+    fallbackSuggestions: [
+      "Next week: gather feedback from 5 beta users and iterate",
+      "Launch MVP on Product Hunt within 30 days",
+      "Partner with 2-3 early adopters for case studies",
+      "Apply for startup accelerator or grant funding",
+    ],
+  });
 
   return (
     <WizardStep
@@ -458,6 +492,18 @@ export const HackathonFeasibilityStep = ({ onNext, onBack, initialValue = "" }: 
               className="min-h-[100px] resize-none"
             />
           </div>
+
+          <AISuggestions
+            suggestions={suggestions}
+            selectedSuggestions={selectedSuggestions}
+            isLoading={isLoading}
+            onToggle={toggleSuggestion}
+            onRegenerate={regenerate}
+            accentColor="amber"
+            isRateLimited={isRateLimited}
+            remainingAttempts={remainingAttempts}
+            cooldownSeconds={cooldownSeconds}
+          />
         </motion.div>
 
         <div className="flex-1" />
@@ -473,9 +519,9 @@ export const HackathonFeasibilityStep = ({ onNext, onBack, initialValue = "" }: 
             size="lg"
             onClick={() => {
               trackEvent('Wizard Step: Completed', { track: 'hackathon', step: 'feasibility' });
-              onNext(feasibility);
+              onNext(getCombinedValue(feasibility));
             }}
-            disabled={!feasibility.trim()}
+            disabled={!feasibility.trim() && selectedSuggestions.length === 0}
             className="w-full"
           >
             Finish
