@@ -28,6 +28,14 @@ export interface ContentCoverage {
   uniqueValue: boolean;
 }
 
+// Model selection
+export type OpenAIModel = 'gpt-4o-mini' | 'gpt-4o';
+
+export const OPENAI_MODELS: { value: OpenAIModel; label: string; description: string }[] = [
+  { value: 'gpt-4o-mini', label: 'GPT-4o Mini', description: 'Fast & cost-effective' },
+  { value: 'gpt-4o', label: 'GPT-4o', description: 'Highest quality' },
+];
+
 export const getApiKey = (): string | null => {
   return localStorage.getItem('openai_api_key');
 };
@@ -43,6 +51,14 @@ export const removeApiKey = (): void => {
 export const hasApiKey = (): boolean => {
   const key = getApiKey();
   return !!key && key.length > 10;
+};
+
+export const getSelectedModel = (): OpenAIModel => {
+  return (localStorage.getItem('openai_model') as OpenAIModel) || 'gpt-4o';
+};
+
+export const setSelectedModel = (model: OpenAIModel): void => {
+  localStorage.setItem('openai_model', model);
 };
 
 // Transcribe audio using Whisper API
@@ -92,6 +108,8 @@ Analyze the following pitch transcript and return a JSON object with exactly the
 
 Be specific and constructive. Reference actual content from the pitch.`;
 
+  const model = getSelectedModel();
+
   const response = await fetch(`${OPENAI_API_BASE}/chat/completions`, {
     method: 'POST',
     headers: {
@@ -99,7 +117,7 @@ Be specific and constructive. Reference actual content from the pitch.`;
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-4o',
+      model,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `Analyze this pitch:\n\n${transcript}` }
