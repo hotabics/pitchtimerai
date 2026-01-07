@@ -3,13 +3,17 @@
  * 
  * Provides a centralized way to track user events throughout the application.
  * Uses PostHog for product analytics and session replay.
+ * 
+ * Configuration:
+ * Set VITE_POSTHOG_API_KEY in your .env file (or Lovable secrets for production)
+ * Optionally set VITE_POSTHOG_HOST (defaults to https://app.posthog.com)
  */
 
 import posthog from 'posthog-js';
 
-// PostHog configuration
-const POSTHOG_API_KEY = 'ph_placeholder_key';
-const POSTHOG_HOST = 'https://app.posthog.com';
+// PostHog configuration - reads from environment variables
+const POSTHOG_API_KEY = import.meta.env.VITE_POSTHOG_API_KEY || '';
+const POSTHOG_HOST = import.meta.env.VITE_POSTHOG_HOST || 'https://app.posthog.com';
 
 // Track whether PostHog has been initialized
 let isInitialized = false;
@@ -20,8 +24,8 @@ let isInitialized = false;
  */
 export const initializeAnalytics = (): void => {
   // Skip initialization if no API key or already initialized
-  if (!POSTHOG_API_KEY || POSTHOG_API_KEY === 'ph_placeholder_key') {
-    console.log('[Analytics] PostHog not initialized: No API key configured');
+  if (!POSTHOG_API_KEY || POSTHOG_API_KEY.length < 10) {
+    console.log('[Analytics] PostHog not initialized: No API key configured. Set VITE_POSTHOG_API_KEY to enable.');
     return;
   }
 
@@ -66,7 +70,7 @@ export const initializeAnalytics = (): void => {
  */
 export const trackEvent = (eventName: string, properties?: Record<string, unknown>): void => {
   // Skip if not initialized or no valid API key
-  if (!isInitialized || POSTHOG_API_KEY === 'ph_placeholder_key') {
+  if (!isInitialized || !POSTHOG_API_KEY || POSTHOG_API_KEY.length < 10) {
     // Log events in development for debugging
     if (import.meta.env.DEV) {
       console.log(`[Analytics] Event: ${eventName}`, properties || {});
@@ -88,7 +92,7 @@ export const trackEvent = (eventName: string, properties?: Record<string, unknow
  * @param traits - Optional user properties
  */
 export const identifyUser = (userId: string, traits?: Record<string, unknown>): void => {
-  if (!isInitialized || POSTHOG_API_KEY === 'ph_placeholder_key') {
+  if (!isInitialized || !POSTHOG_API_KEY || POSTHOG_API_KEY.length < 10) {
     if (import.meta.env.DEV) {
       console.log(`[Analytics] Identify: ${userId}`, traits || {});
     }
@@ -106,7 +110,7 @@ export const identifyUser = (userId: string, traits?: Record<string, unknown>): 
  * Reset the current user session (for logout).
  */
 export const resetAnalytics = (): void => {
-  if (!isInitialized || POSTHOG_API_KEY === 'ph_placeholder_key') {
+  if (!isInitialized || !POSTHOG_API_KEY || POSTHOG_API_KEY.length < 10) {
     return;
   }
 
