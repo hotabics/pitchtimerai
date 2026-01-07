@@ -7,8 +7,7 @@ export const STRIPE_PLANS = {
     name: 'Hackathon Pass',
     price: 299, // cents
     currency: 'eur',
-    // TODO: Replace with your actual Stripe price ID
-    priceId: 'price_hackathon_pass_placeholder',
+    priceId: 'price_1Sn5LULk0vZfnO7EtgVaKiYs',
     type: 'one_time' as const,
     duration: 48 * 60 * 60 * 1000, // 48 hours in ms
   },
@@ -17,8 +16,7 @@ export const STRIPE_PLANS = {
     name: 'Founder Pro',
     price: 999, // cents
     currency: 'eur',
-    // TODO: Replace with your actual Stripe price ID
-    priceId: 'price_founder_pro_placeholder',
+    priceId: 'price_1Sn5MFLk0vZfnO7E6aFnih1C',
     type: 'subscription' as const,
     interval: 'month' as const,
   },
