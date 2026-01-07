@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Zap, Settings, Link2, Sparkles, FileText, Users, Clock, Target, CheckCircle2, ArrowRight } from "lucide-react";
+import { Zap, Settings, Link2, Sparkles, FileText, Users, Clock, Target, CheckCircle2, ArrowRight, Play, RotateCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const fastTrackSteps = [
   { icon: Link2, label: "Paste URL or Idea", duration: 800 },
@@ -22,47 +23,45 @@ interface PathCardProps {
   icon: React.ElementType;
   steps: typeof fastTrackSteps;
   accentColor: string;
-  delay: number;
 }
 
-const PathCard = ({ title, subtitle, icon: TitleIcon, steps, accentColor, delay }: PathCardProps) => {
+const PathCard = ({ title, subtitle, icon: TitleIcon, steps, accentColor }: PathCardProps) => {
   const [activeStep, setActiveStep] = useState(-1);
   const [isComplete, setIsComplete] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
 
-  useEffect(() => {
-    const startDelay = setTimeout(() => {
-      let currentStep = 0;
-      setActiveStep(0);
+  const runAnimation = useCallback(() => {
+    if (isPlaying) return;
+    
+    setIsPlaying(true);
+    setIsComplete(false);
+    setActiveStep(0);
+    
+    let currentStep = 0;
+    
+    const runSteps = () => {
+      if (currentStep < steps.length - 1) {
+        setTimeout(() => {
+          currentStep++;
+          setActiveStep(currentStep);
+          runSteps();
+        }, steps[currentStep].duration);
+      } else {
+        setTimeout(() => {
+          setIsComplete(true);
+          setIsPlaying(false);
+        }, steps[currentStep].duration);
+      }
+    };
 
-      const runSteps = () => {
-        if (currentStep < steps.length - 1) {
-          setTimeout(() => {
-            currentStep++;
-            setActiveStep(currentStep);
-            runSteps();
-          }, steps[currentStep].duration);
-        } else {
-          setTimeout(() => {
-            setIsComplete(true);
-            // Reset after a pause
-            setTimeout(() => {
-              setIsComplete(false);
-              setActiveStep(-1);
-              setTimeout(() => {
-                currentStep = 0;
-                setActiveStep(0);
-                runSteps();
-              }, 500);
-            }, 2000);
-          }, steps[currentStep].duration);
-        }
-      };
+    runSteps();
+  }, [steps, isPlaying]);
 
-      runSteps();
-    }, delay);
-
-    return () => clearTimeout(startDelay);
-  }, [steps, delay]);
+  const resetAnimation = () => {
+    setActiveStep(-1);
+    setIsComplete(false);
+    setIsPlaying(false);
+  };
 
   return (
     <motion.div
@@ -79,17 +78,50 @@ const PathCard = ({ title, subtitle, icon: TitleIcon, steps, accentColor, delay 
       />
 
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <div 
-          className="w-10 h-10 rounded-xl flex items-center justify-center"
-          style={{ background: `${accentColor}20` }}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div 
+            className="w-10 h-10 rounded-xl flex items-center justify-center"
+            style={{ background: `${accentColor}20` }}
+          >
+            <TitleIcon className="w-5 h-5" style={{ color: accentColor }} />
+          </div>
+          <div>
+            <h3 className="font-semibold text-foreground">{title}</h3>
+            <p className="text-xs text-muted-foreground">{subtitle}</p>
+          </div>
+        </div>
+
+        {/* Play/Reset Button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={isComplete ? resetAnimation : runAnimation}
+          disabled={isPlaying}
+          className="h-8 px-3 text-xs"
         >
-          <TitleIcon className="w-5 h-5" style={{ color: accentColor }} />
-        </div>
-        <div>
-          <h3 className="font-semibold text-foreground">{title}</h3>
-          <p className="text-xs text-muted-foreground">{subtitle}</p>
-        </div>
+          {isComplete ? (
+            <>
+              <RotateCcw className="w-3 h-3 mr-1" />
+              Replay
+            </>
+          ) : isPlaying ? (
+            <span className="flex items-center gap-1">
+              <motion.span
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 1, repeat: Infinity }}
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ background: accentColor }}
+              />
+              Running...
+            </span>
+          ) : (
+            <>
+              <Play className="w-3 h-3 mr-1" />
+              Start
+            </>
+          )}
+        </Button>
       </div>
 
       {/* Steps */}
@@ -136,14 +168,14 @@ const PathCard = ({ title, subtitle, icon: TitleIcon, steps, accentColor, delay 
                       exit={{ opacity: 0 }}
                     >
                       <StepIcon 
-                        className={`w-4 h-4 transition-colors duration-300 ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}
+                        className={`w-4 h-4 transition-colors duration-300 ${isActive ? 'text-foreground' : 'text-muted-foreground/60'}`}
                       />
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
 
-              <span className={`text-sm transition-colors duration-300 ${isActive ? 'text-foreground font-medium' : isPast ? 'text-muted-foreground' : 'text-muted-foreground/60'}`}>
+              <span className={`text-sm transition-colors duration-300 ${isActive ? 'text-foreground font-medium' : isPast ? 'text-muted-foreground' : 'text-muted-foreground/40'}`}>
                 {step.label}
               </span>
 
@@ -177,6 +209,17 @@ const PathCard = ({ title, subtitle, icon: TitleIcon, steps, accentColor, delay 
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Initial state hint */}
+      {activeStep === -1 && !isPlaying && (
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="mt-4 text-center text-xs text-muted-foreground/60"
+        >
+          Click "Start" to see the flow
+        </motion.p>
+      )}
     </motion.div>
   );
 };
@@ -197,7 +240,7 @@ export const PathComparisonDemo = () => {
             <span className="text-primary">winning pitch</span>
           </h2>
           <p className="text-sm text-muted-foreground max-w-lg mx-auto">
-            Choose speed or precision — watch how each flow works
+            Choose speed or precision — tap "Start" to see how each flow works
           </p>
         </motion.div>
 
@@ -208,16 +251,14 @@ export const PathComparisonDemo = () => {
             subtitle="~30 seconds • Best for quick demos"
             icon={Zap}
             steps={fastTrackSteps}
-            accentColor="hsl(45, 93%, 47%)" // Amber/gold
-            delay={500}
+            accentColor="hsl(45, 93%, 47%)"
           />
           <PathCard
             title="Customize Pitch"
             subtitle="~2 minutes • Tailored for your audience"
             icon={Settings}
             steps={customizeSteps}
-            accentColor="hsl(160, 84%, 39%)" // Emerald
-            delay={1000}
+            accentColor="hsl(160, 84%, 39%)"
           />
         </div>
 
