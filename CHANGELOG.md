@@ -5,6 +5,36 @@ All notable changes to PitchPal will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-01-07
+
+### Added
+- **Lazy Registration & Pricing System**: Complete monetization flow with tiered access
+  - Three plans: Free, Hackathon Pass (€2.99/48h), Founder Pro (€9.99/mo)
+  - Mock payment flow with 2-second processing simulation
+  - Plan persistence in localStorage via Zustand store
+  - User plan badge in header (Free/48h Pass/Pro Member) with gradient styling
+- **48h Pass Countdown Timer**: Real-time countdown in header
+  - Shows remaining time (e.g., "47h 23m")
+  - Amber styling for normal state, red pulsing when < 2 hours remaining
+  - Automatic expiration warning toast
+- **Premium Analysis Unlock**: Feature gating for paid users
+  - Glassmorphism paywall overlay on AI Coach results (Columns 2 & 3)
+  - "PREMIUM ANALYSIS" gold badge for paid users
+  - Deep analysis access checks throughout the app
+- **Conditional PDF Watermark**: "Created with PitchDeck.ai" watermark for free users only
+- **Stripe Integration Ready**: Edge functions for checkout, subscription check, and customer portal
+- New `/pricing` page with animated pricing cards
+- New `src/stores/userStore.ts` for global user state management
+- New `src/components/PassCountdown.tsx` countdown timer component
+- New `src/components/paywall/PaywallOverlay.tsx` for feature gating
+
+### Changed
+- Header now shows plan status badge for all users
+- Pricing cards show "✓ Active Plan" for current subscription
+
+### Removed
+- Getting Started Tutorial popup and floating button (simplified onboarding)
+
 ## [1.5.0] - 2026-01-07
 
 ### Added
@@ -14,17 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - AI-powered prompt for comprehensive pitch data extraction
   - Automatic audience detection (Investors, Academic, Hackathon)
   - New `firecrawl-scrape` edge function with JSON schema
-- **Getting Started Tutorial**: Interactive onboarding for first-time users
-  - 6-step guided tour of key features
-  - Progress dots with navigation
-  - Persists completion state in localStorage
-  - Skip option for returning users
-- **Floating Tutorial Button**: Vertical button on left side of landing page
-  - Click to reset and re-watch the tutorial
-  - Animated entrance with hover effects
 - New `src/lib/api/firecrawl.ts` API client with extended data types
-- New `GettingStartedTutorial.tsx` component with animations
-- New `FloatingTutorialButton.tsx` for tutorial reset access
 
 ## [1.4.0] - 2026-01-07
 
