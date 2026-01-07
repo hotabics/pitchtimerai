@@ -86,10 +86,10 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
   const liveTranscriptRef = useRef<HTMLDivElement>(null);
   const speechRecognitionRef = useRef<SpeechRecognitionInstance | null>(null);
 
-  // Debug overlay - use refs to avoid re-renders, update state less frequently
-  const [debugInfo, setDebugInfo] = useState({ micLevel: 0, faceDetected: false });
-  const debugInfoRef = useRef({ micLevel: 0, faceDetected: false });
-  const lastDebugUpdateRef = useRef(0);
+  // Refs for metrics to avoid re-renders during animation loop
+  const currentMetricsRef = useRef<FaceMetrics | null>(null);
+  const warningsRef = useRef<string[]>([]);
+  const lastMetricsUpdateRef = useRef(0);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -390,16 +390,9 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
       const video = videoRef.current;
       const canvas = canvasRef.current;
 
-      // Mic level - update ref, not state
+      // Mic level calculation (no longer displayed, but kept for potential future use)
       if (analyserRef.current && micDataRef.current) {
         analyserRef.current.getByteTimeDomainData(micDataRef.current as any);
-        let sumSquares = 0;
-        for (let i = 0; i < micDataRef.current.length; i++) {
-          const v = (micDataRef.current[i] - 128) / 128;
-          sumSquares += v * v;
-        }
-        const rms = Math.sqrt(sumSquares / micDataRef.current.length);
-        debugInfoRef.current.micLevel = Math.round(Math.min(100, rms * 180));
       }
 
       if (!video || !canvas || video.readyState < 2) {
@@ -433,10 +426,9 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
 
       try {
         const metrics = drawFaceMesh(ctx, video, now);
-        debugInfoRef.current.faceDetected = !!metrics;
 
         if (metrics) {
-          setCurrentMetrics(metrics);
+          currentMetricsRef.current = metrics;
 
           const frame: FrameData = {
             timestamp: now - startTimeRef.current,
@@ -448,19 +440,23 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
           frameDataRef.current.push(frame);
           addFrameData(frame);
 
+          // Calculate warnings
           const nextWarnings: string[] = [];
           if (!metrics.isLookingAtCamera && metrics.headPoseDeviation > 20) nextWarnings.push("Look at the camera");
           if (metrics.eyeContactScore < 50) nextWarnings.push("Maintain eye contact");
-          setWarnings(nextWarnings);
+          warningsRef.current = nextWarnings;
+        }
+
+        // Update React state only every 500ms to prevent re-render blinking
+        if (now - lastMetricsUpdateRef.current > 500) {
+          lastMetricsUpdateRef.current = now;
+          if (currentMetricsRef.current) {
+            setCurrentMetrics(currentMetricsRef.current);
+          }
+          setWarnings([...warningsRef.current]);
         }
       } catch (e) {
         console.error("Face mesh error:", e);
-      }
-
-      // Update debug state only every 500ms to prevent blinking
-      if (now - lastDebugUpdateRef.current > 500) {
-        lastDebugUpdateRef.current = now;
-        setDebugInfo({ ...debugInfoRef.current });
       }
 
       animationFrameRef.current = requestAnimationFrame(tick);
@@ -629,15 +625,6 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
               </div>
             )}
 
-            {/* Debug info overlay (temporary) */}
-            <div
-              className="absolute top-3 left-3 rounded-lg bg-foreground/70 text-background text-xs px-3 py-2 backdrop-blur-sm"
-              style={{ zIndex: 40 }}
-            >
-              <div>Cam Status: {isCameraReady ? "Active" : "Inactive"}</div>
-              <div>Face Detected: {mediaPipeFailed ? "N/A" : debugInfo.faceDetected ? "Yes" : "No"}</div>
-              <div>Mic Level: {debugInfo.micLevel}</div>
-            </div>
 
             {/* MediaPipe disabled notice */}
             {mediaPipeFailed && (
