@@ -7,7 +7,10 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import FeedbackAnalytics from "./pages/FeedbackAnalytics";
+import Pricing from "./pages/Pricing";
 import { AICoachPage } from "./components/ai-coach/AICoachPage";
+import { AuthModal } from "./components/auth/AuthModal";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -15,9 +18,11 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <AuthModal />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/pricing" element={<Pricing />} />
           <Route path="/admin/analytics" element={<AdminAnalytics />} />
           <Route path="/admin/feedback" element={<FeedbackAnalytics />} />
           <Route path="/ai-coach" element={<AICoachPage />} />

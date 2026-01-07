@@ -28,6 +28,7 @@ import jsPDF from "jspdf";
 import { trackEvent } from "@/utils/analytics";
 import { ScriptFeedbackBar } from "./feedback/ScriptFeedbackBar";
 import { VersionComparisonBar } from "./feedback/VersionComparisonBar";
+import { useUserStore } from "@/stores/userStore";
 
 interface SpeechBlock {
   timeStart: string;
@@ -571,6 +572,9 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
   };
 
   const handleExportPDF = () => {
+    const { canExportWithoutWatermark } = useUserStore.getState();
+    const showWatermark = !canExportWithoutWatermark();
+    
     const pdf = new jsPDF();
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
@@ -658,6 +662,14 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
       pdf.setFontSize(10);
       pdf.setTextColor(150);
       pdf.text(`Section ${index + 1} of ${speechBlocks.length}`, pageWidth / 2, pageHeight - 10, { align: "center" });
+      
+      // Add watermark for free users
+      if (showWatermark) {
+        pdf.setFontSize(10);
+        pdf.setTextColor(180);
+        pdf.text("Created with PitchDeck.ai", pageWidth - margin, pageHeight - 10, { align: "right" });
+      }
+      
       pdf.setTextColor(0);
     });
 
