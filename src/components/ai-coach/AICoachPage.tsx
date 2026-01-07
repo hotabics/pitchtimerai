@@ -15,9 +15,10 @@ import type { FrameData } from '@/services/mediapipe';
 export interface AICoachPageProps {
   onBack?: () => void;
   onEditScript?: () => void;
+  embedded?: boolean; // When true, hides header and uses simpler layout
 }
 
-export const AICoachPage = ({ onBack, onEditScript }: AICoachPageProps) => {
+export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachPageProps) => {
   const navigate = useNavigate();
   const [view, setView] = useState<'setup' | 'recording' | 'processing' | 'results'>('setup');
   const [recordingData, setRecordingData] = useState<{
@@ -72,6 +73,52 @@ export const AICoachPage = ({ onBack, onEditScript }: AICoachPageProps) => {
       handleBack();
     }
   };
+
+  // Embedded mode: just render the content without header/wrapper
+  if (embedded) {
+    return (
+      <div className="space-y-6">
+        <AnimatePresence mode="wait">
+          {view === 'setup' && (
+            <motion.div key="setup" exit={{ opacity: 0, x: -20 }}>
+              <AICoachSetup onReady={handleSetupReady} />
+            </motion.div>
+          )}
+
+          {view === 'recording' && (
+            <motion.div key="recording" exit={{ opacity: 0 }}>
+              <AICoachRecording 
+                onStop={handleRecordingStop}
+                onCancel={handleRecordingCancel}
+              />
+            </motion.div>
+          )}
+
+          {view === 'processing' && recordingData && (
+            <motion.div key="processing" exit={{ opacity: 0 }}>
+              <AICoachProcessing
+                audioBlob={recordingData.audioBlob}
+                videoBlob={recordingData.videoBlob}
+                duration={recordingData.duration}
+                frameData={recordingData.frameData}
+                onComplete={handleProcessingComplete}
+                onError={handleProcessingError}
+              />
+            </motion.div>
+          )}
+
+          {view === 'results' && (
+            <motion.div key="results" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              <AICoachResults
+                onReRecord={handleReRecord}
+                onEditScript={handleEditScript}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

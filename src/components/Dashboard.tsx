@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { TrackType, trackConfigs } from "@/lib/tracks";
 import { SpeechCoach } from "./SpeechCoach";
+import { AICoachPage } from "./ai-coach/AICoachPage";
 import { useAICoachStore } from "@/stores/aiCoachStore";
 import jsPDF from "jspdf";
 
@@ -1113,13 +1114,12 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
+              className="min-h-[600px]"
             >
-              <SpeechCoach 
-                speechBlocks={speechBlocks} 
+              <AICoachPage 
                 onBack={() => setActiveTab("practice")}
-                idea={data.idea}
-                track={data.track}
-                duration={data.duration}
+                onEditScript={() => setActiveTab("script")}
+                embedded
               />
             </motion.div>
           )}
