@@ -22,6 +22,29 @@ A mobile-first web app that gamifies the process of creating and practicing hack
 | **Academic Defense** | Thesis committees | Methodology, literature, contributions |
 | **Grandma Test** | Non-technical audience | Simple analogies, everyday benefits |
 
+### ✍️ Practice Your Own Pitch (NEW in v1.2)
+
+- **Custom script input** - Paste your own pitch script instead of generating one
+- **Word count validation** - Max 450 words (~3 minutes at 130 WPM)
+- **AI-powered script structuring** - Automatically parses your script into logical sections (Opening, Problem, Solution, etc.)
+- **Seamless integration** - Works with all practice and coaching features
+
+### 🎯 Hackathon Jury Pitch Evaluation (NEW in v1.3)
+
+**Automated pitch structure analysis specifically for hackathon tracks:**
+
+- **Event Detection** - Identifies key pitch elements:
+  - Problem statement articulation
+  - Innovation/differentiation claims
+  - Technical feasibility explanations
+  - Business model mentions
+  - Solution introductions
+
+- **Visual Timeline** - Shows exactly where each event occurs in your recording
+- **Primary Issue Selection** - Priority ranking with severity scoring
+- **"Next Improvement" Coaching Card** - Evidence timestamps + actionable next steps
+- **Word-level timestamps** - Precise event detection using STT
+
 ### ⏱️ Time-Slicer Technology
 
 - **Sticky "Time Saved" counter** showing real-time savings vs manual prep
@@ -52,6 +75,7 @@ Three integrated tabs for complete pitch preparation:
 
 3. **AI Speech Coach**
    - Voice recording with live waveform visualization
+   - **Real-time face mesh tracking** with MediaPipe
    - Speech-to-text transcription analysis
    - Accuracy scoring with highlighted matches/misses
    - Filler word detection and breakdown
@@ -67,7 +91,8 @@ Three integrated tabs for complete pitch preparation:
 - **Styling**: Tailwind CSS, shadcn/ui components
 - **Animation**: Framer Motion
 - **Backend**: Supabase (Lovable Cloud)
-- **AI/Voice**: ElevenLabs TTS/STT, Lovable AI
+- **AI/Voice**: ElevenLabs TTS/STT, OpenAI Whisper, Lovable AI
+- **Computer Vision**: MediaPipe Face Landmarker
 - **Charts**: Recharts
 - **PDF**: jsPDF
 
@@ -80,24 +105,41 @@ src/
 ├── components/
 │   ├── Dashboard.tsx        # Main post-generation dashboard
 │   ├── SpeechCoach.tsx      # AI recording & analysis
+│   ├── ai-coach/            # AI Coach components
+│   │   ├── AICoachPage.tsx      # Main orchestrator
+│   │   ├── AICoachSetup.tsx     # Camera/mic permissions
+│   │   ├── AICoachRecording.tsx # Recording with face mesh
+│   │   ├── AICoachProcessing.tsx # Analysis pipeline
+│   │   └── AICoachResults.tsx   # Results display
 │   ├── steps/               # Wizard step components
 │   │   ├── Step1Hook.tsx    # Landing page
 │   │   ├── Step2Audience.tsx # Audience selection
+│   │   ├── CustomScriptStep.tsx # Own script input
 │   │   ├── Step7Generation.tsx # Final generation
 │   │   └── tracks/          # Track-specific steps
 │   ├── landing/             # Landing page components
 │   └── ui/                  # shadcn/ui components
 ├── pages/
-│   └── Index.tsx            # Main wizard orchestrator
+│   ├── Index.tsx            # Main wizard orchestrator
+│   └── AdminAnalytics.tsx   # Usage analytics
+├── services/
+│   ├── openai.ts            # OpenAI API integration
+│   └── mediapipe.ts         # Face mesh detection
+├── stores/
+│   └── aiCoachStore.ts      # AI Coach state management
 ├── lib/
 │   └── tracks.ts            # Track configuration
 └── hooks/                   # Custom React hooks
 
 supabase/functions/
 ├── generate-speech/         # AI script generation
+├── generate-pitch/          # Pitch generation
+├── structure-script/        # Script parsing
+├── evaluate-hackathon-jury-pitch/ # Pitch evaluation
+├── generate-hackathon-jury-questions/ # Jury Q&A
 ├── elevenlabs-tts/          # Text-to-speech
 ├── elevenlabs-stt/          # Speech-to-text
-└── generate-pitch/          # Pitch generation
+└── get-analytics/           # Usage analytics
 ```
 
 ---
@@ -122,9 +164,18 @@ Stores AI coach practice recordings with:
 - Filler word counts and breakdown
 - WPM and tone analysis
 - Session grouping for trend tracking
+- **Pitch events JSON** (v1.3) - detected structure elements
+- **Primary issue analysis** (v1.3) - improvement recommendations
+- **Structured script JSON** (v1.2) - parsed script sections
 
 ### `suggestion_analytics`
 Tracks user interactions with AI suggestions for optimization.
+
+---
+
+## Version History
+
+See [CHANGELOG.md](./CHANGELOG.md) for detailed release notes.
 
 ---
 
