@@ -578,18 +578,5 @@ export const TimeEater = ({
             </motion.div>
           </motion.div>}
       </AnimatePresence>
-
-      {/* Show CTA even before typing if needed */}
-      {!showVisualization && <motion.div initial={{
-      opacity: 0
-    }} animate={{
-      opacity: 1
-    }} transition={{
-      delay: 0.8
-    }} className="flex justify-center">
-          <p className="text-sm text-muted-foreground text-center">
-            Type your project name or paste a URL to get started
-          </p>
-        </motion.div>}
     </div>;
 };
