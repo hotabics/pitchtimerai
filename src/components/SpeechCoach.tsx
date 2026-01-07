@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Mic, MicOff, Square, Brain, Sparkles, CheckCircle2, 
   AlertCircle, TrendingUp, Clock, MessageSquare, Zap,
-  Volume2, Target, ArrowLeft, History, Loader2
+  Volume2, Target, ArrowLeft, History, Loader2, HelpCircle,
+  ChevronDown, ChevronUp, RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -47,6 +48,17 @@ interface ImprovementSummary {
   after_timestamp: number | null;
 }
 
+interface JuryQuestion {
+  category: 'Problem' | 'Innovation' | 'Technical Feasibility' | 'Business Model' | 'Risk';
+  question: string;
+  why_they_ask: string;
+}
+
+interface JuryQuestionsResult {
+  summary: string;
+  questions: JuryQuestion[];
+}
+
 interface AnalysisResult {
   score: number;
   wpm: number;
@@ -62,6 +74,7 @@ interface AnalysisResult {
   recordingDuration?: number;
   coachFeedback?: CoachFeedback | null;
   improvementSummary?: ImprovementSummary | null;
+  juryQuestions?: JuryQuestionsResult | null;
 }
 
 interface DetectedEvent {
@@ -298,6 +311,8 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
   const [pastSessions, setPastSessions] = useState<PracticeSession[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [baselineSessionId, setBaselineSessionId] = useState<string | null>(null);
+  const [isLoadingJuryQuestions, setIsLoadingJuryQuestions] = useState(false);
+  const [expandedQuestionIndex, setExpandedQuestionIndex] = useState<number | null>(null);
   
   // Audio recording refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -411,7 +426,59 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
     }
   }, [track]);
 
-  // Real audio visualization using Web Audio API
+  // Generate hackathon jury questions
+  const generateJuryQuestions = useCallback(async (
+    sessionId: string,
+    transcript: string,
+    eventsJson: DetectedEvents | null,
+    primaryIssueKey: string | null
+  ): Promise<JuryQuestionsResult | null> => {
+    if (track !== 'hackathon_jury') return null;
+    
+    try {
+      console.log('Generating jury questions for session:', sessionId);
+      setIsLoadingJuryQuestions(true);
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-hackathon-jury-questions`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            session_id: sessionId,
+            track,
+            transcript,
+            events_json: eventsJson,
+            primary_issue_key: primaryIssueKey || 'none',
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to generate jury questions');
+      }
+
+      const result = await response.json();
+      console.log('Jury questions result:', result);
+      return result.jury_questions as JuryQuestionsResult;
+    } catch (err) {
+      console.error('Failed to generate jury questions:', err);
+      toast({
+        title: "Jury Questions",
+        description: "Could not generate jury questions. You can try again later.",
+        variant: "destructive",
+      });
+      return null;
+    } finally {
+      setIsLoadingJuryQuestions(false);
+    }
+  }, [track]);
+
   const updateWaveform = useCallback(() => {
     if (analyserRef.current) {
       const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
@@ -637,6 +704,20 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
         }
         if (evalResult.improvementSummary) {
           analysisResult.improvementSummary = evalResult.improvementSummary;
+        }
+        
+        // Generate jury questions for hackathon_jury track (runs async, updates state when ready)
+        if (track === 'hackathon_jury') {
+          generateJuryQuestions(
+            sessionId,
+            transcription,
+            evalResult.events,
+            evalResult.primaryIssue?.key || null
+          ).then((juryQuestions) => {
+            if (juryQuestions) {
+              setAnalysis(prev => prev ? { ...prev, juryQuestions } : prev);
+            }
+          });
         }
       }
       
@@ -1386,6 +1467,126 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
                     </p>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Hackathon Jury Questions (hackathon_jury track only) */}
+        {track === 'hackathon_jury' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            <Card className="glass-card border-2 border-accent/50 bg-accent/5">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <HelpCircle className="w-5 h-5 text-accent" />
+                  Hackathon Jury Questions
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Questions you're likely to be asked after this pitch.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isLoadingJuryQuestions ? (
+                  <div className="flex items-center justify-center py-8 gap-3">
+                    <Loader2 className="w-5 h-5 animate-spin text-accent" />
+                    <span className="text-sm text-muted-foreground">Generating jury questions...</span>
+                  </div>
+                ) : analysis.juryQuestions ? (
+                  <>
+                    {analysis.juryQuestions.summary && (
+                      <p className="text-sm text-muted-foreground italic border-l-2 border-accent/30 pl-3 mb-4">
+                        {analysis.juryQuestions.summary}
+                      </p>
+                    )}
+                    <div className="space-y-3">
+                      {analysis.juryQuestions.questions.map((q, index) => {
+                        const categoryColors: Record<string, string> = {
+                          'Problem': 'bg-destructive/10 text-destructive',
+                          'Innovation': 'bg-success/10 text-success',
+                          'Technical Feasibility': 'bg-warning/10 text-warning',
+                          'Business Model': 'bg-primary/10 text-primary',
+                          'Risk': 'bg-muted text-muted-foreground',
+                        };
+                        const isExpanded = expandedQuestionIndex === index;
+                        
+                        return (
+                          <motion.div
+                            key={index}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.05 * index }}
+                            className="bg-background/50 rounded-lg border border-border overflow-hidden"
+                          >
+                            <div className="p-3">
+                              <div className="flex items-start gap-3">
+                                <span className={cn(
+                                  "text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap",
+                                  categoryColors[q.category] || 'bg-muted text-muted-foreground'
+                                )}>
+                                  {q.category}
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-foreground">
+                                    {q.question}
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={() => setExpandedQuestionIndex(isExpanded ? null : index)}
+                                  className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                  {isExpanded ? (
+                                    <ChevronUp className="w-4 h-4" />
+                                  ) : (
+                                    <ChevronDown className="w-4 h-4" />
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                            <AnimatePresence>
+                              {isExpanded && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: 'auto', opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.2 }}
+                                  className="border-t border-border"
+                                >
+                                  <div className="p-3 bg-muted/30">
+                                    <p className="text-xs text-muted-foreground">
+                                      <span className="font-medium">Why they ask this:</span> {q.why_they_ask}
+                                    </p>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                    <div className="pt-4 border-t border-border">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleReset}
+                        className="gap-2 w-full"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                        Re-record your pitch with these questions in mind
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-6 gap-3 text-center">
+                    <HelpCircle className="w-8 h-8 text-muted-foreground/50" />
+                    <p className="text-sm text-muted-foreground">
+                      Jury questions will appear here after analysis.
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>

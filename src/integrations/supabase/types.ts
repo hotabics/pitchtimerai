@@ -27,6 +27,7 @@ export type Database = {
           id: string
           idea: string
           improvement_summary_json: Json | null
+          jury_questions_json: Json | null
           missed_sections: string[] | null
           original_script: string | null
           original_script_text: string | null
@@ -54,6 +55,7 @@ export type Database = {
           id?: string
           idea: string
           improvement_summary_json?: Json | null
+          jury_questions_json?: Json | null
           missed_sections?: string[] | null
           original_script?: string | null
           original_script_text?: string | null
@@ -81,6 +83,7 @@ export type Database = {
           id?: string
           idea?: string
           improvement_summary_json?: Json | null
+          jury_questions_json?: Json | null
           missed_sections?: string[] | null
           original_script?: string | null
           original_script_text?: string | null
