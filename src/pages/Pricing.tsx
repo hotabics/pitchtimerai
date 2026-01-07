@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Check, X, Sparkles, Zap, Crown, Clock, Loader2 } from 'lucide-react';
+import { Check, X, Sparkles, Zap, Crown, Clock, Loader2, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -89,6 +89,7 @@ export const Pricing = () => {
   const [searchParams] = useSearchParams();
   const { userPlan, setUserPlan, isLoggedIn, openAuthModal, checkSubscription } = useUserStore();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [loadingPortal, setLoadingPortal] = useState(false);
 
   // Handle success/cancel redirects from Stripe
   useEffect(() => {
@@ -154,6 +155,43 @@ export const Pricing = () => {
       });
     } finally {
       setLoadingPlan(null);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    if (!isLoggedIn) {
+      openAuthModal('save');
+      return;
+    }
+
+    setLoadingPortal(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        openAuthModal('save');
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('customer-portal', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, '_blank');
+      }
+    } catch (error: any) {
+      console.error('Portal error:', error);
+      toast({
+        title: 'Could not open portal',
+        description: error.message || 'Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingPortal(false);
     }
   };
 
@@ -267,13 +305,28 @@ export const Pricing = () => {
             ))}
           </div>
 
-          {/* FAQ or trust signals */}
+          {/* Manage Subscription & Trust signals */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
-            className="mt-16 text-center"
+            className="mt-16 text-center space-y-4"
           >
+            {isLoggedIn && userPlan !== 'free' && (
+              <Button
+                variant="outline"
+                onClick={handleManageSubscription}
+                disabled={loadingPortal}
+                className="gap-2"
+              >
+                {loadingPortal ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Settings className="w-4 h-4" />
+                )}
+                Manage Subscription
+              </Button>
+            )}
             <p className="text-sm text-muted-foreground">
               🔒 Secure payment via Stripe • Cancel anytime • No hidden fees
             </p>

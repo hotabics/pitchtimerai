@@ -30,5 +30,8 @@ verify_jwt = false
 [functions.check-subscription]
 verify_jwt = false
 
+[functions.customer-portal]
+verify_jwt = false
+
 [functions.firecrawl-scrape]
 verify_jwt = false
