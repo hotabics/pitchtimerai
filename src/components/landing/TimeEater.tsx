@@ -274,7 +274,7 @@ export const TimeEater = ({
           </div>
 
           <p className="text-center text-sm text-muted-foreground">
-            Type your project name to see how much time you'll save
+            Type your project name or paste a URL to see how much time you'll save
           </p>
         </div>
       </motion.div>
