@@ -1,7 +1,8 @@
-// Zustand store for user state management
+// Zustand store for user state management with Supabase integration
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { supabase } from '@/integrations/supabase/client';
 
 export type UserPlan = 'free' | 'pass_48h' | 'pro';
 
@@ -19,6 +20,7 @@ interface UserState {
   isLoggedIn: boolean;
   userPlan: UserPlan;
   planExpiresAt: Date | null;
+  isCheckingSubscription: boolean;
 
   // Auth modal state
   showAuthModal: boolean;
@@ -30,7 +32,9 @@ interface UserState {
   openAuthModal: (trigger: 'save' | 'coach' | 'export') => void;
   closeAuthModal: () => void;
   login: (user: User) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
+  checkSubscription: () => Promise<void>;
+  initializeAuth: () => Promise<void>;
 
   // Plan checks
   canAccessDeepAnalysis: () => boolean;
@@ -46,6 +50,7 @@ export const useUserStore = create<UserState>()(
       isLoggedIn: false,
       userPlan: 'free',
       planExpiresAt: null,
+      isCheckingSubscription: false,
       showAuthModal: false,
       authModalTrigger: null,
 
@@ -72,12 +77,98 @@ export const useUserStore = create<UserState>()(
         isLoggedIn: true 
       }),
 
-      logout: () => set({ 
-        user: null, 
-        isLoggedIn: false, 
-        userPlan: 'free',
-        planExpiresAt: null 
-      }),
+      logout: async () => {
+        await supabase.auth.signOut();
+        set({ 
+          user: null, 
+          isLoggedIn: false, 
+          userPlan: 'free',
+          planExpiresAt: null 
+        });
+      },
+
+      checkSubscription: async () => {
+        const { user, isLoggedIn } = get();
+        if (!isLoggedIn || !user) return;
+
+        set({ isCheckingSubscription: true });
+        
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) return;
+
+          const { data, error } = await supabase.functions.invoke('check-subscription', {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          });
+
+          if (error) {
+            console.error('Subscription check error:', error);
+            return;
+          }
+
+          if (data) {
+            const plan = data.plan as UserPlan;
+            const expiresAt = data.subscription_end 
+              ? new Date(data.subscription_end) 
+              : data.pass_expires 
+                ? new Date(data.pass_expires) 
+                : null;
+            
+            set({ userPlan: plan, planExpiresAt: expiresAt });
+          }
+        } catch (error) {
+          console.error('Failed to check subscription:', error);
+        } finally {
+          set({ isCheckingSubscription: false });
+        }
+      },
+
+      initializeAuth: async () => {
+        // Set up auth state listener
+        supabase.auth.onAuthStateChange((event, session) => {
+          if (session?.user) {
+            const user: User = {
+              id: session.user.id,
+              email: session.user.email || '',
+              name: session.user.user_metadata?.name || 
+                    session.user.user_metadata?.full_name || 
+                    session.user.email?.split('@')[0] || 'User',
+              avatar: session.user.user_metadata?.avatar_url,
+              provider: session.user.app_metadata?.provider as User['provider'],
+            };
+            set({ user, isLoggedIn: true });
+            
+            // Check subscription after login
+            setTimeout(() => {
+              get().checkSubscription();
+            }, 0);
+          } else {
+            set({ user: null, isLoggedIn: false, userPlan: 'free', planExpiresAt: null });
+          }
+        });
+
+        // Check existing session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const user: User = {
+            id: session.user.id,
+            email: session.user.email || '',
+            name: session.user.user_metadata?.name || 
+                  session.user.user_metadata?.full_name || 
+                  session.user.email?.split('@')[0] || 'User',
+            avatar: session.user.user_metadata?.avatar_url,
+            provider: session.user.app_metadata?.provider as User['provider'],
+          };
+          set({ user, isLoggedIn: true });
+          
+          // Check subscription
+          setTimeout(() => {
+            get().checkSubscription();
+          }, 0);
+        }
+      },
 
       // Plan access checks
       canAccessDeepAnalysis: () => {
@@ -118,3 +209,6 @@ export const useUserStore = create<UserState>()(
     }
   )
 );
+
+// Initialize auth on module load
+useUserStore.getState().initializeAuth();
