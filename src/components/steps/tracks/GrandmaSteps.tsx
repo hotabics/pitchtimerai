@@ -12,6 +12,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { AISuggestions, useSuggestions } from "@/components/shared/AISuggestions";
+import { trackEvent } from "@/utils/analytics";
 
 // Step 1: The Connection
 interface ConnectionStepProps {
@@ -93,7 +94,10 @@ export const GrandmaConnectionStep = ({ onNext, onBack, initialValue = "", idea 
         <div className="flex-1" />
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mt-6 space-y-3">
-          <Button variant="default" size="lg" onClick={() => onNext(getCombinedValue(connection))} disabled={!hasContent} className="w-full">
+          <Button variant="default" size="lg" onClick={() => {
+            trackEvent('Wizard Step: Completed', { track: 'grandma', step: 'connection', hasAISuggestion: hasSelection });
+            onNext(getCombinedValue(connection));
+          }} disabled={!hasContent} className="w-full">
             Continue <ArrowRight className="w-5 h-5" />
           </Button>
           <Button variant="ghost" onClick={onBack} className="w-full"><ArrowLeft className="w-4 h-4" /> Back</Button>
@@ -183,7 +187,10 @@ export const GrandmaPainStep = ({ onNext, onBack, initialValue = "", idea = "" }
         <div className="flex-1" />
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mt-6 space-y-3">
-          <Button variant="default" size="lg" onClick={() => onNext(getCombinedValue(pain))} disabled={!hasContent} className="w-full">
+          <Button variant="default" size="lg" onClick={() => {
+            trackEvent('Wizard Step: Completed', { track: 'grandma', step: 'pain', hasAISuggestion: hasSelection });
+            onNext(getCombinedValue(pain));
+          }} disabled={!hasContent} className="w-full">
             Continue <ArrowRight className="w-5 h-5" />
           </Button>
           <Button variant="ghost" onClick={onBack} className="w-full"><ArrowLeft className="w-4 h-4" /> Back</Button>
@@ -276,7 +283,10 @@ export const GrandmaAnalogyStep = ({ onNext, onBack, initialValue = "", idea = "
         <div className="flex-1" />
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mt-6 space-y-3">
-          <Button variant="default" size="lg" onClick={() => onNext(getCombinedValue(analogy))} disabled={!hasContent} className="w-full">
+          <Button variant="default" size="lg" onClick={() => {
+            trackEvent('Wizard Step: Completed', { track: 'grandma', step: 'analogy', hasAISuggestion: hasSelection });
+            onNext(getCombinedValue(analogy));
+          }} disabled={!hasContent} className="w-full">
             Continue <ArrowRight className="w-5 h-5" />
           </Button>
           <Button variant="ghost" onClick={onBack} className="w-full"><ArrowLeft className="w-4 h-4" /> Back</Button>
@@ -366,7 +376,10 @@ export const GrandmaBenefitsStep = ({ onNext, onBack, initialValue = "", idea = 
         <div className="flex-1" />
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mt-6 space-y-3">
-          <Button variant="default" size="lg" onClick={() => onNext(getCombinedValue(benefits))} disabled={!hasContent} className="w-full">
+          <Button variant="default" size="lg" onClick={() => {
+            trackEvent('Wizard Step: Completed', { track: 'grandma', step: 'benefits', hasAISuggestion: hasSelection });
+            onNext(getCombinedValue(benefits));
+          }} disabled={!hasContent} className="w-full">
             Continue <ArrowRight className="w-5 h-5" />
           </Button>
           <Button variant="ghost" onClick={onBack} className="w-full"><ArrowLeft className="w-4 h-4" /> Back</Button>
@@ -456,7 +469,10 @@ export const GrandmaSafetyStep = ({ onNext, onBack, initialValue = "", idea = ""
         <div className="flex-1" />
 
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="mt-6 space-y-3">
-          <Button variant="default" size="lg" onClick={() => onNext(getCombinedValue(safety))} disabled={!hasContent} className="w-full">
+          <Button variant="default" size="lg" onClick={() => {
+            trackEvent('Wizard Step: Completed', { track: 'grandma', step: 'safety', hasAISuggestion: hasSelection });
+            onNext(getCombinedValue(safety));
+          }} disabled={!hasContent} className="w-full">
             Finish <ArrowRight className="w-5 h-5" />
           </Button>
           <Button variant="ghost" onClick={onBack} className="w-full"><ArrowLeft className="w-4 h-4" /> Back</Button>

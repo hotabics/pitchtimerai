@@ -14,6 +14,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { AISuggestions, useSuggestions } from "@/components/shared/AISuggestions";
+import { trackEvent } from "@/utils/analytics";
 
 // Shared accent style for Peers track - vibrant purple/coral
 const peersAccentBg = "bg-gradient-to-br from-fuchsia-500/20 to-purple-500/10";
@@ -130,7 +131,10 @@ export const PeersHookStep = ({ onNext, onBack, initialValue = "", idea = "" }: 
           <Button
             variant="default"
             size="lg"
-            onClick={() => onNext(getCombinedValue(hook))}
+            onClick={() => {
+              trackEvent('Wizard Step: Completed', { track: 'peers', step: 'hook', hasAISuggestion: hasSelection });
+              onNext(getCombinedValue(hook));
+            }}
             disabled={!hasContent}
             className="w-full bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700"
           >
@@ -177,6 +181,7 @@ export const PeersStruggleStep = ({ onNext, onBack, initialValue = "" }: Struggl
   const handleNext = () => {
     const struggles = selected.map(id => struggleChips.find(c => c.id === id)?.label || id);
     const combined = [...struggles, customStruggle].filter(Boolean).join(", ");
+    trackEvent('Wizard Step: Completed', { track: 'peers', step: 'struggle', selectedCount: selected.length });
     onNext(combined, customStruggle);
   };
 
@@ -374,7 +379,10 @@ export const PeersThingStep = ({ onNext, onBack, initialValue = "", idea = "" }:
           <Button
             variant="default"
             size="lg"
-            onClick={() => onNext(getCombinedValue(thing))}
+            onClick={() => {
+              trackEvent('Wizard Step: Completed', { track: 'peers', step: 'thing', hasAISuggestion: hasSelection });
+              onNext(getCombinedValue(thing));
+            }}
             disabled={!hasContent}
             className="w-full bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700"
           >
@@ -431,6 +439,7 @@ export const PeersWhyCareStep = ({ onNext, onBack, initialValue = ["", "", ""], 
   const handleNext = () => {
     const selected = getSelectedTexts();
     const benefits = [benefit1, benefit2, benefit3, ...selected].filter(Boolean);
+    trackEvent('Wizard Step: Completed', { track: 'peers', step: 'why_care', benefitCount: benefits.length });
     onNext(benefits);
   };
 
@@ -648,7 +657,10 @@ export const PeersHowToStep = ({ onNext, onBack, initialValue = "", idea = "" }:
           <Button
             variant="default"
             size="lg"
-            onClick={() => onNext(getCombinedValue(howTo))}
+            onClick={() => {
+              trackEvent('Wizard Step: Completed', { track: 'peers', step: 'how_to', hasAISuggestion: hasSelection });
+              onNext(getCombinedValue(howTo));
+            }}
             disabled={!hasContent}
             className="w-full bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700"
           >
@@ -759,7 +771,10 @@ export const PeersComparisonStep = ({ onNext, onBack, initialValue = "", idea = 
           <Button
             variant="default"
             size="lg"
-            onClick={() => onNext(getCombinedValue(comparison))}
+            onClick={() => {
+              trackEvent('Wizard Step: Completed', { track: 'peers', step: 'comparison', hasAISuggestion: hasSelection });
+              onNext(getCombinedValue(comparison));
+            }}
             disabled={!hasContent}
             className="w-full bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700"
           >
@@ -873,7 +888,10 @@ export const PeersAuthenticWhyStep = ({ onNext, onBack, initialValue = "", idea 
           <Button
             variant="default"
             size="lg"
-            onClick={() => onNext(getCombinedValue(why))}
+            onClick={() => {
+              trackEvent('Wizard Step: Completed', { track: 'peers', step: 'authentic_why', hasAISuggestion: hasSelection });
+              onNext(getCombinedValue(why));
+            }}
             disabled={!hasContent}
             className="w-full bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700"
           >
@@ -1000,7 +1018,10 @@ export const PeersCTAStep = ({ onNext, onBack, initialValue = "", idea = "" }: C
           <Button
             variant="default"
             size="lg"
-            onClick={() => onNext(getCombinedValue(cta))}
+            onClick={() => {
+              trackEvent('Wizard Step: Completed', { track: 'peers', step: 'cta', hasAISuggestion: hasSelection });
+              onNext(getCombinedValue(cta));
+            }}
             disabled={!hasContent}
             className="w-full bg-gradient-to-r from-fuchsia-500 to-purple-600 hover:from-fuchsia-600 hover:to-purple-700"
           >
