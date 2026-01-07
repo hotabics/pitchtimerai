@@ -14,9 +14,9 @@ export const FloatingTutorialButton = ({ onClick }: FloatingTutorialButtonProps)
       onClick={onClick}
       className="
         fixed left-0 top-1/2 -translate-y-1/2 z-50
-        flex items-center gap-2
+        flex items-center justify-center
         bg-primary text-primary-foreground
-        pl-3 pr-4 py-3
+        p-3
         rounded-r-xl
         shadow-lg shadow-primary/25
         hover:pl-4 hover:shadow-xl hover:shadow-primary/30
@@ -26,9 +26,6 @@ export const FloatingTutorialButton = ({ onClick }: FloatingTutorialButtonProps)
       aria-label="Open tutorial"
     >
       <HelpCircle className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-      <span className="text-sm font-medium whitespace-nowrap">
-        Tutorial
-      </span>
     </motion.button>
   );
 };
