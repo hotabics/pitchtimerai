@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.evaluate-hackathon-jury-pitch]
 verify_jwt = false
+
+[functions.generate-hackathon-jury-questions]
+verify_jwt = false
