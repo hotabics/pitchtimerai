@@ -408,9 +408,9 @@ async function generateCoachFeedback(
   primaryIssue: PrimaryIssue,
   durationSeconds: number
 ): Promise<CoachFeedback | null> {
-  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
   
-  if (!LOVABLE_API_KEY || primaryIssue.key === 'none') {
+  if (!OPENAI_API_KEY || primaryIssue.key === 'none') {
     return null;
   }
   
@@ -458,23 +458,24 @@ Constraints:
 - Output JSON only.`;
 
   try {
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt },
         ],
+        temperature: 0.7,
       }),
     });
 
     if (!response.ok) {
-      console.error('Lovable AI error:', response.status, await response.text());
+      console.error('OpenAI API error:', response.status, await response.text());
       return null;
     }
 
