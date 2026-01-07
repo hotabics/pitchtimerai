@@ -4,9 +4,8 @@ import { Sparkles, Rocket, Clock, Zap, Info, ArrowRight, Link2, Wand2, Loader2 }
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { isUrl, mockScrapeUrl, ScrapedData } from "@/services/mockScraper";
+import { isUrl, scrapeUrl, ScrapedProjectData } from "@/lib/api/firecrawl";
 import { toast } from "@/hooks/use-toast";
-
 // Custom hook for counting animation
 const useCountUp = (end: number, duration: number = 1500, start: boolean = false) => {
   const [count, setCount] = useState(0);
@@ -34,8 +33,8 @@ const useCountUp = (end: number, duration: number = 1500, start: boolean = false
   return count;
 };
 interface TimeEaterProps {
-  onSubmit: (idea: string, scrapedData?: ScrapedData) => void;
-  onAutoGenerate: (idea: string, scrapedData?: ScrapedData) => void;
+  onSubmit: (idea: string, scrapedData?: ScrapedProjectData) => void;
+  onAutoGenerate: (idea: string, scrapedData?: ScrapedProjectData) => void;
 }
 interface TaskBreakdown {
   id: string;
@@ -107,7 +106,7 @@ export const TimeEater = ({
   const [showVisualization, setShowVisualization] = useState(false);
   const [animateBars, setAnimateBars] = useState(false);
   const [isScrapingUrl, setIsScrapingUrl] = useState(false);
-  const [scrapedData, setScrapedData] = useState<ScrapedData | null>(null);
+  const [scrapedData, setScrapedData] = useState<ScrapedProjectData | null>(null);
   
   const tasks = getTasksForDuration(parseInt(pitchDuration));
   const totalManual = tasks.reduce((sum, t) => sum + t.manualMinutes, 0);
@@ -124,16 +123,24 @@ export const TimeEater = ({
   // Check if input is a URL
   const inputIsUrl = isUrl(projectName);
   
-  // Handle URL scraping
+  // Handle URL scraping with real Firecrawl
   const handleUrlScrape = async (url: string) => {
     setIsScrapingUrl(true);
     try {
-      const data = await mockScrapeUrl(url);
-      setScrapedData(data);
-      toast({
-        title: "Website Scanned!",
-        description: `Extracted data from ${url.slice(0, 30)}...`,
-      });
+      const response = await scrapeUrl(url);
+      if (response.success && response.data) {
+        setScrapedData(response.data);
+        toast({
+          title: "Website Scanned!",
+          description: `Extracted data from ${url.slice(0, 30)}...`,
+        });
+      } else {
+        toast({
+          title: "Scan Failed",
+          description: response.error || "Could not extract data from this URL",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       toast({
         title: "Scan Failed",

@@ -29,14 +29,24 @@ A mobile-first web app that gamifies the process of creating and practicing hack
 - **AI-powered script structuring** - Automatically parses your script into logical sections (Opening, Problem, Solution, etc.)
 - **Seamless integration** - Works with all practice and coaching features
 
-### 🚀 URL Scraping & Auto-Generate (NEW in v1.4)
+### 🚀 URL Scraping & Auto-Generate (NEW in v1.5)
 
-**Magic Input with intelligent detection:**
+**Magic Input with Firecrawl-powered scraping:**
 
-- **Paste any URL** - Automatically extracts project name, problem, and solution
-- **"Scanning Website..."** animation with visual feedback
+- **Real website scraping** - Firecrawl API extracts content from any URL
+- **AI-powered extraction** - Automatically identifies project name, problem, and solution
+- **Audience detection** - Suggests optimal track (Investor, Academic, Hackathon)
 - **Two CTAs**: "Customize Pitch" (wizard) or "Auto-Generate Pitch ⚡" (instant)
 - **One-click generation** - Skips wizard entirely, jumps straight to Dashboard
+
+### 🎓 Getting Started Tutorial (NEW in v1.5)
+
+**Interactive onboarding for first-time users:**
+
+- 6-step guided tour of key features
+- Explains Magic Input, Auto-Generate, AI Coach, and more
+- Progress navigation with skip option
+- Only shows once (persisted in localStorage)
 
 ### 🎬 Professional Teleprompter (NEW in v1.4)
 

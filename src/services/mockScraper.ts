@@ -1,20 +1,13 @@
 /**
  * Mock URL Scraper Service
- * Simulates scraping a website to extract project information
+ * Provides fallback mock data when Firecrawl is not available
  */
 
-export interface ScrapedData {
-  name: string;
-  problem: string;
-  solution: string;
-  audience: string;
-}
+import { ScrapedProjectData, isUrl as isUrlCheck } from "@/lib/api/firecrawl";
 
-// Regex to detect URLs
-export const isUrl = (input: string): boolean => {
-  const urlPattern = /^(https?:\/\/|www\.)/i;
-  return urlPattern.test(input.trim());
-};
+// Re-export the type and utility for convenience
+export type ScrapedData = ScrapedProjectData;
+export const isUrl = isUrlCheck;
 
 // Extract domain name from URL for project name
 const extractDomainName = (url: string): string => {
