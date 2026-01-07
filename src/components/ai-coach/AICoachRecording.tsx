@@ -6,12 +6,22 @@ import {
   AlertTriangle,
   Camera,
   Eye,
+  Globe,
   Mic,
   Smile,
   Square,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAICoachStore } from "@/stores/aiCoachStore";
 import type { FrameData } from "@/services/mediapipe";
 import { drawFaceMesh, initializeFaceLandmarker, type FaceMetrics } from "@/services/mediapipe";
@@ -19,9 +29,6 @@ import { drawFaceMesh, initializeFaceLandmarker, type FaceMetrics } from "@/serv
 interface AICoachRecordingProps {
   onStop: (audioBlob: Blob, videoBlob: Blob, duration: number, frameData: FrameData[]) => void;
   onCancel: () => void;
-
-  /** Optional: if provided, we show a teleprompter instead of live transcription */
-  scriptBlocks?: Array<{ title: string; content: string }>;
 }
 
 type SpeechRecognitionCtor = new () => any;
@@ -33,7 +40,32 @@ const getSpeechRecognitionCtor = (): SpeechRecognitionCtor | null => {
   return w.SpeechRecognition || w.webkitSpeechRecognition || null;
 };
 
-export const AICoachRecording = ({ onStop, onCancel, scriptBlocks = [] }: AICoachRecordingProps) => {
+// Available languages for speech recognition
+const LANGUAGES = [
+  { code: "en-US", label: "English (US)" },
+  { code: "en-GB", label: "English (UK)" },
+  { code: "lv-LV", label: "Latvian" },
+  { code: "de-DE", label: "German" },
+  { code: "fr-FR", label: "French" },
+  { code: "es-ES", label: "Spanish" },
+  { code: "it-IT", label: "Italian" },
+  { code: "pt-BR", label: "Portuguese (BR)" },
+  { code: "ru-RU", label: "Russian" },
+  { code: "zh-CN", label: "Chinese (Simplified)" },
+  { code: "ja-JP", label: "Japanese" },
+  { code: "ko-KR", label: "Korean" },
+];
+
+export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) => {
+  // Get script and transcription settings from store
+  const { 
+    scriptBlocks, 
+    transcriptionSettings, 
+    setTranscriptionSettings,
+    addFrameData, 
+    clearFrameData 
+  } = useAICoachStore();
+
   const hasScript = scriptBlocks.length > 0;
 
   // Initialization stages
@@ -77,8 +109,6 @@ export const AICoachRecording = ({ onStop, onCancel, scriptBlocks = [] }: AICoac
   const micDataRef = useRef<Uint8Array | null>(null);
 
   const teleprompterRef = useRef<HTMLDivElement>(null);
-
-  const { addFrameData, clearFrameData } = useAICoachStore();
 
   const attachVideoEl = useCallback((el: HTMLVideoElement | null) => {
     videoRef.current = el;
@@ -276,9 +306,9 @@ export const AICoachRecording = ({ onStop, onCancel, scriptBlocks = [] }: AICoac
     return () => window.clearInterval(id);
   }, [hasScript, isRecording]);
 
-  // Live transcription with Web Speech API (only when no script)
+  // Live transcription with Web Speech API (only when no script AND transcription is enabled)
   useEffect(() => {
-    if (!isRecording || hasScript) return;
+    if (!isRecording || hasScript || !transcriptionSettings.enabled) return;
 
     const Ctor = getSpeechRecognitionCtor();
 
@@ -292,7 +322,7 @@ export const AICoachRecording = ({ onStop, onCancel, scriptBlocks = [] }: AICoac
     const recognition = new Ctor();
     recognition.continuous = true;
     recognition.interimResults = true;
-    recognition.lang = "en-US";
+    recognition.lang = transcriptionSettings.language;
 
     recognition.onstart = () => setIsListening(true);
     recognition.onend = () => setIsListening(false);
@@ -346,7 +376,7 @@ export const AICoachRecording = ({ onStop, onCancel, scriptBlocks = [] }: AICoac
       }
       speechRecognitionRef.current = null;
     };
-  }, [hasScript, isRecording]);
+  }, [hasScript, isRecording, transcriptionSettings.enabled, transcriptionSettings.language]);
 
   // Keep transcript scrolled to bottom
   useEffect(() => {
@@ -556,36 +586,93 @@ export const AICoachRecording = ({ onStop, onCancel, scriptBlocks = [] }: AICoac
             </>
           ) : (
             <>
-              <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">Live Transcription</span>
-                  <span className="text-xs text-muted-foreground">
-                    {speechSupported ? (isListening ? "Listening..." : "Starting...") : "Not supported"}
-                  </span>
+              <div className="px-4 py-3 border-b border-border space-y-3">
+                {/* Transcription toggle + status */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="transcription-toggle"
+                        checked={transcriptionSettings.enabled}
+                        onCheckedChange={(checked) => 
+                          setTranscriptionSettings({ ...transcriptionSettings, enabled: checked })
+                        }
+                        disabled={isRecording}
+                      />
+                      <Label htmlFor="transcription-toggle" className="text-sm font-medium cursor-pointer">
+                        Live Transcription
+                      </Label>
+                    </div>
+                    {transcriptionSettings.enabled && (
+                      <span className="text-xs text-muted-foreground">
+                        {speechSupported 
+                          ? (isListening ? "Listening..." : "Starting...") 
+                          : "Not supported"}
+                      </span>
+                    )}
+                  </div>
+                  {transcriptionSettings.enabled && speechSupported && (
+                    <div className={`h-2 w-2 rounded-full ${isListening ? "bg-destructive animate-pulse" : "bg-muted"}`} />
+                  )}
                 </div>
-                {speechSupported && (
-                  <div className={`h-2 w-2 rounded-full ${isListening ? "bg-destructive animate-pulse" : "bg-muted"}`} />
+
+                {/* Language selector */}
+                {transcriptionSettings.enabled && (
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-muted-foreground" />
+                    <Select
+                      value={transcriptionSettings.language}
+                      onValueChange={(value) => 
+                        setTranscriptionSettings({ ...transcriptionSettings, language: value })
+                      }
+                      disabled={isRecording}
+                    >
+                      <SelectTrigger className="h-8 w-[180px] text-xs">
+                        <SelectValue placeholder="Select language" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {LANGUAGES.map((lang) => (
+                          <SelectItem key={lang.code} value={lang.code} className="text-xs">
+                            {lang.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {isRecording && (
+                      <span className="text-xs text-muted-foreground">(locked during recording)</span>
+                    )}
+                  </div>
                 )}
               </div>
 
               <div className="p-4">
-                <div
-                  ref={liveTranscriptRef}
-                  className="h-[420px] overflow-y-auto rounded-lg bg-foreground text-background p-4 text-base leading-relaxed"
-                >
-                  {speechSupported ? (
-                    <>
-                      <p className="whitespace-pre-wrap">{liveTranscriptDisplay.base || "\n\nSay something to see subtitles here."}</p>
-                      {liveTranscriptDisplay.interim ? (
-                        <p className="whitespace-pre-wrap opacity-70">{liveTranscriptDisplay.interim}</p>
-                      ) : null}
-                    </>
-                  ) : (
-                    <p className="opacity-80">
-                      Your browser doesn't support SpeechRecognition. (Try Chrome / Edge on desktop.)
-                    </p>
-                  )}
-                </div>
+                {transcriptionSettings.enabled ? (
+                  <div
+                    ref={liveTranscriptRef}
+                    className="h-[380px] overflow-y-auto rounded-lg bg-foreground text-background p-4 text-base leading-relaxed"
+                  >
+                    {speechSupported ? (
+                      <>
+                        <p className="whitespace-pre-wrap">{liveTranscriptDisplay.base || "\n\nSay something to see subtitles here."}</p>
+                        {liveTranscriptDisplay.interim ? (
+                          <p className="whitespace-pre-wrap opacity-70">{liveTranscriptDisplay.interim}</p>
+                        ) : null}
+                      </>
+                    ) : (
+                      <p className="opacity-80">
+                        Your browser doesn't support SpeechRecognition. (Try Chrome / Edge on desktop.)
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="h-[380px] flex items-center justify-center rounded-lg bg-muted/50 text-muted-foreground">
+                    <div className="text-center space-y-2">
+                      <Mic className="w-8 h-8 mx-auto opacity-50" />
+                      <p className="text-sm">Live transcription is disabled</p>
+                      <p className="text-xs">Enable it above to see your speech in real-time</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}

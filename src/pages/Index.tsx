@@ -162,8 +162,15 @@ const Index = () => {
     setData({ entryMode: "generate" });
   };
 
-  // Open AI Coach
-  const handleOpenAICoach = () => {
+  // Open AI Coach - wire script to store if available
+  const handleOpenAICoach = (scriptBlocks?: Array<{ title: string; content: string }>) => {
+    // Import dynamically to avoid circular dependency issues
+    import('@/stores/aiCoachStore').then(({ useAICoachStore }) => {
+      const store = useAICoachStore.getState();
+      if (scriptBlocks && scriptBlocks.length > 0) {
+        store.setScriptBlocks(scriptBlocks);
+      }
+    });
     setShowAICoach(true);
   };
 
