@@ -1,8 +1,19 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Moon, Sun, Menu, X } from "lucide-react";
+import { Sparkles, Moon, Sun, Menu, X, User, LogIn, Crown, Zap } from "lucide-react";
 import { useTheme } from "next-themes";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useUserStore } from "@/stores/userStore";
 
 interface HeaderProps {
   showProgress?: boolean;
@@ -15,18 +26,24 @@ interface HeaderProps {
 const navItems = [
   { label: "Features", href: "#features" },
   { label: "AI Coach", href: "#ai-coach" },
-  { label: "How it Works", href: "#how-it-works" },
+  { label: "Pricing", href: "/pricing", isRoute: true },
 ];
 
 export const Header = ({ showProgress, currentStep = 0, totalSteps = 7, onLogoClick, showNavigation = false }: HeaderProps) => {
   const { theme, setTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isLoggedIn, user, userPlan, logout, openAuthModal } = useUserStore();
 
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
   };
 
-  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string, isRoute?: boolean) => {
+    if (isRoute) {
+      // Let the Link component handle it
+      setMobileMenuOpen(false);
+      return;
+    }
     e.preventDefault();
     setMobileMenuOpen(false);
     const element = document.querySelector(href);
@@ -34,6 +51,14 @@ export const Header = ({ showProgress, currentStep = 0, totalSteps = 7, onLogoCl
       element.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
+
+  const getPlanBadge = () => {
+    if (userPlan === 'pro') return { label: 'PRO', icon: Crown, variant: 'default' as const };
+    if (userPlan === 'pass_48h') return { label: '48H', icon: Zap, variant: 'secondary' as const };
+    return null;
+  };
+
+  const planBadge = getPlanBadge();
 
   return (
     <>
@@ -60,14 +85,24 @@ export const Header = ({ showProgress, currentStep = 0, totalSteps = 7, onLogoCl
             {showNavigation && !showProgress && (
               <nav className="hidden md:flex items-center gap-6">
                 {navItems.map((item) => (
-                  <a
-                    key={item.href}
-                    href={item.href}
-                    onClick={(e) => handleNavClick(e, item.href)}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {item.label}
-                  </a>
+                  item.isRoute ? (
+                    <Link
+                      key={item.href}
+                      to={item.href}
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {item.label}
+                    </Link>
+                  ) : (
+                    <a
+                      key={item.href}
+                      href={item.href}
+                      onClick={(e) => handleNavClick(e, item.href)}
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {item.label}
+                    </a>
+                  )
                 ))}
               </nav>
             )}
@@ -87,6 +122,55 @@ export const Header = ({ showProgress, currentStep = 0, totalSteps = 7, onLogoCl
                     />
                   </div>
                 </div>
+              )}
+
+              {/* User Avatar / Login Button */}
+              {isLoggedIn ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-8 px-2 gap-2">
+                      <Avatar className="h-6 w-6">
+                        <AvatarFallback className="text-xs bg-primary/10">
+                          {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      {planBadge && (
+                        <Badge variant={planBadge.variant} className="h-5 px-1.5 text-[10px] gap-0.5">
+                          <planBadge.icon className="w-3 h-3" />
+                          {planBadge.label}
+                        </Badge>
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <div className="px-2 py-1.5">
+                      <p className="text-sm font-medium">{user?.name}</p>
+                      <p className="text-xs text-muted-foreground">{user?.email}</p>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to="/pricing" className="cursor-pointer">
+                        <Crown className="w-4 h-4 mr-2" />
+                        Upgrade Plan
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={logout} className="text-destructive cursor-pointer">
+                      <LogIn className="w-4 h-4 mr-2" />
+                      Sign Out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-2"
+                  onClick={() => openAuthModal('save')}
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span className="hidden sm:inline">Log In</span>
+                </Button>
               )}
 
               <Button
@@ -157,17 +241,34 @@ export const Header = ({ showProgress, currentStep = 0, totalSteps = 7, onLogoCl
               className="flex flex-col items-center justify-center gap-8 pt-20"
             >
               {navItems.map((item, index) => (
-                <motion.a
-                  key={item.href}
-                  href={item.href}
-                  onClick={(e) => handleNavClick(e, item.href)}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 + index * 0.1 }}
-                  className="text-xl font-medium text-foreground hover:text-primary transition-colors"
-                >
-                  {item.label}
-                </motion.a>
+                item.isRoute ? (
+                  <motion.div
+                    key={item.href}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 + index * 0.1 }}
+                  >
+                    <Link
+                      to={item.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="text-xl font-medium text-foreground hover:text-primary transition-colors"
+                    >
+                      {item.label}
+                    </Link>
+                  </motion.div>
+                ) : (
+                  <motion.a
+                    key={item.href}
+                    href={item.href}
+                    onClick={(e) => handleNavClick(e, item.href)}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 + index * 0.1 }}
+                    className="text-xl font-medium text-foreground hover:text-primary transition-colors"
+                  >
+                    {item.label}
+                  </motion.a>
+                )
               ))}
             </motion.nav>
           </motion.div>

@@ -24,9 +24,11 @@ import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAICoachStore } from '@/stores/aiCoachStore';
+import { useUserStore } from '@/stores/userStore';
 import { trackEvent } from '@/utils/analytics';
 import { MetricFlagButton } from '@/components/feedback/MetricFlagButton';
 import { VerdictFeedback } from '@/components/feedback/VerdictFeedback';
+import { PaywallOverlay } from '@/components/paywall/PaywallOverlay';
 
 interface AICoachResultsProps {
   onReRecord: () => void;
@@ -35,6 +37,8 @@ interface AICoachResultsProps {
 
 export const AICoachResults = ({ onReRecord, onEditScript }: AICoachResultsProps) => {
   const { results } = useAICoachStore();
+  const { canAccessDeepAnalysis } = useUserStore();
+  const hasAccess = canAccessDeepAnalysis();
 
   // Track when results are viewed
   useEffect(() => {
@@ -115,7 +119,16 @@ export const AICoachResults = ({ onReRecord, onEditScript }: AICoachResultsProps
       </div>
 
       {/* Main grid */}
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid lg:grid-cols-3 gap-6 relative">
+        {/* Paywall overlay for columns 2 & 3 */}
+        {!hasAccess && (
+          <div className="hidden lg:block absolute left-[calc(33.333%+12px)] right-0 top-0 bottom-0 z-30">
+            <PaywallOverlay 
+              title="Unlock Deep Analysis"
+              description="Get detailed content analysis and jury verdict feedback"
+            />
+          </div>
+        )}
         {/* Column 1: Delivery Metrics */}
         <Card>
           <CardHeader>
