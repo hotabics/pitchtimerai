@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Event detectors for: Problem statement, Innovation/Differentiation, Technical feasibility, Business model, Solution intro
 - Primary issue selection with priority ranking and severity scoring
 - "Next Improvement" coaching card with evidence timestamps and actionable next steps
+- **Visual pitch structure timeline** showing where each detected event occurs in the recording
 - New `evaluate-hackathon-jury-pitch` edge function
 - Database fields: `events_json`, `primary_issue_key`, `primary_issue_json`
 - Word-level timestamps in STT for precise event detection

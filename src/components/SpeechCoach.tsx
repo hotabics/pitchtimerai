@@ -40,6 +40,24 @@ interface AnalysisResult {
   tone: "energetic" | "confident" | "monotone" | "nervous";
   missedSections: string[];
   primaryIssue?: PrimaryIssue | null;
+  events?: DetectedEvents | null;
+  recordingDuration?: number;
+}
+
+interface DetectedEvent {
+  type: string;
+  timestamp: number;
+  quote: string;
+  confidence: number;
+  status: 'found' | 'missing' | 'late';
+}
+
+interface DetectedEvents {
+  problem: DetectedEvent;
+  innovation: DetectedEvent;
+  technical: DetectedEvent;
+  business_model: DetectedEvent;
+  solution: DetectedEvent;
 }
 
 interface PrimaryIssue {
@@ -324,7 +342,7 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
   }, [idea, track, duration, originalScript, sessionGroupId]);
 
   // Evaluate hackathon jury pitch
-  const evaluateHackathonPitch = useCallback(async (sessionId: string, segments: TranscriptionSegment[]) => {
+  const evaluateHackathonPitch = useCallback(async (sessionId: string, segments: TranscriptionSegment[]): Promise<{ primaryIssue: PrimaryIssue | null; events: DetectedEvents | null }> => {
     try {
       console.log('Evaluating hackathon jury pitch for session:', sessionId);
       
@@ -352,10 +370,13 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
 
       const result = await response.json();
       console.log('Hackathon evaluation result:', result);
-      return result.primary_issue as PrimaryIssue;
+      return {
+        primaryIssue: result.primary_issue as PrimaryIssue,
+        events: result.events as DetectedEvents,
+      };
     } catch (err) {
       console.error('Failed to evaluate hackathon pitch:', err);
-      return null;
+      return { primaryIssue: null, events: null };
     }
   }, [track]);
 
@@ -572,9 +593,13 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
         // ElevenLabs returns words with timestamps, we'll create sentence-level segments
         const segments = createSegmentsFromTranscription(transcriptionResult, recordingSeconds);
         
-        const primaryIssue = await evaluateHackathonPitch(sessionId, segments);
-        if (primaryIssue) {
-          analysisResult.primaryIssue = primaryIssue;
+        const evalResult = await evaluateHackathonPitch(sessionId, segments);
+        if (evalResult.primaryIssue) {
+          analysisResult.primaryIssue = evalResult.primaryIssue;
+        }
+        if (evalResult.events) {
+          analysisResult.events = evalResult.events;
+          analysisResult.recordingDuration = recordingSeconds;
         }
       }
       
@@ -877,6 +902,119 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
             </Button>
           </div>
         </div>
+
+        {/* Pitch Structure Timeline (Hackathon tracks only) */}
+        {analysis.events && analysis.recordingDuration && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <Card className="glass-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Clock className="w-5 h-5 text-primary" />
+                  Pitch Structure Timeline
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {/* Timeline bar */}
+                  <div className="relative">
+                    {/* Background track */}
+                    <div className="h-8 bg-muted/30 rounded-full relative overflow-hidden">
+                      {/* Time markers */}
+                      <div className="absolute inset-0 flex justify-between px-2 items-center text-[10px] text-muted-foreground">
+                        <span>0s</span>
+                        <span>{Math.round(analysis.recordingDuration / 4)}s</span>
+                        <span>{Math.round(analysis.recordingDuration / 2)}s</span>
+                        <span>{Math.round((analysis.recordingDuration * 3) / 4)}s</span>
+                        <span>{Math.round(analysis.recordingDuration)}s</span>
+                      </div>
+                    </div>
+                    
+                    {/* Event markers */}
+                    <div className="absolute inset-0 h-8">
+                      {Object.entries(analysis.events).map(([key, event]) => {
+                        if (event.status === 'missing' || event.timestamp < 0) return null;
+                        
+                        const position = (event.timestamp / analysis.recordingDuration!) * 100;
+                        const colors: Record<string, string> = {
+                          problem: 'bg-destructive',
+                          solution: 'bg-primary',
+                          innovation: 'bg-success',
+                          technical: 'bg-warning',
+                          business_model: 'bg-accent',
+                        };
+                        
+                        return (
+                          <motion.div
+                            key={key}
+                            initial={{ scale: 0, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ delay: 0.3 + Object.keys(analysis.events!).indexOf(key) * 0.1 }}
+                            className="absolute top-1/2 -translate-y-1/2"
+                            style={{ left: `${Math.min(Math.max(position, 2), 98)}%` }}
+                          >
+                            <div 
+                              className={cn(
+                                "w-4 h-4 rounded-full border-2 border-background shadow-md cursor-pointer",
+                                colors[key] || 'bg-muted'
+                              )}
+                              title={`${key}: ${Math.round(event.timestamp)}s`}
+                            />
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  
+                  {/* Legend */}
+                  <div className="flex flex-wrap gap-3 justify-center text-xs">
+                    {Object.entries(analysis.events).map(([key, event]) => {
+                      const labels: Record<string, string> = {
+                        problem: 'Problem',
+                        solution: 'Solution',
+                        innovation: 'Innovation',
+                        technical: 'Technical',
+                        business_model: 'Business',
+                      };
+                      const colors: Record<string, string> = {
+                        problem: 'bg-destructive',
+                        solution: 'bg-primary',
+                        innovation: 'bg-success',
+                        technical: 'bg-warning',
+                        business_model: 'bg-accent',
+                      };
+                      
+                      const isMissing = event.status === 'missing' || event.timestamp < 0;
+                      
+                      return (
+                        <div 
+                          key={key} 
+                          className={cn(
+                            "flex items-center gap-1.5",
+                            isMissing && "opacity-40"
+                          )}
+                        >
+                          <div className={cn(
+                            "w-2.5 h-2.5 rounded-full",
+                            colors[key] || 'bg-muted'
+                          )} />
+                          <span className="text-muted-foreground">
+                            {labels[key] || key}
+                            {!isMissing && ` (${Math.round(event.timestamp)}s)`}
+                            {isMissing && ' ✗'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
         {/* Results Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
