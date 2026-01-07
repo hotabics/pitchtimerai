@@ -86,9 +86,10 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
   const liveTranscriptRef = useRef<HTMLDivElement>(null);
   const speechRecognitionRef = useRef<SpeechRecognitionInstance | null>(null);
 
-  // Debug overlay
-  const [micLevel, setMicLevel] = useState(0); // 0-100
-  const [faceDetected, setFaceDetected] = useState(false);
+  // Debug overlay - use refs to avoid re-renders, update state less frequently
+  const [debugInfo, setDebugInfo] = useState({ micLevel: 0, faceDetected: false });
+  const debugInfoRef = useRef({ micLevel: 0, faceDetected: false });
+  const lastDebugUpdateRef = useRef(0);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -389,17 +390,16 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
       const video = videoRef.current;
       const canvas = canvasRef.current;
 
-      // Mic level
+      // Mic level - update ref, not state
       if (analyserRef.current && micDataRef.current) {
         analyserRef.current.getByteTimeDomainData(micDataRef.current as any);
-        // RMS on 0-255 centered around 128
         let sumSquares = 0;
         for (let i = 0; i < micDataRef.current.length; i++) {
           const v = (micDataRef.current[i] - 128) / 128;
           sumSquares += v * v;
         }
         const rms = Math.sqrt(sumSquares / micDataRef.current.length);
-        setMicLevel(Math.round(Math.min(100, rms * 180)));
+        debugInfoRef.current.micLevel = Math.round(Math.min(100, rms * 180));
       }
 
       if (!video || !canvas || video.readyState < 2) {
@@ -409,7 +409,7 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
 
       const now = performance.now();
 
-      // ~15fps
+      // ~15fps for face mesh
       if (now - lastFrameTimeRef.current < 66) {
         animationFrameRef.current = requestAnimationFrame(tick);
         return;
@@ -433,7 +433,7 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
 
       try {
         const metrics = drawFaceMesh(ctx, video, now);
-        setFaceDetected(!!metrics);
+        debugInfoRef.current.faceDetected = !!metrics;
 
         if (metrics) {
           setCurrentMetrics(metrics);
@@ -455,6 +455,12 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
         }
       } catch (e) {
         console.error("Face mesh error:", e);
+      }
+
+      // Update debug state only every 500ms to prevent blinking
+      if (now - lastDebugUpdateRef.current > 500) {
+        lastDebugUpdateRef.current = now;
+        setDebugInfo({ ...debugInfoRef.current });
       }
 
       animationFrameRef.current = requestAnimationFrame(tick);
@@ -629,8 +635,8 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
               style={{ zIndex: 40 }}
             >
               <div>Cam Status: {isCameraReady ? "Active" : "Inactive"}</div>
-              <div>Face Detected: {mediaPipeFailed ? "N/A" : faceDetected ? "Yes" : "No"}</div>
-              <div>Mic Level: {micLevel}</div>
+              <div>Face Detected: {mediaPipeFailed ? "N/A" : debugInfo.faceDetected ? "Yes" : "No"}</div>
+              <div>Mic Level: {debugInfo.micLevel}</div>
             </div>
 
             {/* MediaPipe disabled notice */}
