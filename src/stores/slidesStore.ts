@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 
 export type SlideType = 'title' | 'bullets' | 'image' | 'big_number' | 'quote';
+export type TransitionEffect = 'fade' | 'slide' | 'zoom' | 'none';
 
 export interface SlideTheme {
   id: string;
@@ -15,6 +16,13 @@ export interface SlideTheme {
   fontFamily: string;
   fontFamilyHeading: string;
 }
+
+export const transitionEffects: { id: TransitionEffect; name: string; description: string }[] = [
+  { id: 'fade', name: 'Fade', description: 'Smooth fade in/out' },
+  { id: 'slide', name: 'Slide', description: 'Slide from right' },
+  { id: 'zoom', name: 'Zoom', description: 'Scale in/out' },
+  { id: 'none', name: 'None', description: 'No animation' },
+];
 
 export const slideThemes: SlideTheme[] = [
   {
@@ -106,6 +114,7 @@ interface SlidesState {
   isGenerating: boolean;
   currentTheme: SlideTheme;
   showSpeakerNotes: boolean;
+  transitionEffect: TransitionEffect;
   
   // Actions
   setSlides: (slides: Slide[]) => void;
@@ -117,6 +126,7 @@ interface SlidesState {
   setIsGenerating: (generating: boolean) => void;
   setCurrentTheme: (theme: SlideTheme) => void;
   setShowSpeakerNotes: (show: boolean) => void;
+  setTransitionEffect: (effect: TransitionEffect) => void;
   clearSlides: () => void;
 }
 
@@ -127,6 +137,7 @@ export const useSlidesStore = create<SlidesState>((set) => ({
   isGenerating: false,
   currentTheme: slideThemes[0],
   showSpeakerNotes: true,
+  transitionEffect: 'fade' as TransitionEffect,
 
   // Actions
   setSlides: (slides) => set({ slides }),
@@ -161,6 +172,8 @@ export const useSlidesStore = create<SlidesState>((set) => ({
   setCurrentTheme: (theme) => set({ currentTheme: theme }),
   
   setShowSpeakerNotes: (show) => set({ showSpeakerNotes: show }),
+  
+  setTransitionEffect: (effect) => set({ transitionEffect: effect }),
   
   clearSlides: () => set({ slides: [], currentSlideIndex: 0 }),
 }));

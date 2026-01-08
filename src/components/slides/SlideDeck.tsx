@@ -21,6 +21,8 @@ import { DraggableThumbnail } from './DraggableThumbnail';
 import { ThemeSelector } from './ThemeSelector';
 import { SpeakerNotesPanel, SpeakerNotesToggle } from './SpeakerNotesPanel';
 import { SlideImportDialog } from './SlideImportDialog';
+import { TransitionSelector, getTransitionVariants, getTransitionConfig } from './TransitionSelector';
+import { BulkImageGenerator } from './BulkImageGenerator';
 import { generateAISlides } from '@/services/slideAI';
 import { exportToPowerPoint } from '@/services/pptxExport';
 import { cn } from '@/lib/utils';
@@ -49,6 +51,7 @@ export const SlideDeck = ({
     isGenerating,
     currentTheme,
     showSpeakerNotes,
+    transitionEffect,
     setSlides,
     setCurrentSlideIndex,
     setIsGenerating,
@@ -363,7 +366,9 @@ export const SlideDeck = ({
             Add
           </Button>
           <ThemeSelector />
+          <TransitionSelector />
           <SpeakerNotesToggle />
+          <BulkImageGenerator />
           <SlideImportDialog onImport={handleImport} />
         </div>
         
@@ -444,10 +449,11 @@ export const SlideDeck = ({
               {currentSlide && (
                 <motion.div
                   key={currentSlide.id}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.2 }}
+                  variants={getTransitionVariants(transitionEffect)}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  transition={getTransitionConfig(transitionEffect)}
                   className="w-full max-w-4xl shadow-xl rounded-xl overflow-hidden"
                 >
                   <SlidePreview slide={currentSlide} />
