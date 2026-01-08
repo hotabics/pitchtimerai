@@ -4,6 +4,87 @@ import { create } from 'zustand';
 
 export type SlideType = 'title' | 'bullets' | 'image' | 'big_number' | 'quote';
 
+export interface SlideTheme {
+  id: string;
+  name: string;
+  primaryColor: string;
+  secondaryColor: string;
+  backgroundColor: string;
+  textColor: string;
+  accentColor: string;
+  fontFamily: string;
+  fontFamilyHeading: string;
+}
+
+export const slideThemes: SlideTheme[] = [
+  {
+    id: 'modern',
+    name: 'Modern',
+    primaryColor: '#6366f1',
+    secondaryColor: '#818cf8',
+    backgroundColor: '#ffffff',
+    textColor: '#1f2937',
+    accentColor: '#f59e0b',
+    fontFamily: 'Inter, sans-serif',
+    fontFamilyHeading: 'Inter, sans-serif',
+  },
+  {
+    id: 'dark',
+    name: 'Dark Mode',
+    primaryColor: '#8b5cf6',
+    secondaryColor: '#a78bfa',
+    backgroundColor: '#1a1a2e',
+    textColor: '#f8fafc',
+    accentColor: '#22d3ee',
+    fontFamily: 'Inter, sans-serif',
+    fontFamilyHeading: 'Inter, sans-serif',
+  },
+  {
+    id: 'corporate',
+    name: 'Corporate',
+    primaryColor: '#1e40af',
+    secondaryColor: '#3b82f6',
+    backgroundColor: '#f8fafc',
+    textColor: '#1e293b',
+    accentColor: '#059669',
+    fontFamily: 'Georgia, serif',
+    fontFamilyHeading: 'Arial, sans-serif',
+  },
+  {
+    id: 'creative',
+    name: 'Creative',
+    primaryColor: '#ec4899',
+    secondaryColor: '#f472b6',
+    backgroundColor: '#fdf4ff',
+    textColor: '#4a044e',
+    accentColor: '#8b5cf6',
+    fontFamily: 'Poppins, sans-serif',
+    fontFamilyHeading: 'Poppins, sans-serif',
+  },
+  {
+    id: 'minimal',
+    name: 'Minimal',
+    primaryColor: '#171717',
+    secondaryColor: '#404040',
+    backgroundColor: '#fafafa',
+    textColor: '#171717',
+    accentColor: '#dc2626',
+    fontFamily: 'system-ui, sans-serif',
+    fontFamilyHeading: 'system-ui, sans-serif',
+  },
+  {
+    id: 'nature',
+    name: 'Nature',
+    primaryColor: '#059669',
+    secondaryColor: '#10b981',
+    backgroundColor: '#f0fdf4',
+    textColor: '#14532d',
+    accentColor: '#84cc16',
+    fontFamily: 'Georgia, serif',
+    fontFamilyHeading: 'Georgia, serif',
+  },
+];
+
 export interface Slide {
   id: number;
   type: SlideType;
@@ -11,6 +92,7 @@ export interface Slide {
   content: string[];
   imageKeyword?: string;
   scriptSegment: string;
+  speakerNotes?: string;
   backgroundColor?: string;
   accentColor?: string;
 }
@@ -20,6 +102,8 @@ interface SlidesState {
   slides: Slide[];
   currentSlideIndex: number;
   isGenerating: boolean;
+  currentTheme: SlideTheme;
+  showSpeakerNotes: boolean;
   
   // Actions
   setSlides: (slides: Slide[]) => void;
@@ -29,6 +113,8 @@ interface SlidesState {
   reorderSlides: (fromIndex: number, toIndex: number) => void;
   setCurrentSlideIndex: (index: number) => void;
   setIsGenerating: (generating: boolean) => void;
+  setCurrentTheme: (theme: SlideTheme) => void;
+  setShowSpeakerNotes: (show: boolean) => void;
   clearSlides: () => void;
 }
 
@@ -37,6 +123,8 @@ export const useSlidesStore = create<SlidesState>((set) => ({
   slides: [],
   currentSlideIndex: 0,
   isGenerating: false,
+  currentTheme: slideThemes[0],
+  showSpeakerNotes: true,
 
   // Actions
   setSlides: (slides) => set({ slides }),
@@ -59,7 +147,6 @@ export const useSlidesStore = create<SlidesState>((set) => ({
     const newSlides = [...state.slides];
     const [removed] = newSlides.splice(fromIndex, 1);
     newSlides.splice(toIndex, 0, removed);
-    // Re-assign IDs based on new order
     return {
       slides: newSlides.map((slide, index) => ({ ...slide, id: index + 1 })),
     };
@@ -68,6 +155,10 @@ export const useSlidesStore = create<SlidesState>((set) => ({
   setCurrentSlideIndex: (index) => set({ currentSlideIndex: index }),
   
   setIsGenerating: (generating) => set({ isGenerating: generating }),
+  
+  setCurrentTheme: (theme) => set({ currentTheme: theme }),
+  
+  setShowSpeakerNotes: (show) => set({ showSpeakerNotes: show }),
   
   clearSlides: () => set({ slides: [], currentSlideIndex: 0 }),
 }));
@@ -86,6 +177,7 @@ export const generateSlidesFromBlocks = (
     title: projectTitle,
     content: ['Your Pitch Deck'],
     scriptSegment: blocks[0]?.content?.slice(0, 100) || '',
+    speakerNotes: 'Welcome the audience and introduce yourself.',
     backgroundColor: 'primary',
   });
   
@@ -94,25 +186,19 @@ export const generateSlidesFromBlocks = (
     const slideId = slides.length + 1;
     const sentences = block.content.split(/[.!?]+/).filter(s => s.trim());
     
-    // Determine slide type based on content analysis
     let slideType: SlideType = 'bullets';
     let content: string[] = [];
     let imageKeyword: string | undefined;
     
-    // Check for numbers/statistics
     const numberMatch = block.content.match(/(\d+(?:\.\d+)?[%KMB]?)/);
     if (numberMatch && sentences.length <= 2) {
       slideType = 'big_number';
       content = [numberMatch[1], sentences[0]?.trim() || block.title];
-    } 
-    // Check for quotes or testimonials
-    else if (block.content.includes('"') || block.title.toLowerCase().includes('quote')) {
+    } else if (block.content.includes('"') || block.title.toLowerCase().includes('quote')) {
       slideType = 'quote';
       const quoteMatch = block.content.match(/"([^"]+)"/);
       content = quoteMatch ? [quoteMatch[1]] : [sentences[0]?.trim() || ''];
-    }
-    // Default to bullets
-    else {
+    } else {
       slideType = 'bullets';
       content = sentences.slice(0, 4).map(s => s.trim()).filter(s => s.length > 0);
       if (content.length === 0) {
@@ -120,7 +206,6 @@ export const generateSlidesFromBlocks = (
       }
     }
     
-    // Extract image keywords from title/content
     const keywords = block.title.toLowerCase().split(' ').filter(w => 
       w.length > 3 && !['the', 'and', 'for', 'with', 'that', 'this'].includes(w)
     );
@@ -133,6 +218,7 @@ export const generateSlidesFromBlocks = (
       content,
       imageKeyword,
       scriptSegment: block.content,
+      speakerNotes: `Key points: ${block.title}. ${sentences[0] || ''}`,
     });
   });
   
