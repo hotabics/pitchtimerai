@@ -1567,6 +1567,9 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
                   content: block.content,
                 }))}
                 projectTitle={data.idea?.slice(0, 50) || 'My Pitch'}
+                isPresentationMode={isPlaying}
+                currentPracticeBlock={currentBlock}
+                isPlaying={isPlaying}
               />
             </motion.div>
           )}
