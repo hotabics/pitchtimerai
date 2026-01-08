@@ -121,6 +121,11 @@ export const AICoachProcessing = ({
           fillerBreakdown: fillerData.breakdown,
           stabilityScore: videoMetrics.stabilityScore,
           smilePercent: videoMetrics.smilePercentage,
+          // Body language metrics
+          postureScore: videoMetrics.averagePosture,
+          postureGrade: videoMetrics.postureGrade,
+          handsVisiblePercent: videoMetrics.handsVisiblePercent,
+          bodyStabilityScore: videoMetrics.averageBodyStability,
         },
         contentAnalysis,
         contentCoverage: coverage,
