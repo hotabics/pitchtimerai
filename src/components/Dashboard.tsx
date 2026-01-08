@@ -66,6 +66,7 @@ interface DashboardProps {
     entryMode?: "generate" | "custom_script";
     structuredScript?: StructuredScript;
     originalScriptText?: string;
+    hookStyle?: 'auto' | 'statistic' | 'villain' | 'story' | 'contrarian' | 'question';
   };
   onBack?: () => void;
   onEditInputs?: () => void;
@@ -566,6 +567,7 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
           duration: data.duration,
           inputs,
           hasDemo: false,
+          hookStyle: data.hookStyle || 'auto',
         },
       });
 

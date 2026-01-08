@@ -1,11 +1,12 @@
-import { motion } from "framer-motion";
-import { ArrowRight, Gavel, TrendingUp, Users, Coffee, ArrowLeft, GraduationCap, PartyPopper } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowRight, Gavel, TrendingUp, Users, Coffee, ArrowLeft, GraduationCap, PartyPopper, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WizardStep } from "@/components/WizardStep";
 import { useState } from "react";
+import { HookStyleSelector, HookStyle, getRecommendedHookStyles } from "./HookStyleSelector";
 
 interface Step2AudienceProps {
-  onNext: (audience: string, audienceLabel: string) => void;
+  onNext: (audience: string, audienceLabel: string, hookStyle?: HookStyle) => void;
   onBack: () => void;
 }
 
@@ -62,13 +63,18 @@ const audienceOptions = [
 
 export const Step2Audience = ({ onNext, onBack }: Step2AudienceProps) => {
   const [selected, setSelected] = useState("");
+  const [hookStyle, setHookStyle] = useState<HookStyle>("auto");
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const handleNext = () => {
     const option = audienceOptions.find((a) => a.id === selected);
     if (option) {
-      onNext(selected, option.label);
+      onNext(selected, option.label, hookStyle);
     }
   };
+
+  // Get recommended styles for selected audience
+  const recommendedStyles = selected ? getRecommendedHookStyles(selected) : [];
 
   return (
     <WizardStep
@@ -147,6 +153,57 @@ export const Step2Audience = ({ onNext, onBack }: Step2AudienceProps) => {
             );
           })}
         </div>
+
+        {/* Advanced: Hook Style Selector */}
+        <AnimatePresence>
+          {selected && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-6"
+            >
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-3"
+              >
+                {showAdvanced ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
+                <span>Customize opening style</span>
+                {hookStyle !== "auto" && (
+                  <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                    {hookStyle}
+                  </span>
+                )}
+              </button>
+
+              <AnimatePresence>
+                {showAdvanced && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="bg-muted/30 rounded-xl p-4 border border-border/50"
+                  >
+                    <HookStyleSelector value={hookStyle} onChange={setHookStyle} />
+                    {recommendedStyles.length > 0 && hookStyle === "auto" && (
+                      <p className="text-xs text-muted-foreground mt-3">
+                        💡 Recommended for {audienceOptions.find(a => a.id === selected)?.label}:{" "}
+                        <span className="font-medium text-foreground">
+                          {recommendedStyles.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(" or ")}
+                        </span>
+                      </p>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="flex-1" />
 
