@@ -107,6 +107,11 @@ export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachP
     setView('setup');
   };
 
+  const handleResumeSession = () => {
+    // Jump directly to results view
+    setView('results');
+  };
+
   const handleBack = () => {
     if (onBack) {
       onBack();
@@ -130,7 +135,7 @@ export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachP
         <AnimatePresence mode="wait">
           {view === 'setup' && (
             <motion.div key="setup" exit={{ opacity: 0, x: -20 }}>
-              <AICoachSetup onReady={handleSetupReady} />
+              <AICoachSetup onReady={handleSetupReady} onResumeSession={handleResumeSession} />
             </motion.div>
           )}
 
@@ -200,7 +205,7 @@ export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachP
         <AnimatePresence mode="wait">
           {view === 'setup' && (
             <motion.div key="setup" exit={{ opacity: 0, x: -20 }}>
-              <AICoachSetup onReady={handleSetupReady} />
+              <AICoachSetup onReady={handleSetupReady} onResumeSession={handleResumeSession} />
             </motion.div>
           )}
 
