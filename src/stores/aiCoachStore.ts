@@ -19,6 +19,11 @@ export interface DeliveryMetrics {
   fillerBreakdown: Record<string, number>;
   stabilityScore: number;
   smilePercent: number;
+  // Body language metrics
+  postureScore: number;
+  postureGrade: 'A' | 'B' | 'C';
+  handsVisiblePercent: number;
+  bodyStabilityScore: number;
 }
 
 export interface RecordingData {
@@ -26,6 +31,7 @@ export interface RecordingData {
   videoBlob: Blob | null;
   durationSeconds: number;
   frameData: FrameData[];
+  swayData?: { time: number; sway: number }[];
 }
 
 export interface AnalysisResults {

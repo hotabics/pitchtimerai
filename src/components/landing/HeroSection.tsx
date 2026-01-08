@@ -1,10 +1,31 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Link2, Loader2, Zap, Video, Check, ArrowRight, Settings } from "lucide-react";
+import { Sparkles, Link2, Loader2, Zap, Video, Check, ArrowRight, Settings, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isUrl, scrapeUrl, ScrapedProjectData } from "@/lib/api/firecrawl";
 import { toast } from "@/hooks/use-toast";
 import { trackEvent } from "@/utils/analytics";
+
+const RECENT_IDEAS_KEY = "pitchdeck_recent_ideas";
+const MAX_RECENT_IDEAS = 3;
+
+const getRecentIdeas = (): string[] => {
+  try {
+    const stored = localStorage.getItem(RECENT_IDEAS_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveRecentIdea = (idea: string) => {
+  if (!idea.trim() || isUrl(idea)) return;
+  try {
+    const existing = getRecentIdeas().filter(i => i.toLowerCase() !== idea.toLowerCase());
+    const updated = [idea, ...existing].slice(0, MAX_RECENT_IDEAS);
+    localStorage.setItem(RECENT_IDEAS_KEY, JSON.stringify(updated));
+  } catch {}
+};
 
 interface HeroSectionProps {
   onSubmit: (idea: string, scrapedData?: ScrapedProjectData) => void;
@@ -17,6 +38,7 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
   const [isFocused, setIsFocused] = useState(false);
   const [isScrapingUrl, setIsScrapingUrl] = useState(false);
   const [scrapedData, setScrapedData] = useState<ScrapedProjectData | null>(null);
+  const [recentIdeas, setRecentIdeas] = useState<string[]>([]);
   
   const inputIsUrl = isUrl(projectInput);
   
@@ -49,6 +71,11 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
     }
   };
   
+  // Load recent ideas on mount
+  useEffect(() => {
+    setRecentIdeas(getRecentIdeas());
+  }, []);
+  
   // Auto-scrape when URL is detected
   useEffect(() => {
     if (inputIsUrl && projectInput.length > 10 && !isScrapingUrl && !scrapedData) {
@@ -69,6 +96,8 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
         url: inputIsUrl ? projectInput : undefined,
         hasScrapedData: !!scrapedData 
       });
+      saveRecentIdea(idea);
+      setRecentIdeas(getRecentIdeas());
       onAutoGenerate(idea, scrapedData || undefined);
     }
   };
@@ -80,6 +109,8 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
         url: inputIsUrl ? projectInput : undefined,
         hasScrapedData: !!scrapedData 
       });
+      saveRecentIdea(idea);
+      setRecentIdeas(getRecentIdeas());
       onSubmit(idea, scrapedData || undefined);
     }
   };
@@ -224,12 +255,29 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
           transition={{ delay: 0.4 }}
           className="flex flex-wrap items-center justify-center gap-2 mt-3"
         >
+          {recentIdeas.length > 0 && (
+            <>
+              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                Recent:
+              </span>
+              {recentIdeas.map((idea) => (
+                <button
+                  key={idea}
+                  onClick={() => setProjectInput(idea)}
+                  className="px-3 py-1.5 text-xs font-medium rounded-full bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 hover:border-primary/40 transition-all duration-200"
+                >
+                  {idea}
+                </button>
+              ))}
+              <div className="w-px h-4 bg-border/50 mx-1" />
+            </>
+          )}
           <span className="text-xs text-muted-foreground">Try:</span>
           {[
             "AI Study Buddy",
             "Carbon Footprint Tracker", 
             "Smart Medication Reminder",
-            "Local Event Finder"
           ].map((example) => (
             <button
               key={example}

@@ -1,4 +1,4 @@
-// AI Coach Recording View - Professional Teleprompter + Face Mesh + HUD
+// AI Coach Recording View - Professional Teleprompter + Face Mesh + Body Language HUD
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -8,12 +8,15 @@ import {
   Eye,
   EyeOff,
   Globe,
+  Hand,
   Mic,
   Pause,
+  PersonStanding,
   Play,
   Smile,
   Square,
   Volume2,
+  Move,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -28,8 +31,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAICoachStore } from "@/stores/aiCoachStore";
-import type { FrameData } from "@/services/mediapipe";
-import { drawFaceMesh, initializeFaceLandmarker, type FaceMetrics } from "@/services/mediapipe";
+import type { FrameData, CombinedMetrics } from "@/services/mediapipe";
+import { drawFaceMesh, initializeFaceLandmarker } from "@/services/mediapipe";
 import { trackEvent } from "@/utils/analytics";
 
 interface AICoachRecordingProps {
@@ -90,7 +93,21 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
     eyeScore: number;
     smiling: boolean;
     micLevel: number;
-  }>({ eyeContact: false, eyeScore: 0, smiling: false, micLevel: 0 });
+    // Body language
+    postureScore: number;
+    postureIssue: string;
+    handsStatus: 'visible' | 'hidden' | 'crossed';
+    bodyStability: number;
+  }>({ 
+    eyeContact: false, 
+    eyeScore: 0, 
+    smiling: false, 
+    micLevel: 0,
+    postureScore: 100,
+    postureIssue: 'good',
+    handsStatus: 'hidden',
+    bodyStability: 100,
+  });
 
   // Live transcription
   const [liveTranscript, setLiveTranscript] = useState("");
@@ -100,7 +117,7 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
   const speechRecognitionRef = useRef<SpeechRecognitionInstance | null>(null);
 
   // Refs for high-frequency updates
-  const metricsRef = useRef<FaceMetrics | null>(null);
+  const metricsRef = useRef<CombinedMetrics | null>(null);
   const micLevelRef = useRef(0);
   const lastHudUpdateRef = useRef(0);
 
@@ -396,6 +413,10 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
             eyeContact: metrics.isLookingAtCamera,
             smiling: metrics.isSmiling,
             headDeviation: metrics.headPoseDeviation,
+            postureScore: metrics.body?.postureScore,
+            handsVisible: metrics.body?.handsStatus === 'visible',
+            bodyStability: metrics.body?.bodyStability,
+            noseX: metrics.body ? undefined : undefined, // Will be set by pose
           };
           frameDataRef.current.push(frame);
           addFrameData(frame);
@@ -409,6 +430,10 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
             eyeScore: metricsRef.current?.eyeContactScore ?? 0,
             smiling: metricsRef.current?.isSmiling ?? false,
             micLevel: micLevelRef.current,
+            postureScore: metricsRef.current?.body?.postureScore ?? 100,
+            postureIssue: metricsRef.current?.body?.postureIssue ?? 'good',
+            handsStatus: metricsRef.current?.body?.handsStatus ?? 'hidden',
+            bodyStability: metricsRef.current?.body?.bodyStability ?? 100,
           });
         }
       } catch (e) {
@@ -597,11 +622,36 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
             )}
           </div>
 
+          {/* HUD: Bottom-Left - Body Language */}
+          <div className="absolute bottom-4 left-4 flex flex-col gap-2 pointer-events-auto">
+            {/* Posture */}
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-sm ${hudMetrics.postureScore >= 80 ? '' : 'border border-amber-500/50'}`}>
+              <PersonStanding className={`w-4 h-4 ${hudMetrics.postureScore >= 80 ? 'text-green-400' : 'text-amber-400'}`} />
+              <span className={`text-xs font-medium ${hudMetrics.postureScore >= 80 ? 'text-green-400' : 'text-amber-400'}`}>
+                {hudMetrics.postureIssue === 'good' ? 'Good Posture' : hudMetrics.postureIssue === 'shoulders_shrugged' ? 'Relax Shoulders' : hudMetrics.postureIssue === 'slouching' ? 'Stand Straight' : 'Stop Leaning'}
+              </span>
+            </div>
+            {/* Hands */}
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-sm`}>
+              <Hand className={`w-4 h-4 ${hudMetrics.handsStatus === 'visible' ? 'text-green-400' : hudMetrics.handsStatus === 'crossed' ? 'text-amber-400' : 'text-red-400'}`} />
+              <span className={`text-xs font-medium ${hudMetrics.handsStatus === 'visible' ? 'text-green-400' : hudMetrics.handsStatus === 'crossed' ? 'text-amber-400' : 'text-red-400'}`}>
+                {hudMetrics.handsStatus === 'visible' ? 'Hands Visible' : hudMetrics.handsStatus === 'crossed' ? 'Arms Crossed' : 'Show Hands'}
+              </span>
+            </div>
+            {/* Stability */}
+            {hudMetrics.bodyStability < 70 && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-red-500/50 animate-pulse">
+                <Move className="w-4 h-4 text-red-400" />
+                <span className="text-xs font-medium text-red-400">Stop Swaying!</span>
+              </div>
+            )}
+          </div>
+
           {/* HUD: Bottom-Center - System Status */}
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2 rounded-full bg-black/60 backdrop-blur-sm pointer-events-auto">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-              <span className="text-xs text-cyan-400 font-medium">AI Tracking Active</span>
+              <span className="text-xs text-cyan-400 font-medium">Full Body Tracking</span>
             </div>
             <div className="w-px h-4 bg-white/20" />
             <div className="flex items-center gap-2">
