@@ -690,6 +690,63 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
       pdf.setTextColor(0);
     });
 
+    // Bullet Points Summary Page
+    if (meta?.bulletPoints && meta.bulletPoints.length > 0) {
+      pdf.addPage();
+      yPosition = margin;
+
+      // Header
+      pdf.setFillColor(240, 245, 255);
+      pdf.roundedRect(margin, yPosition, contentWidth, 30, 3, 3, "F");
+      
+      pdf.setFontSize(18);
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(0);
+      pdf.text("Bullet Points Summary", margin + 10, yPosition + 20);
+      
+      yPosition += 45;
+
+      // Bullet points
+      meta.bulletPoints.forEach((point, index) => {
+        if (yPosition > pageHeight - margin - 30) {
+          pdf.addPage();
+          yPosition = margin;
+        }
+
+        // Number circle
+        pdf.setFillColor(230, 240, 255);
+        pdf.circle(margin + 8, yPosition + 3, 8, "F");
+        pdf.setFontSize(10);
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(60, 100, 180);
+        pdf.text(String(index + 1), margin + 8, yPosition + 6, { align: "center" });
+
+        // Bullet text
+        pdf.setFontSize(12);
+        pdf.setFont("helvetica", "normal");
+        pdf.setTextColor(0);
+        const bulletLines = pdf.splitTextToSize(point, contentWidth - 25);
+        bulletLines.forEach((line: string, lineIndex: number) => {
+          pdf.text(line, margin + 22, yPosition + 5 + (lineIndex * 6));
+        });
+        
+        yPosition += Math.max(20, bulletLines.length * 6 + 10);
+      });
+
+      // Page footer
+      pdf.setFontSize(10);
+      pdf.setTextColor(150);
+      pdf.text("Summary", pageWidth / 2, pageHeight - 10, { align: "center" });
+      
+      if (showWatermark) {
+        pdf.setFontSize(10);
+        pdf.setTextColor(180);
+        pdf.text("Created with PitchDeck.ai", pageWidth - margin, pageHeight - 10, { align: "right" });
+      }
+      
+      pdf.setTextColor(0);
+    }
+
     // Save PDF
     const filename = `speech-${data.idea.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}.pdf`;
     pdf.save(filename);
@@ -852,12 +909,26 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
                 >
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-sm font-semibold text-foreground">Complete Script</h3>
-                    {meta.estimatedDuration && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {meta.estimatedDuration}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {meta.estimatedDuration && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {meta.estimatedDuration}
+                        </span>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(meta.fullScript || '');
+                          toast({ title: "Copied!", description: "Full script copied to clipboard" });
+                        }}
+                        className="h-7 px-2 gap-1 text-muted-foreground hover:text-foreground"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        <span className="text-xs">Copy</span>
+                      </Button>
+                    </div>
                   </div>
                   <p className="text-base text-foreground leading-relaxed whitespace-pre-wrap">
                     {meta.fullScript}
@@ -874,12 +945,27 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
                 >
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-sm font-semibold text-foreground">Key Points</h3>
-                    {meta.estimatedDuration && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {meta.estimatedDuration}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {meta.estimatedDuration && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {meta.estimatedDuration}
+                        </span>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const bulletsText = meta.bulletPoints?.map((p, i) => `${i + 1}. ${p}`).join('\n') || '';
+                          navigator.clipboard.writeText(bulletsText);
+                          toast({ title: "Copied!", description: "Bullet points copied to clipboard" });
+                        }}
+                        className="h-7 px-2 gap-1 text-muted-foreground hover:text-foreground"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        <span className="text-xs">Copy</span>
+                      </Button>
+                    </div>
                   </div>
                   <ul className="space-y-3">
                     {meta.bulletPoints.map((point, index) => (
