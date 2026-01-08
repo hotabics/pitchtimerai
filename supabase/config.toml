@@ -35,3 +35,12 @@ verify_jwt = false
 
 [functions.firecrawl-scrape]
 verify_jwt = false
+
+[functions.generate-slide-image]
+verify_jwt = false
+
+[functions.generate-slides]
+verify_jwt = false
+
+[functions.regenerate-hook]
+verify_jwt = false
