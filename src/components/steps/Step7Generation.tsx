@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { WizardStep } from "@/components/WizardStep";
 import { useState, useCallback } from "react";
 import { trackConfigs, TrackType } from "@/lib/tracks";
+import { trackEvent } from "@/utils/analytics";
 
 interface Step7GenerationProps {
   onNext: (tier: string, tierLabel: string) => void;
@@ -74,12 +75,21 @@ export const Step7Generation = ({ onNext, onBack, track, idea }: Step7Generation
     setCurrentStep(0);
     setCompletedSteps([]);
 
+    // Track pitch generation start
+    trackEvent('pitch_generation_started', { track, idea: idea?.slice(0, 100) });
+
     // Animate through generation steps
     for (let i = 0; i < generationSteps.length; i++) {
       setCurrentStep(i);
       await new Promise((resolve) => setTimeout(resolve, generationSteps[i].duration));
       setCompletedSteps((prev) => [...prev, generationSteps[i].id]);
     }
+
+    // Track pitch generation complete
+    trackEvent('pitch_generation_completed', { 
+      track, 
+      sections_count: outputSections.length,
+    });
 
     // Play success feedback
     playSuccessSound();
@@ -88,7 +98,7 @@ export const Step7Generation = ({ onNext, onBack, track, idea }: Step7Generation
     // Small delay before navigating
     await new Promise((resolve) => setTimeout(resolve, 600));
     onNext("script", "Speech Only");
-  }, [onNext]);
+  }, [onNext, track, idea, outputSections.length]);
 
   return (
     <WizardStep

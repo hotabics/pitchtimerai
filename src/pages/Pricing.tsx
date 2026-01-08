@@ -12,6 +12,7 @@ import { toast } from '@/hooks/use-toast';
 import { Header } from '@/components/Header';
 import { supabase } from '@/integrations/supabase/client';
 import { STRIPE_PLANS } from '@/config/stripe';
+import { trackEvent } from '@/utils/analytics';
 
 interface PlanFeature {
   text: string;
@@ -98,6 +99,10 @@ export const Pricing = () => {
     const canceled = searchParams.get('canceled');
 
     if (success === 'true' && plan) {
+      trackEvent('subscription_purchased', { 
+        plan, 
+        source: 'stripe_redirect',
+      });
       toast({
         title: '🎉 Payment successful!',
         description: `You now have access to ${plan === 'pass_48h' ? 'Hackathon Pass' : 'Founder Pro'}`,
@@ -118,6 +123,7 @@ export const Pricing = () => {
     if (plan.id === 'free') return;
     if (userPlan === plan.id) return;
 
+    trackEvent('pricing_plan_selected', { plan: plan.id, price: plan.price });
     setLoadingPlan(plan.id);
 
     // Simulate mock payment flow
@@ -130,6 +136,13 @@ export const Pricing = () => {
 
     // Update user plan in store (persisted to localStorage)
     setUserPlan(plan.id, expiresAt);
+
+    // Track successful purchase
+    trackEvent('subscription_purchased', { 
+      plan: plan.id, 
+      price: plan.price,
+      source: 'pricing_page',
+    });
 
     // Show success toast
     toast({

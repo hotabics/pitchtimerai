@@ -17,6 +17,7 @@ import {
   type GPTAnalysisResponse,
 } from '@/services/openai';
 import { aggregateMetrics } from '@/services/mediapipe';
+import { trackEvent } from '@/utils/analytics';
 
 interface AICoachProcessingProps {
   audioBlob: Blob;
@@ -57,6 +58,12 @@ export const AICoachProcessing = ({
     const useRealAPI = hasApiKey();
     let transcript = '';
     let contentAnalysis: GPTAnalysisResponse | null = null;
+
+    // Track AI coach session start
+    trackEvent('ai_coach_processing_started', { 
+      duration_seconds: duration,
+      using_real_api: useRealAPI,
+    });
 
     try {
       // Step 1: Transcribe audio
@@ -132,12 +139,23 @@ export const AICoachProcessing = ({
         processedAt: new Date(),
       });
 
+      // Track AI coach session complete
+      trackEvent('ai_coach_session_completed', {
+        duration_seconds: duration,
+        wpm,
+        filler_count: fillerData.total,
+        eye_contact_percent: videoMetrics.averageEyeContact,
+        score: contentAnalysis?.score,
+        using_real_api: useRealAPI,
+      });
+
       // Small delay before transitioning
       await new Promise(resolve => setTimeout(resolve, 500));
       onComplete();
 
     } catch (err) {
       console.error('Processing error:', err);
+      trackEvent('ai_coach_session_error', { error: err instanceof Error ? err.message : 'Unknown error' });
       setError(err instanceof Error ? err.message : 'Processing failed');
       onError(err instanceof Error ? err.message : 'Processing failed');
     }

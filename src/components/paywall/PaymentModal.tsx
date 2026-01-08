@@ -6,6 +6,7 @@ import { X, Zap, Loader2, Check, Clock, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUserStore } from '@/stores/userStore';
 import { toast } from '@/hooks/use-toast';
+import { trackEvent } from '@/utils/analytics';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export const PaymentModal = ({ isOpen, onClose, onSuccess }: PaymentModalProps) 
 
   const handlePayment = async () => {
     setIsProcessing(true);
+    trackEvent('payment_initiated', { plan: 'pass_48h', price: 2.99 });
 
     // Simulate payment processing (mock for hackathon)
     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -30,6 +32,14 @@ export const PaymentModal = ({ isOpen, onClose, onSuccess }: PaymentModalProps) 
     setUserPlan('pass_48h', expiresAt);
 
     setIsProcessing(false);
+
+    // Track successful purchase
+    trackEvent('subscription_purchased', { 
+      plan: 'pass_48h', 
+      price: 2.99, 
+      currency: 'EUR',
+      duration_hours: 48,
+    });
 
     // Show success toast
     toast({
