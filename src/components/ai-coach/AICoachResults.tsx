@@ -20,7 +20,8 @@ import {
   TrendingUp,
   PersonStanding,
   Hand,
-  Video
+  Video,
+  ListChecks
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -78,7 +79,12 @@ export const AICoachResults = ({ onReRecord, onEditScript }: AICoachResultsProps
     );
   }
 
-  const { deliveryMetrics, contentAnalysis, contentCoverage, transcript } = results;
+  const { deliveryMetrics, contentAnalysis, contentCoverage, transcript, promptMode, bulletPointsCoverage } = results;
+  
+  // Calculate bullet point coverage percentage
+  const bulletCoveragePercent = bulletPointsCoverage && bulletPointsCoverage.length > 0
+    ? Math.round((bulletPointsCoverage.filter(b => b.covered).length / bulletPointsCoverage.length) * 100)
+    : 0;
   
   // WPM color coding
   const getWPMStatus = (wpm: number) => {
@@ -323,24 +329,55 @@ export const AICoachResults = ({ onReRecord, onEditScript }: AICoachResultsProps
             <CardDescription>What you covered</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Coverage Checklist */}
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Coverage Checklist</p>
-              <div className="space-y-1">
-                {coverageItems.map((item) => (
-                  <div key={item.key} className="flex items-center gap-2 text-sm">
-                    {item.covered ? (
-                      <Check className="w-4 h-4 text-success flex-shrink-0" />
-                    ) : (
-                      <X className="w-4 h-4 text-destructive flex-shrink-0" />
-                    )}
-                    <span className={item.covered ? 'text-foreground' : 'text-muted-foreground'}>
-                      {item.label}
-                    </span>
+            {/* Bullet Point Coverage (shown when cue cards mode was used) */}
+            {promptMode === 'cueCards' && bulletPointsCoverage && bulletPointsCoverage.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ListChecks className="w-4 h-4 text-primary" />
+                    <p className="text-sm font-medium">Bullet Point Coverage</p>
                   </div>
-                ))}
+                  <Badge className={bulletCoveragePercent >= 80 ? 'bg-success' : bulletCoveragePercent >= 50 ? 'bg-warning' : 'bg-destructive'}>
+                    {bulletCoveragePercent}%
+                  </Badge>
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {bulletPointsCoverage.map((item, i) => (
+                    <div key={i} className="flex items-start gap-2 text-sm p-2 rounded-md bg-muted/30">
+                      {item.covered ? (
+                        <Check className="w-4 h-4 text-success flex-shrink-0 mt-0.5" />
+                      ) : (
+                        <X className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                      )}
+                      <span className={item.covered ? 'text-foreground' : 'text-muted-foreground line-through'}>
+                        {item.point}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Coverage Checklist (shown when teleprompter mode or no bullet points) */}
+            {(promptMode !== 'cueCards' || !bulletPointsCoverage || bulletPointsCoverage.length === 0) && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Coverage Checklist</p>
+                <div className="space-y-1">
+                  {coverageItems.map((item) => (
+                    <div key={item.key} className="flex items-center gap-2 text-sm">
+                      {item.covered ? (
+                        <Check className="w-4 h-4 text-success flex-shrink-0" />
+                      ) : (
+                        <X className="w-4 h-4 text-destructive flex-shrink-0" />
+                      )}
+                      <span className={item.covered ? 'text-foreground' : 'text-muted-foreground'}>
+                        {item.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Missing Points */}
             {contentAnalysis?.key_missing_points && contentAnalysis.key_missing_points.length > 0 && (

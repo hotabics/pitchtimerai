@@ -10,6 +10,7 @@ import {
   transcribeAudio,
   analyzePitchContent,
   detectContentCoverage,
+  detectBulletPointCoverage,
   countFillerWords,
   calculateWPM,
   getMockAnalysis,
@@ -48,7 +49,7 @@ export const AICoachProcessing = ({
   const [completedSteps, setCompletedSteps] = useState<ProcessingStep[]>([]);
   const [progress, setProgress] = useState(0);
 
-  const { setResults, setError } = useAICoachStore();
+  const { setResults, setError, promptMode, bulletPoints } = useAICoachStore();
 
   useEffect(() => {
     processRecording();
@@ -114,6 +115,11 @@ export const AICoachProcessing = ({
       const fillerData = countFillerWords(transcript);
       const wpm = calculateWPM(transcript, duration);
       const coverage = detectContentCoverage(transcript);
+      
+      // Calculate bullet point coverage if in cue cards mode
+      const bulletPointsCoverage = promptMode === 'cueCards' && bulletPoints.length > 0
+        ? detectBulletPointCoverage(bulletPoints, transcript)
+        : undefined;
 
       setCompletedSteps(prev => [...prev, 'aggregating']);
       setProgress(100);
@@ -137,6 +143,8 @@ export const AICoachProcessing = ({
         contentAnalysis,
         contentCoverage: coverage,
         processedAt: new Date(),
+        promptMode,
+        bulletPointsCoverage,
       });
 
       // Track AI coach session complete

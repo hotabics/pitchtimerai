@@ -193,6 +193,32 @@ export const calculateWPM = (transcript: string, durationSeconds: number): numbe
   return Math.round(wordCount / minutes);
 };
 
+// Detect which bullet points were covered in the transcript
+export const detectBulletPointCoverage = (
+  bulletPoints: string[],
+  transcript: string
+): { point: string; covered: boolean }[] => {
+  const lowerTranscript = transcript.toLowerCase();
+  
+  return bulletPoints.map(point => {
+    // Extract key words from the bullet point (remove common words)
+    const words = point.toLowerCase()
+      .replace(/[^\w\s]/g, '')
+      .split(/\s+/)
+      .filter(w => w.length > 3) // Only words longer than 3 chars
+      .filter(w => !['this', 'that', 'with', 'from', 'have', 'will', 'your', 'what', 'when', 'where', 'which', 'their', 'about', 'would', 'could', 'should', 'there', 'these', 'those', 'been', 'being', 'some', 'were', 'they', 'them'].includes(w));
+    
+    if (words.length === 0) return { point, covered: true };
+    
+    // Count how many key words appear in transcript
+    const matchCount = words.filter(word => lowerTranscript.includes(word)).length;
+    const matchRatio = matchCount / words.length;
+    
+    // Consider covered if at least 40% of key words are found
+    return { point, covered: matchRatio >= 0.4 };
+  });
+};
+
 // Mock data for fallback when no API key
 export const getMockAnalysis = (): GPTAnalysisResponse => ({
   score: 7,
