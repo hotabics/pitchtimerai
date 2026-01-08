@@ -4,7 +4,7 @@ import {
   FileText, Video, Play, Pause, RotateCcw, Monitor, 
   Smartphone, Presentation, RefreshCw, Download, Clock, Minus, 
   Smile, Zap, Timer, SkipForward, Volume2, VolumeX,
-  Gauge, Mic, Pencil, Check, X, Copy, CheckCheck
+  Gauge, Mic, Pencil, Check, X, Copy, CheckCheck, Share2, Link
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -150,6 +150,7 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
   // Feedback state
   const [showVersionComparison, setShowVersionComparison] = useState(false);
   const [hasCopied, setHasCopied] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
   const trackConfig = trackConfigs[data.track];
 
   // Handle edit start
@@ -990,6 +991,64 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
                     Export PDF
                   </Button>
                 </div>
+
+                {/* Share Button */}
+                <Button
+                  variant="outline"
+                  className="w-full gap-2"
+                  disabled={isSharing}
+                  onClick={async () => {
+                    setIsSharing(true);
+                    try {
+                      const totalWords = speechBlocks.reduce((acc, block) => 
+                        acc + block.content.split(/\s+/).filter(w => w.length > 0).length, 0
+                      );
+                      
+                      const { data: insertedData, error } = await supabase
+                        .from("shared_scripts")
+                        .insert([{
+                          idea: data.idea,
+                          track: data.track,
+                          audience_label: data.audienceLabel || null,
+                          speech_blocks: JSON.parse(JSON.stringify(speechBlocks)),
+                          total_words: totalWords,
+                        }])
+                        .select("id")
+                        .single();
+
+                      if (error) throw error;
+
+                      const shareUrl = `${window.location.origin}/shared/${insertedData.id}`;
+                      await navigator.clipboard.writeText(shareUrl);
+                      
+                      toast({
+                        title: "Link copied!",
+                        description: "Share link copied to clipboard. Valid for 30 days.",
+                      });
+                    } catch (err) {
+                      console.error("Share failed:", err);
+                      toast({
+                        title: "Share failed",
+                        description: "Could not generate share link",
+                        variant: "destructive",
+                      });
+                    } finally {
+                      setIsSharing(false);
+                    }
+                  }}
+                >
+                  {isSharing ? (
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    >
+                      <Share2 className="w-4 h-4" />
+                    </motion.div>
+                  ) : (
+                    <Link className="w-4 h-4" />
+                  )}
+                  {isSharing ? "Generating link..." : "Share Script"}
+                </Button>
 
                 {/* Version Comparison Bar (shows after regeneration) */}
                 <AnimatePresence>

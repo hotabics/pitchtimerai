@@ -8,6 +8,7 @@ import NotFound from "./pages/NotFound";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import FeedbackAnalytics from "./pages/FeedbackAnalytics";
 import Pricing from "./pages/Pricing";
+import SharedScript from "./pages/SharedScript";
 import { AICoachPage } from "./components/ai-coach/AICoachPage";
 import { AuthModal } from "./components/auth/AuthModal";
 import { WhatsNewModal } from "./components/WhatsNewModal";
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/admin/analytics" element={<AdminAnalytics />} />
           <Route path="/admin/feedback" element={<FeedbackAnalytics />} />
           <Route path="/ai-coach" element={<AICoachPage />} />
+          <Route path="/shared/:id" element={<SharedScript />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

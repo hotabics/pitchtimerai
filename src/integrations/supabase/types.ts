@@ -148,6 +148,39 @@ export type Database = {
           },
         ]
       }
+      shared_scripts: {
+        Row: {
+          audience_label: string | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          idea: string
+          speech_blocks: Json
+          total_words: number | null
+          track: string
+        }
+        Insert: {
+          audience_label?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          idea: string
+          speech_blocks: Json
+          total_words?: number | null
+          track: string
+        }
+        Update: {
+          audience_label?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          idea?: string
+          speech_blocks?: Json
+          total_words?: number | null
+          track?: string
+        }
+        Relationships: []
+      }
       suggestion_analytics: {
         Row: {
           id: string
