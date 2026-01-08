@@ -427,14 +427,35 @@ export const VideoReview = ({ videoUrl, onClose }: VideoReviewProps) => {
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center justify-between">
                 <span>Transcript</span>
-                {isPlaying && (
-                  <Badge variant="outline" className="text-xs animate-pulse">
-                    Live Sync
-                  </Badge>
-                )}
+                <div className="flex items-center gap-2">
+                  {wordsWithTimestamps.length > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      {Math.max(0, activeWordIndex + 1)}/{wordsWithTimestamps.length} words
+                    </span>
+                  )}
+                  {isPlaying && (
+                    <Badge variant="outline" className="text-xs animate-pulse">
+                      Live Sync
+                    </Badge>
+                  )}
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent>
+              {/* Progress bar */}
+              {wordsWithTimestamps.length > 0 && (
+                <div className="mb-3">
+                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-primary/80 to-primary transition-all duration-200 ease-out"
+                      style={{ 
+                        width: `${Math.max(0, ((activeWordIndex + 1) / wordsWithTimestamps.length) * 100)}%` 
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+              
               <ScrollArea className="h-[200px]">
                 <div 
                   ref={transcriptRef}
@@ -444,16 +465,23 @@ export const VideoReview = ({ videoUrl, onClose }: VideoReviewProps) => {
                     <p className="whitespace-pre-wrap">
                       {wordsWithTimestamps.map((wordData, idx) => {
                         const isActive = idx === activeWordIndex;
+                        const isSpoken = idx < activeWordIndex;
+                        const isUpcoming = idx > activeWordIndex;
+                        
                         return (
                           <span
                             key={idx}
                             data-word-index={idx}
                             onClick={() => handleWordClick(idx)}
                             className={`
-                              cursor-pointer transition-all duration-150 rounded px-0.5
-                              ${wordData.isFiller ? 'text-red-500 font-medium bg-red-500/10' : ''}
-                              ${isActive ? 'bg-primary text-primary-foreground font-semibold scale-105 inline-block' : ''}
-                              ${!isActive && !wordData.isFiller ? 'hover:bg-muted-foreground/20' : ''}
+                              cursor-pointer transition-all duration-150 rounded px-0.5 inline
+                              ${wordData.isFiller ? 'font-medium' : ''}
+                              ${wordData.isFiller && isSpoken ? 'text-red-400 bg-red-500/10' : ''}
+                              ${wordData.isFiller && !isSpoken ? 'text-red-500/60 bg-red-500/5' : ''}
+                              ${isActive ? 'bg-primary text-primary-foreground font-semibold scale-110 inline-block mx-0.5 shadow-sm' : ''}
+                              ${isSpoken && !wordData.isFiller ? 'text-foreground' : ''}
+                              ${isUpcoming && !wordData.isFiller ? 'text-muted-foreground/50' : ''}
+                              ${!isActive ? 'hover:bg-muted-foreground/20 hover:text-foreground' : ''}
                             `}
                           >
                             {wordData.word}{' '}
@@ -470,9 +498,22 @@ export const VideoReview = ({ videoUrl, onClose }: VideoReviewProps) => {
                   )}
                 </div>
               </ScrollArea>
-              <p className="text-xs text-muted-foreground mt-2">
-                Click any word to jump to that moment
-              </p>
+              
+              {/* Legend */}
+              <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-foreground" /> Spoken
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-primary" /> Current
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-muted-foreground/30" /> Upcoming
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-red-500" /> Filler
+                </span>
+              </div>
             </CardContent>
           </Card>
 
