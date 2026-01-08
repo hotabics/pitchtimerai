@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Video, Mic, Camera, AlertCircle, Check, Settings, FileText, Trash2, Upload, ChevronDown, ChevronUp } from 'lucide-react';
+import { Video, Mic, Camera, AlertCircle, Check, Settings, FileText, Trash2, Upload, ChevronDown, ChevronUp, History, Play, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,23 +14,39 @@ import { trackEvent } from '@/utils/analytics';
 
 interface AICoachSetupProps {
   onReady: () => void;
+  onResumeSession?: () => void;
 }
 
-export const AICoachSetup = ({ onReady }: AICoachSetupProps) => {
+export const AICoachSetup = ({ onReady, onResumeSession }: AICoachSetupProps) => {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [permissionStatus, setPermissionStatus] = useState<'pending' | 'granted' | 'denied'>('pending');
   const [error, setError] = useState<string | null>(null);
   const [showAllBlocks, setShowAllBlocks] = useState(false);
   const [loadScriptOpen, setLoadScriptOpen] = useState(false);
   const [pastedScript, setPastedScript] = useState('');
+  const [dismissedResume, setDismissedResume] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const hasKey = hasApiKey();
   
-  const { scriptBlocks, setScriptBlocks } = useAICoachStore();
+  const { scriptBlocks, setScriptBlocks, results, reset } = useAICoachStore();
   const hasScript = scriptBlocks.length > 0;
+  const hasPreviousSession = results !== null && !dismissedResume;
 
   const handleClearScript = () => {
     setScriptBlocks([]);
+  };
+
+  const handleResumeSession = () => {
+    trackEvent('Session: Resumed');
+    if (onResumeSession) {
+      onResumeSession();
+    }
+  };
+
+  const handleStartFresh = () => {
+    trackEvent('Session: Started Fresh');
+    reset();
+    setDismissedResume(true);
   };
 
   const handleLoadScript = () => {
@@ -146,6 +162,60 @@ export const AICoachSetup = ({ onReady }: AICoachSetupProps) => {
           </AlertDescription>
         </Alert>
       )}
+
+      {/* Resume Session Banner */}
+      <AnimatePresence>
+        {hasPreviousSession && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="relative rounded-xl border-2 border-primary/30 bg-gradient-to-r from-primary/5 to-primary/10 p-4 overflow-hidden"
+          >
+            {/* Decorative gradient */}
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5 opacity-50" />
+            
+            <div className="relative flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                  <History className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold flex items-center gap-2">
+                    Previous Session Found
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary">
+                      Score: {results.contentAnalysis?.score || '—'}/10
+                    </span>
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Analyzed {results.processedAt.toLocaleTimeString()} • {results.deliveryMetrics.wpm} WPM
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleStartFresh}
+                  className="text-muted-foreground"
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Start Fresh
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleResumeSession}
+                  className="shadow-lg"
+                >
+                  <Play className="w-4 h-4 mr-2" />
+                  View Results
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Video Preview */}
       <div className="relative aspect-video bg-muted rounded-xl overflow-hidden border border-border">
