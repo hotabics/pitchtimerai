@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Pencil, Trash2, Plus, Type, List, Hash, Quote, Image,
-  ChevronUp, ChevronDown, Check, X
+  Trash2, Plus, Type, List, Hash, Quote, Image,
+  ChevronUp, ChevronDown, Check, X, StickyNote
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { 
   Select, 
   SelectContent, 
@@ -37,6 +38,7 @@ export const SlideEditor = ({ slide, onClose }: SlideEditorProps) => {
   const [content, setContent] = useState<string[]>(slide.content);
   const [type, setType] = useState<SlideType>(slide.type);
   const [imageKeyword, setImageKeyword] = useState(slide.imageKeyword || '');
+  const [speakerNotes, setSpeakerNotes] = useState(slide.speakerNotes || '');
 
   const currentIndex = slides.findIndex(s => s.id === slide.id);
   const canMoveUp = currentIndex > 0;
@@ -48,6 +50,7 @@ export const SlideEditor = ({ slide, onClose }: SlideEditorProps) => {
       content: content.filter(c => c.trim()),
       type,
       imageKeyword: imageKeyword || undefined,
+      speakerNotes: speakerNotes || undefined,
     });
     onClose();
   };
@@ -88,7 +91,7 @@ export const SlideEditor = ({ slide, onClose }: SlideEditorProps) => {
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 20 }}
-      className="bg-card border rounded-xl p-4 space-y-4"
+      className="bg-card border rounded-xl p-4 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto"
     >
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-foreground">Edit Slide {slide.id}</h3>
@@ -124,7 +127,7 @@ export const SlideEditor = ({ slide, onClose }: SlideEditorProps) => {
 
       {/* Slide Type */}
       <div className="space-y-2">
-        <label className="text-sm text-muted-foreground">Slide Type</label>
+        <Label className="text-muted-foreground">Slide Type</Label>
         <Select value={type} onValueChange={(v) => setType(v as SlideType)}>
           <SelectTrigger>
             <SelectValue />
@@ -144,7 +147,7 @@ export const SlideEditor = ({ slide, onClose }: SlideEditorProps) => {
 
       {/* Title */}
       <div className="space-y-2">
-        <label className="text-sm text-muted-foreground">Title</label>
+        <Label className="text-muted-foreground">Title</Label>
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -154,7 +157,7 @@ export const SlideEditor = ({ slide, onClose }: SlideEditorProps) => {
 
       {/* Content */}
       <div className="space-y-2">
-        <label className="text-sm text-muted-foreground">Content</label>
+        <Label className="text-muted-foreground">Content</Label>
         {type === 'bullets' ? (
           <div className="space-y-2">
             {content.map((item, idx) => (
@@ -199,7 +202,7 @@ export const SlideEditor = ({ slide, onClose }: SlideEditorProps) => {
       {/* Image Keyword */}
       {type === 'image' && (
         <div className="space-y-2">
-          <label className="text-sm text-muted-foreground">Image Keyword</label>
+          <Label className="text-muted-foreground">Image Keyword</Label>
           <Input
             value={imageKeyword}
             onChange={(e) => setImageKeyword(e.target.value)}
@@ -207,6 +210,24 @@ export const SlideEditor = ({ slide, onClose }: SlideEditorProps) => {
           />
         </div>
       )}
+
+      {/* Speaker Notes */}
+      <div className="space-y-2">
+        <Label className="text-muted-foreground flex items-center gap-2">
+          <StickyNote className="w-4 h-4" />
+          Speaker Notes
+        </Label>
+        <Textarea
+          value={speakerNotes}
+          onChange={(e) => setSpeakerNotes(e.target.value)}
+          placeholder="Add notes visible only to you during presentation..."
+          rows={3}
+          className="text-sm"
+        />
+        <p className="text-xs text-muted-foreground">
+          These notes are visible in presenter view and exported to PowerPoint.
+        </p>
+      </div>
 
       {/* Actions */}
       <div className="flex gap-2 pt-2">

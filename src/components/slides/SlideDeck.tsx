@@ -2,17 +2,26 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ChevronLeft, ChevronRight, Play, Pause, Maximize2, Minimize2,
-  Plus, Sparkles, Download, Loader2, Wand2, Radio
+  Plus, Sparkles, Download, Loader2, Wand2, Radio, FileDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useSlidesStore, generateSlidesFromBlocks, Slide } from '@/stores/slidesStore';
 import { SlidePreview } from './SlidePreview';
 import { SlideEditor } from './SlideEditor';
 import { DraggableThumbnail } from './DraggableThumbnail';
+import { ThemeSelector } from './ThemeSelector';
+import { SpeakerNotesPanel, SpeakerNotesToggle } from './SpeakerNotesPanel';
 import { generateAISlides } from '@/services/slideAI';
+import { exportToPowerPoint } from '@/services/pptxExport';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 
@@ -20,7 +29,6 @@ interface SlideDeckProps {
   scriptBlocks?: { title: string; content: string }[];
   projectTitle?: string;
   onClose?: () => void;
-  // Presentation sync props
   isPresentationMode?: boolean;
   currentPracticeBlock?: number;
   isPlaying?: boolean;
@@ -38,6 +46,8 @@ export const SlideDeck = ({
     slides,
     currentSlideIndex,
     isGenerating,
+    currentTheme,
+    showSpeakerNotes,
     setSlides,
     setCurrentSlideIndex,
     setIsGenerating,
@@ -51,6 +61,7 @@ export const SlideDeck = ({
   const [editingSlide, setEditingSlide] = useState<Slide | null>(null);
   const [showThumbnails, setShowThumbnails] = useState(true);
   const [isAIGenerating, setIsAIGenerating] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   
   // Drag and drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -59,20 +70,17 @@ export const SlideDeck = ({
   // Sync slides with practice mode
   useEffect(() => {
     if (isPresentationMode && slides.length > 0) {
-      // Map practice block to slide (offset by 1 for title slide)
       const slideIndex = Math.min(currentPracticeBlock + 1, slides.length - 1);
       setCurrentSlideIndex(slideIndex);
     }
   }, [isPresentationMode, currentPracticeBlock, slides.length, setCurrentSlideIndex]);
 
-  // Use external playing state in presentation mode
   useEffect(() => {
     if (isPresentationMode) {
       setIsPlaying(externalIsPlaying);
     }
   }, [isPresentationMode, externalIsPlaying]);
 
-  // Generate slides from script blocks (basic)
   const handleGenerateSlides = useCallback(async () => {
     if (!scriptBlocks || scriptBlocks.length === 0) {
       toast({
@@ -97,7 +105,6 @@ export const SlideDeck = ({
     });
   }, [scriptBlocks, projectTitle, setSlides, setCurrentSlideIndex, setIsGenerating]);
 
-  // Generate slides with AI
   const handleAIGenerateSlides = useCallback(async () => {
     if (!scriptBlocks || scriptBlocks.length === 0) {
       toast({
@@ -121,7 +128,6 @@ export const SlideDeck = ({
       });
     } catch (error) {
       console.error('AI generation failed:', error);
-      // Fallback to basic generation
       toast({
         title: 'AI generation unavailable',
         description: 'Using standard slide generation instead.',
@@ -133,14 +139,64 @@ export const SlideDeck = ({
     }
   }, [scriptBlocks, projectTitle, setSlides, setCurrentSlideIndex, handleGenerateSlides]);
 
-  // Auto-generate on mount if no slides exist
+  // Export handlers
+  const handleExportJSON = () => {
+    const exportData = {
+      title: projectTitle,
+      theme: currentTheme,
+      slides: slides.map(({ id, type, title, content, imageKeyword, speakerNotes }) => ({
+        id,
+        type,
+        title,
+        content,
+        imageKeyword,
+        speakerNotes,
+      })),
+      exportedAt: new Date().toISOString(),
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${projectTitle.toLowerCase().replace(/\s+/g, '-')}-slides.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: 'Slides exported',
+      description: 'Your slide deck has been downloaded as JSON.',
+    });
+  };
+
+  const handleExportPowerPoint = async () => {
+    setIsExporting(true);
+    try {
+      await exportToPowerPoint(slides, currentTheme, projectTitle);
+      toast({
+        title: 'PowerPoint exported!',
+        description: 'Your presentation has been downloaded as .pptx',
+      });
+    } catch (error) {
+      console.error('PowerPoint export failed:', error);
+      toast({
+        title: 'Export failed',
+        description: 'Could not export to PowerPoint. Try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   useEffect(() => {
     if (slides.length === 0 && scriptBlocks && scriptBlocks.length > 0) {
       handleGenerateSlides();
     }
   }, []);
 
-  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (editingSlide || isPresentationMode) return;
@@ -166,7 +222,6 @@ export const SlideDeck = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [editingSlide, currentSlideIndex, slides.length, isPresentationMode]);
 
-  // Auto-play functionality (disabled in presentation mode)
   useEffect(() => {
     if (!isPlaying || slides.length === 0 || isPresentationMode) return;
 
@@ -177,7 +232,6 @@ export const SlideDeck = ({
     return () => clearInterval(interval);
   }, [isPlaying, currentSlideIndex, slides.length, setCurrentSlideIndex, isPresentationMode]);
 
-  // Drag and drop handlers
   const handleDragStart = (index: number) => {
     setDraggedIndex(index);
   };
@@ -219,45 +273,16 @@ export const SlideDeck = ({
       title: 'New Slide',
       content: ['Add your content here'],
       scriptSegment: '',
+      speakerNotes: '',
     };
     addSlide(newSlide);
     setCurrentSlideIndex(slides.length);
     setEditingSlide(newSlide);
   };
 
-  const handleExportSlides = () => {
-    const exportData = {
-      title: projectTitle,
-      slides: slides.map(({ id, type, title, content, imageKeyword }) => ({
-        id,
-        type,
-        title,
-        content,
-        imageKeyword,
-      })),
-      exportedAt: new Date().toISOString(),
-    };
-
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${projectTitle.toLowerCase().replace(/\s+/g, '-')}-slides.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    toast({
-      title: 'Slides exported',
-      description: 'Your slide deck has been downloaded as JSON.',
-    });
-  };
-
   const currentSlide = slides[currentSlideIndex];
   const progress = slides.length > 0 ? ((currentSlideIndex + 1) / slides.length) * 100 : 0;
 
-  // Loading state
   if (isGenerating || isAIGenerating) {
     return (
       <div className="flex flex-col items-center justify-center h-96 gap-4">
@@ -269,7 +294,6 @@ export const SlideDeck = ({
     );
   }
 
-  // Empty state
   if (slides.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-96 gap-6">
@@ -302,8 +326,8 @@ export const SlideDeck = ({
       isFullscreen && 'fixed inset-0 z-50 bg-background'
     )}>
       {/* Toolbar */}
-      <div className="flex items-center justify-between p-3 border-b bg-card">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between p-3 border-b bg-card flex-wrap gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {isPresentationMode && (
             <Badge variant="secondary" className="gap-1">
               <Radio className="w-3 h-3 animate-pulse text-red-500" />
@@ -325,22 +349,41 @@ export const SlideDeck = ({
             onClick={handleAddSlide}
           >
             <Plus className="w-4 h-4 mr-2" />
-            Add Slide
+            Add
           </Button>
+          <ThemeSelector />
+          <SpeakerNotesToggle />
         </div>
         
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">
             {currentSlideIndex + 1} / {slides.length}
           </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportSlides}
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
+          
+          {/* Export dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" disabled={isExporting}>
+                {isExporting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4 mr-2" />
+                )}
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportPowerPoint}>
+                <FileDown className="w-4 h-4 mr-2" />
+                PowerPoint (.pptx)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportJSON}>
+                <Download className="w-4 h-4 mr-2" />
+                JSON
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
           <Button
             variant="ghost"
             size="icon"
@@ -356,7 +399,7 @@ export const SlideDeck = ({
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Thumbnails sidebar with drag-and-drop */}
+        {/* Thumbnails sidebar */}
         {showThumbnails && !isFullscreen && (
           <div className="w-52 border-r bg-muted/30">
             <ScrollArea className="h-full p-2">
@@ -401,13 +444,9 @@ export const SlideDeck = ({
             </AnimatePresence>
           </div>
 
-          {/* Script segment */}
-          {currentSlide?.scriptSegment && !isFullscreen && (
-            <div className="p-4 border-t bg-card">
-              <p className="text-sm text-muted-foreground italic line-clamp-2">
-                "{currentSlide.scriptSegment}"
-              </p>
-            </div>
+          {/* Speaker Notes Panel */}
+          {currentSlide && !isFullscreen && showSpeakerNotes && (
+            <SpeakerNotesPanel slide={currentSlide} />
           )}
 
           {/* Controls */}
@@ -459,7 +498,7 @@ export const SlideDeck = ({
         {/* Editor sidebar */}
         <AnimatePresence>
           {editingSlide && !isFullscreen && (
-            <div className="w-80 border-l bg-background p-4">
+            <div className="w-80 border-l bg-background p-4 overflow-y-auto">
               <SlideEditor
                 slide={editingSlide}
                 onClose={() => setEditingSlide(null)}
