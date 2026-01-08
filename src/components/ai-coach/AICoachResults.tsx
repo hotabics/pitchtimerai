@@ -1,6 +1,6 @@
 // AI Coach Results View - The Feedback Dashboard
 
-import { useEffect } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Eye, 
@@ -17,7 +17,10 @@ import {
   RotateCcw,
   Edit3,
   Smile,
-  TrendingUp
+  TrendingUp,
+  PersonStanding,
+  Hand,
+  Video
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -29,6 +32,9 @@ import { trackEvent } from '@/utils/analytics';
 import { MetricFlagButton } from '@/components/feedback/MetricFlagButton';
 import { VerdictFeedback } from '@/components/feedback/VerdictFeedback';
 import { PaywallOverlay } from '@/components/paywall/PaywallOverlay';
+import { SwayGraph } from './SwayGraph';
+import { VideoReview } from './VideoReview';
+import { getSwayData } from '@/services/mediapipe';
 
 interface AICoachResultsProps {
   onReRecord: () => void;
@@ -36,9 +42,16 @@ interface AICoachResultsProps {
 }
 
 export const AICoachResults = ({ onReRecord, onEditScript }: AICoachResultsProps) => {
-  const { results } = useAICoachStore();
+  const { results, recordingData } = useAICoachStore();
   const { canAccessDeepAnalysis } = useUserStore();
   const hasAccess = canAccessDeepAnalysis();
+  const [showVideoReview, setShowVideoReview] = useState(false);
+
+  // Generate sway data from frame data
+  const swayData = useMemo(() => {
+    if (!recordingData?.frameData) return [];
+    return getSwayData(recordingData.frameData);
+  }, [recordingData]);
 
   // Track when results are viewed
   useEffect(() => {
@@ -51,6 +64,11 @@ export const AICoachResults = ({ onReRecord, onEditScript }: AICoachResultsProps
     trackEvent('Analysis: Retry Clicked');
     onReRecord();
   };
+
+  // Show Video Review if selected
+  if (showVideoReview) {
+    return <VideoReview onClose={() => setShowVideoReview(false)} />;
+  }
 
   if (!results) {
     return (
@@ -115,6 +133,10 @@ export const AICoachResults = ({ onReRecord, onEditScript }: AICoachResultsProps
           )}
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setShowVideoReview(true)}>
+            <Video className="w-4 h-4 mr-2" />
+            Video Review
+          </Button>
           <Button variant="outline" onClick={handleReRecord}>
             <RotateCcw className="w-4 h-4 mr-2" />
             Re-Record
@@ -228,7 +250,7 @@ export const AICoachResults = ({ onReRecord, onEditScript }: AICoachResultsProps
               )}
             </div>
 
-            {/* Smile & Stability */}
+            {/* Smile & Head Stability */}
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center p-3 rounded-lg bg-muted/50">
                 <Smile className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
@@ -238,7 +260,54 @@ export const AICoachResults = ({ onReRecord, onEditScript }: AICoachResultsProps
               <div className="text-center p-3 rounded-lg bg-muted/50">
                 <TrendingUp className="w-5 h-5 mx-auto mb-1 text-muted-foreground" />
                 <p className="text-lg font-bold">{deliveryMetrics.stabilityScore}%</p>
-                <p className="text-xs text-muted-foreground">Stability</p>
+                <p className="text-xs text-muted-foreground">Head Stability</p>
+              </div>
+            </div>
+
+            {/* Body Language Section */}
+            <div className="space-y-3 pt-3 border-t border-border">
+              <p className="text-sm font-medium flex items-center gap-2">
+                <PersonStanding className="w-4 h-4" />
+                Body Language
+              </p>
+              
+              {/* Posture */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Posture Grade</span>
+                <Badge className={
+                  deliveryMetrics.postureGrade === 'A' ? 'bg-green-500' :
+                  deliveryMetrics.postureGrade === 'B' ? 'bg-yellow-500' :
+                  'bg-red-500'
+                }>
+                  {deliveryMetrics.postureGrade}
+                </Badge>
+              </div>
+              
+              {/* Body Stability */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Body Stability</span>
+                <span className={`font-medium ${
+                  deliveryMetrics.bodyStabilityScore >= 70 ? 'text-green-500' :
+                  deliveryMetrics.bodyStabilityScore >= 50 ? 'text-yellow-500' :
+                  'text-red-500'
+                }`}>
+                  {deliveryMetrics.bodyStabilityScore}%
+                </span>
+              </div>
+              
+              {/* Hand Visibility */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Hand className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Hands Visible</span>
+                </div>
+                <span className={`font-medium ${
+                  deliveryMetrics.handsVisiblePercent >= 70 ? 'text-green-500' :
+                  deliveryMetrics.handsVisiblePercent >= 40 ? 'text-yellow-500' :
+                  'text-red-500'
+                }`}>
+                  {deliveryMetrics.handsVisiblePercent}%
+                </span>
               </div>
             </div>
           </CardContent>
@@ -376,6 +445,11 @@ export const AICoachResults = ({ onReRecord, onEditScript }: AICoachResultsProps
           </CardContent>
         </Card>
       </div>
+
+      {/* Sway Graph - Body Movement Over Time */}
+      {swayData.length > 0 && (
+        <SwayGraph data={swayData} />
+      )}
 
       {/* Transcript */}
       <Card>
