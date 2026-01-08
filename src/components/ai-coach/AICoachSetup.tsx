@@ -2,15 +2,22 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Video, Mic, Camera, AlertCircle, Check, Settings, FileText, Trash2, Upload, ChevronDown, ChevronUp, History, Play, X, Edit2, Plus, GripVertical } from 'lucide-react';
+import { Video, Mic, Camera, AlertCircle, Check, Settings, FileText, Trash2, Upload, ChevronDown, ChevronUp, History, Play, X, Edit2, Plus, GripVertical, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { AICoachSettings } from './AICoachSettings';
 import { hasApiKey } from '@/services/openai';
-import { useAICoachStore, type ScriptBlock, generateBulletPointsFromScript } from '@/stores/aiCoachStore';
+import { useAICoachStore, type ScriptBlock, generateBulletPointsFromScript, TTS_VOICES } from '@/stores/aiCoachStore';
 import { trackEvent } from '@/utils/analytics';
 
 interface AICoachSetupProps {
@@ -31,10 +38,11 @@ export const AICoachSetup = ({ onReady, onResumeSession }: AICoachSetupProps) =>
   const videoRef = useRef<HTMLVideoElement>(null);
   const hasKey = hasApiKey();
   
-  const { scriptBlocks, setScriptBlocks, bulletPoints, setBulletPoints, results, reset } = useAICoachStore();
+  const { scriptBlocks, setScriptBlocks, bulletPoints, setBulletPoints, results, reset, selectedVoiceId, setSelectedVoiceId } = useAICoachStore();
   const hasScript = scriptBlocks.length > 0;
   const hasBulletPoints = bulletPoints.length > 0;
   const hasPreviousSession = results !== null && !dismissedResume;
+  const selectedVoice = TTS_VOICES.find(v => v.id === selectedVoiceId) || TTS_VOICES[0];
 
   const handleClearScript = () => {
     setScriptBlocks([]);
@@ -328,6 +336,33 @@ export const AICoachSetup = ({ onReady, onResumeSession }: AICoachSetupProps) =>
           )}
         </div>
       </div>
+
+      {/* Voice Selector (when script is loaded) */}
+      {hasScript && (
+        <div className="flex items-center justify-center gap-4 p-4 rounded-lg bg-muted/30 border border-border">
+          <div className="flex items-center gap-2">
+            <Volume2 className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Voiceover Voice:</span>
+          </div>
+          <Select value={selectedVoiceId} onValueChange={(value) => setSelectedVoiceId(value as typeof selectedVoiceId)}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue>
+                {selectedVoice.name} — {selectedVoice.description}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {TTS_VOICES.map(voice => (
+                <SelectItem key={voice.id} value={voice.id}>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{voice.name}</span>
+                    <span className="text-xs text-muted-foreground">{voice.description}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Start button */}
       <div className="flex justify-center">

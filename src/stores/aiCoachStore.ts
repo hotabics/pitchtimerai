@@ -52,6 +52,18 @@ export interface TranscriptionSettings {
   language: string;
 }
 
+// TTS Voice options
+export const TTS_VOICES = [
+  { id: 'onwK4e9ZLuTAKqWW03F9', name: 'Daniel', description: 'Professional male' },
+  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah', description: 'Warm female' },
+  { id: 'JBFqnCBsd6RMkjVDRZzb', name: 'George', description: 'British male' },
+  { id: 'pFZP5JQG7iQjIQuC4Bku', name: 'Lily', description: 'Soft female' },
+  { id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam', description: 'Young male' },
+  { id: 'cgSgspJ2msm6clMCkdW9', name: 'Jessica', description: 'American female' },
+] as const;
+
+export type TTSVoiceId = typeof TTS_VOICES[number]['id'];
+
 interface AICoachState {
   // Current view
   currentView: CoachView;
@@ -72,6 +84,10 @@ interface AICoachState {
   // Transcription settings
   transcriptionSettings: TranscriptionSettings;
   setTranscriptionSettings: (settings: TranscriptionSettings) => void;
+
+  // TTS voice selection
+  selectedVoiceId: TTSVoiceId;
+  setSelectedVoiceId: (voiceId: TTSVoiceId) => void;
 
   // Recording state
   isRecording: boolean;
@@ -121,6 +137,7 @@ export const useAICoachStore = create<AICoachState>((set) => ({
   bulletPoints: [],
   promptMode: 'teleprompter',
   transcriptionSettings: { enabled: true, language: 'en-US' },
+  selectedVoiceId: 'onwK4e9ZLuTAKqWW03F9' as TTSVoiceId, // Daniel (Professional male)
   isRecording: false,
   recordingDuration: 0,
   recordingData: null,
@@ -136,6 +153,7 @@ export const useAICoachStore = create<AICoachState>((set) => ({
   setBulletPoints: (points) => set({ bulletPoints: points }),
   setPromptMode: (mode) => set({ promptMode: mode }),
   setTranscriptionSettings: (settings) => set({ transcriptionSettings: settings }),
+  setSelectedVoiceId: (voiceId) => set({ selectedVoiceId: voiceId }),
   setIsRecording: (recording) => set({ isRecording: recording }),
   setRecordingDuration: (duration) => set({ recordingDuration: duration }),
   setRecordingData: (data) => set({ recordingData: data }),

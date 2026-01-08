@@ -118,7 +118,9 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream, voiceoverAud
   const [audioDuration, setAudioDuration] = useState(0);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [isAudioBuffering, setIsAudioBuffering] = useState(false);
+  const [currentBlockIndex, setCurrentBlockIndex] = useState(0);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
+  const blockTimestampsRef = useRef<{ start: number; end: number }[]>([]);
 
   // HUD metrics (updated less frequently to prevent flicker)
   const [hudMetrics, setHudMetrics] = useState<{
@@ -358,6 +360,23 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream, voiceoverAud
     
     if (!audio || !teleprompter || !hasScript || promptMode !== 'teleprompter') return;
 
+    // Calculate block timestamps based on word counts
+    if (blockTimestampsRef.current.length === 0 && scriptBlocks.length > 0) {
+      const WPM = 150;
+      let currentTime = 0;
+      const timestamps: { start: number; end: number }[] = [];
+      
+      scriptBlocks.forEach(block => {
+        const wordCount = block.content.split(/\s+/).length;
+        const pauseTime = 0.5;
+        const duration = (wordCount / WPM) * 60;
+        timestamps.push({ start: currentTime, end: currentTime + duration });
+        currentTime += duration + pauseTime;
+      });
+      
+      blockTimestampsRef.current = timestamps;
+    }
+
     // Calculate scroll position based on audio progress
     const updateScrollFromAudio = () => {
       if (audio.duration && audio.duration > 0) {
@@ -367,9 +386,34 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream, voiceoverAud
       }
     };
 
+    // Update current block based on audio time
+    const updateCurrentBlock = () => {
+      const currentTime = audio.currentTime;
+      const timestamps = blockTimestampsRef.current;
+      
+      // Scale timestamps to actual audio duration
+      const estimatedDuration = timestamps[timestamps.length - 1]?.end || 1;
+      const scale = audio.duration / estimatedDuration;
+      
+      for (let i = 0; i < timestamps.length; i++) {
+        const scaledStart = timestamps[i].start * scale;
+        const scaledEnd = timestamps[i].end * scale;
+        if (currentTime >= scaledStart && currentTime < scaledEnd) {
+          setCurrentBlockIndex(i);
+          return;
+        }
+      }
+      
+      // If past all blocks, show last
+      if (currentTime >= (timestamps[timestamps.length - 1]?.end || 0) * scale) {
+        setCurrentBlockIndex(timestamps.length - 1);
+      }
+    };
+
     const handleTimeUpdate = () => {
       setAudioCurrentTime(audio.currentTime);
       updateScrollFromAudio();
+      updateCurrentBlock();
     };
 
     const handleDurationChange = () => {
@@ -409,7 +453,7 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream, voiceoverAud
       audio.removeEventListener('waiting', handleWaiting);
       audio.removeEventListener('playing', handlePlaying);
     };
-  }, [hasScript, promptMode]);
+  }, [hasScript, promptMode, scriptBlocks]);
 
   // Fallback manual scroll when no audio (speed-controlled interval)
   useEffect(() => {
@@ -932,6 +976,36 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream, voiceoverAud
                   {/* Reading Zone Indicator */}
                   <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-12 bg-cyan-400/10 border-y border-cyan-400/30 pointer-events-none z-10" />
 
+                  {/* Progress Bar */}
+                  {audioDuration > 0 && (
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 z-10">
+                      <motion.div
+                        className="h-full bg-gradient-to-r from-cyan-400 to-green-400"
+                        animate={{ width: `${(audioCurrentTime / audioDuration) * 100}%` }}
+                        transition={{ duration: 0.1 }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Block Progress Indicator */}
+                  {audioDuration > 0 && (
+                    <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 px-2 py-1 rounded bg-black/50 backdrop-blur-sm">
+                      {scriptBlocks.map((_, idx) => (
+                        <div
+                          key={idx}
+                          className={cn(
+                            "w-2 h-2 rounded-full transition-all duration-300",
+                            idx === currentBlockIndex
+                              ? "bg-cyan-400 scale-125"
+                              : idx < currentBlockIndex
+                                ? "bg-green-400"
+                                : "bg-white/30"
+                          )}
+                        />
+                      ))}
+                    </div>
+                  )}
+
                   {/* Script Content */}
                   <div
                     ref={teleprompterRef}
@@ -940,10 +1014,36 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream, voiceoverAud
                   >
                     <div className="space-y-6 py-16">
                       {scriptBlocks.map((block, idx) => (
-                        <div key={idx}>
-                          <p className="text-xs text-cyan-400/80 mb-1 uppercase tracking-wide">{block.title}</p>
-                          <p className="text-2xl leading-relaxed text-white font-medium">{block.content}</p>
-                        </div>
+                        <motion.div
+                          key={idx}
+                          initial={{ opacity: 0.5 }}
+                          animate={{
+                            opacity: idx === currentBlockIndex ? 1 : 0.5,
+                            scale: idx === currentBlockIndex ? 1 : 0.98,
+                          }}
+                          transition={{ duration: 0.3 }}
+                          className={cn(
+                            "transition-all duration-300",
+                            idx === currentBlockIndex && "relative"
+                          )}
+                        >
+                          {/* Current block highlight bar */}
+                          {idx === currentBlockIndex && audioDuration > 0 && (
+                            <div className="absolute -left-4 top-0 bottom-0 w-1 bg-gradient-to-b from-cyan-400 to-green-400 rounded-full" />
+                          )}
+                          <p className={cn(
+                            "text-xs mb-1 uppercase tracking-wide transition-colors",
+                            idx === currentBlockIndex ? "text-cyan-400" : "text-cyan-400/50"
+                          )}>
+                            {block.title}
+                          </p>
+                          <p className={cn(
+                            "text-2xl leading-relaxed font-medium transition-colors",
+                            idx === currentBlockIndex ? "text-white" : "text-white/60"
+                          )}>
+                            {block.content}
+                          </p>
+                        </motion.div>
                       ))}
                     </div>
                   </div>

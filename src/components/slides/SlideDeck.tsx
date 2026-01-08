@@ -401,6 +401,10 @@ export const SlideDeck = ({
                 <Download className="w-4 h-4 mr-2" />
                 JSON
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowGeminiModal(true)}>
+                <Sparkles className="w-4 h-4 mr-2" />
+                Generate Gemini Prompt
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           
