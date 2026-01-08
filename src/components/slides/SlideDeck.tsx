@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ChevronLeft, ChevronRight, Play, Pause, Maximize2, Minimize2,
-  Plus, Sparkles, Download, Loader2, Wand2, Radio, FileDown
+  Plus, Sparkles, Download, Loader2, Wand2, Radio, FileDown, Upload
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -14,12 +14,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useSlidesStore, generateSlidesFromBlocks, Slide } from '@/stores/slidesStore';
+import { useSlidesStore, generateSlidesFromBlocks, Slide, SlideTheme } from '@/stores/slidesStore';
 import { SlidePreview } from './SlidePreview';
 import { SlideEditor } from './SlideEditor';
 import { DraggableThumbnail } from './DraggableThumbnail';
 import { ThemeSelector } from './ThemeSelector';
 import { SpeakerNotesPanel, SpeakerNotesToggle } from './SpeakerNotesPanel';
+import { SlideImportDialog } from './SlideImportDialog';
 import { generateAISlides } from '@/services/slideAI';
 import { exportToPowerPoint } from '@/services/pptxExport';
 import { cn } from '@/lib/utils';
@@ -51,10 +52,20 @@ export const SlideDeck = ({
     setSlides,
     setCurrentSlideIndex,
     setIsGenerating,
+    setCurrentTheme,
     addSlide,
     reorderSlides,
     clearSlides,
   } = useSlidesStore();
+
+  // Import handler
+  const handleImport = useCallback((importedSlides: Slide[], theme?: SlideTheme) => {
+    setSlides(importedSlides);
+    setCurrentSlideIndex(0);
+    if (theme) {
+      setCurrentTheme(theme);
+    }
+  }, [setSlides, setCurrentSlideIndex, setCurrentTheme]);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -353,6 +364,7 @@ export const SlideDeck = ({
           </Button>
           <ThemeSelector />
           <SpeakerNotesToggle />
+          <SlideImportDialog onImport={handleImport} />
         </div>
         
         <div className="flex items-center gap-2">

@@ -95,6 +95,8 @@ export interface Slide {
   speakerNotes?: string;
   backgroundColor?: string;
   accentColor?: string;
+  generatedImageUrl?: string;
+  isGeneratingImage?: boolean;
 }
 
 interface SlidesState {
