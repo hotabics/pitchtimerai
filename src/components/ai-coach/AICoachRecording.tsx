@@ -1,4 +1,4 @@
-// AI Coach Recording View - Professional Teleprompter + Face Mesh + Body Language HUD
+// AI Coach Recording View - Professional Teleprompter + Cue Cards + Face Mesh + Body Language HUD
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -17,6 +17,8 @@ import {
   Square,
   Volume2,
   Move,
+  FileText,
+  ListChecks,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -30,10 +32,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useAICoachStore } from "@/stores/aiCoachStore";
+import { useAICoachStore, generateBulletPointsFromScript } from "@/stores/aiCoachStore";
 import type { FrameData, CombinedMetrics } from "@/services/mediapipe";
 import { drawFaceMesh, initializeFaceLandmarker } from "@/services/mediapipe";
 import { trackEvent } from "@/utils/analytics";
+import { CueCardStack } from "./CueCardStack";
+import { cn } from "@/lib/utils";
 
 interface AICoachRecordingProps {
   onStop: (audioBlob: Blob, videoBlob: Blob, duration: number, frameData: FrameData[]) => void;
@@ -67,6 +71,10 @@ const LANGUAGES = [
 export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRecordingProps) => {
   const { 
     scriptBlocks, 
+    bulletPoints,
+    setBulletPoints,
+    promptMode,
+    setPromptMode,
     transcriptionSettings, 
     setTranscriptionSettings,
     addFrameData, 
@@ -74,6 +82,21 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
   } = useAICoachStore();
 
   const hasScript = scriptBlocks.length > 0;
+
+  // Initialize bullet points from script if not already set
+  useEffect(() => {
+    if (hasScript && bulletPoints.length === 0) {
+      const generatedPoints = generateBulletPointsFromScript(scriptBlocks);
+      setBulletPoints(generatedPoints);
+    }
+  }, [hasScript, bulletPoints.length, scriptBlocks, setBulletPoints]);
+
+  // Effective bullet points (from store or generated from script)
+  const effectiveBulletPoints = bulletPoints.length > 0 
+    ? bulletPoints 
+    : hasScript 
+      ? generateBulletPointsFromScript(scriptBlocks)
+      : [];
 
   // Initialization
   const [isCameraReady, setIsCameraReady] = useState(false);
@@ -320,9 +343,11 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
     };
   }, [hasScript, isRecording, teleprompterPaused, scrollSpeed]);
 
-  // Live transcription
+  // Live transcription (also enabled for cue card mode's AI Voice advance)
+  const shouldEnableTranscription = !hasScript || (hasScript && promptMode === 'cueCards');
+  
   useEffect(() => {
-    if (!isRecording || hasScript || !transcriptionSettings.enabled) return;
+    if (!isRecording || !shouldEnableTranscription || !transcriptionSettings.enabled) return;
 
     const Ctor = getSpeechRecognitionCtor();
     if (!Ctor) { setSpeechSupported(false); return; }
@@ -361,7 +386,7 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
 
     try { recognition.start(); } catch {}
     return () => { try { recognition.stop(); } catch {} speechRecognitionRef.current = null; };
-  }, [hasScript, isRecording, transcriptionSettings.enabled, transcriptionSettings.language]);
+  }, [shouldEnableTranscription, isRecording, transcriptionSettings.enabled, transcriptionSettings.language]);
 
   // Scroll transcript to bottom
   useEffect(() => {
@@ -686,57 +711,103 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
           )}
         </div>
 
-        {/* Layer 25: Teleprompter Overlay (only when script exists) */}
+        {/* Layer 25: Prompt Overlay (Teleprompter or Cue Cards) */}
         {hasScript && isRecording && (
           <div
             className="absolute bottom-20 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl pointer-events-auto"
             style={{ zIndex: 25 }}
           >
             <div className="relative rounded-xl bg-black/70 backdrop-blur-md border border-white/10 overflow-hidden">
-              {/* Teleprompter Controls */}
+              {/* Mode Toggle + Controls Header */}
               <div className="flex items-center justify-between px-4 py-2 border-b border-white/10">
-                <span className="text-xs text-cyan-400 font-medium uppercase tracking-wider">Teleprompter</span>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-white/50">Speed</span>
-                    <Slider
-                      value={[scrollSpeed]}
-                      onValueChange={([v]) => setScrollSpeed(v)}
-                      min={0.5}
-                      max={3}
-                      step={0.5}
-                      className="w-20"
-                    />
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-white/70 hover:text-white"
-                    onClick={() => setTeleprompterPaused(!teleprompterPaused)}
+                {/* Mode Toggle */}
+                <div className="flex items-center gap-1 p-0.5 bg-white/10 rounded-lg">
+                  <button
+                    onClick={() => setPromptMode('teleprompter')}
+                    className={cn(
+                      "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all",
+                      promptMode === 'teleprompter'
+                        ? "bg-cyan-500/30 text-cyan-400"
+                        : "text-white/50 hover:text-white/80"
+                    )}
                   >
-                    {teleprompterPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-                  </Button>
+                    <FileText className="w-3.5 h-3.5" />
+                    Teleprompter
+                  </button>
+                  <button
+                    onClick={() => setPromptMode('cueCards')}
+                    className={cn(
+                      "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all",
+                      promptMode === 'cueCards'
+                        ? "bg-cyan-500/30 text-cyan-400"
+                        : "text-white/50 hover:text-white/80"
+                    )}
+                  >
+                    <ListChecks className="w-3.5 h-3.5" />
+                    Cue Cards
+                  </button>
                 </div>
-              </div>
 
-              {/* Reading Zone Indicator */}
-              <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-12 bg-cyan-400/10 border-y border-cyan-400/30 pointer-events-none z-10" />
-
-              {/* Script Content */}
-              <div
-                ref={teleprompterRef}
-                className="p-6 h-[180px] overflow-y-auto scroll-smooth"
-                style={{ scrollbarWidth: "none" }}
-              >
-                <div className="space-y-6 py-16">
-                  {scriptBlocks.map((block, idx) => (
-                    <div key={idx}>
-                      <p className="text-xs text-cyan-400/80 mb-1 uppercase tracking-wide">{block.title}</p>
-                      <p className="text-2xl leading-relaxed text-white font-medium">{block.content}</p>
+                {/* Teleprompter-specific controls */}
+                {promptMode === 'teleprompter' && (
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-white/50">Speed</span>
+                      <Slider
+                        value={[scrollSpeed]}
+                        onValueChange={([v]) => setScrollSpeed(v)}
+                        min={0.5}
+                        max={3}
+                        step={0.5}
+                        className="w-20"
+                      />
                     </div>
-                  ))}
-                </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-white/70 hover:text-white"
+                      onClick={() => setTeleprompterPaused(!teleprompterPaused)}
+                    >
+                      {teleprompterPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                )}
               </div>
+
+              {/* Teleprompter Mode */}
+              {promptMode === 'teleprompter' && (
+                <>
+                  {/* Reading Zone Indicator */}
+                  <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-12 bg-cyan-400/10 border-y border-cyan-400/30 pointer-events-none z-10" />
+
+                  {/* Script Content */}
+                  <div
+                    ref={teleprompterRef}
+                    className="p-6 h-[180px] overflow-y-auto scroll-smooth"
+                    style={{ scrollbarWidth: "none" }}
+                  >
+                    <div className="space-y-6 py-16">
+                      {scriptBlocks.map((block, idx) => (
+                        <div key={idx}>
+                          <p className="text-xs text-cyan-400/80 mb-1 uppercase tracking-wide">{block.title}</p>
+                          <p className="text-2xl leading-relaxed text-white font-medium">{block.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Cue Cards Mode */}
+              {promptMode === 'cueCards' && effectiveBulletPoints.length > 0 && (
+                <div className="p-4">
+                  <CueCardStack
+                    bulletPoints={effectiveBulletPoints}
+                    currentTranscript={liveTranscript}
+                    isRecording={isRecording}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}

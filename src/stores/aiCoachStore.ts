@@ -6,6 +6,7 @@ import type { FrameData } from '@/services/mediapipe';
 export type { FrameData };
 
 export type CoachView = 'setup' | 'recording' | 'processing' | 'results';
+export type PromptMode = 'teleprompter' | 'cueCards';
 
 export interface ScriptBlock {
   title: string;
@@ -32,6 +33,7 @@ export interface RecordingData {
   durationSeconds: number;
   frameData: FrameData[];
   swayData?: { time: number; sway: number }[];
+  promptMode?: PromptMode;
 }
 
 export interface AnalysisResults {
@@ -40,6 +42,8 @@ export interface AnalysisResults {
   contentAnalysis: GPTAnalysisResponse | null;
   contentCoverage: ContentCoverage;
   processedAt: Date;
+  promptMode?: PromptMode;
+  bulletPointsCoverage?: { point: string; covered: boolean }[];
 }
 
 // Transcription settings
@@ -56,6 +60,14 @@ interface AICoachState {
   // Script blocks for teleprompter
   scriptBlocks: ScriptBlock[];
   setScriptBlocks: (blocks: ScriptBlock[]) => void;
+
+  // Bullet points for cue card mode
+  bulletPoints: string[];
+  setBulletPoints: (points: string[]) => void;
+
+  // Prompt mode (teleprompter or cue cards)
+  promptMode: PromptMode;
+  setPromptMode: (mode: PromptMode) => void;
 
   // Transcription settings
   transcriptionSettings: TranscriptionSettings;
@@ -94,10 +106,20 @@ interface AICoachState {
   reset: () => void;
 }
 
+// Helper to generate bullet points from full script
+export const generateBulletPointsFromScript = (scriptBlocks: ScriptBlock[]): string[] => {
+  return scriptBlocks.slice(0, 6).map(block => {
+    const firstSentence = block.content.split(/[.!?]/)[0]?.trim() || block.content.slice(0, 80);
+    return `${block.title}: ${firstSentence}`;
+  });
+};
+
 export const useAICoachStore = create<AICoachState>((set) => ({
   // Initial state
   currentView: 'setup',
   scriptBlocks: [],
+  bulletPoints: [],
+  promptMode: 'teleprompter',
   transcriptionSettings: { enabled: true, language: 'en-US' },
   isRecording: false,
   recordingDuration: 0,
@@ -111,6 +133,8 @@ export const useAICoachStore = create<AICoachState>((set) => ({
   // Actions
   setCurrentView: (view) => set({ currentView: view }),
   setScriptBlocks: (blocks) => set({ scriptBlocks: blocks }),
+  setBulletPoints: (points) => set({ bulletPoints: points }),
+  setPromptMode: (mode) => set({ promptMode: mode }),
   setTranscriptionSettings: (settings) => set({ transcriptionSettings: settings }),
   setIsRecording: (recording) => set({ isRecording: recording }),
   setRecordingDuration: (duration) => set({ recordingDuration: duration }),
@@ -138,7 +162,7 @@ export const useAICoachStore = create<AICoachState>((set) => ({
     processingProgress: 0,
     results: null,
     error: null,
-    // Note: scriptBlocks and transcriptionSettings are intentionally NOT reset
+    // Note: scriptBlocks, bulletPoints, promptMode and transcriptionSettings are intentionally NOT reset
     // so user can re-record without losing their script or language preference
   }),
 }));
