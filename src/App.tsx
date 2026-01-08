@@ -10,6 +10,7 @@ import FeedbackAnalytics from "./pages/FeedbackAnalytics";
 import Pricing from "./pages/Pricing";
 import { AICoachPage } from "./components/ai-coach/AICoachPage";
 import { AuthModal } from "./components/auth/AuthModal";
+import { WhatsNewModal } from "./components/WhatsNewModal";
 
 const queryClient = new QueryClient();
 
@@ -19,6 +20,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <AuthModal />
+      <WhatsNewModal />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
