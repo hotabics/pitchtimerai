@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FileText, Clock, ArrowLeft, Copy, CheckCheck } from "lucide-react";
+import { FileText, Clock, ArrowLeft, Copy, CheckCheck, Twitter, Linkedin, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -166,11 +166,11 @@ const SharedScript = () => {
           )}
         </motion.div>
 
-        {/* Copy Button */}
+        {/* Action Buttons */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6"
+          className="mb-6 flex flex-wrap gap-2"
         >
           <Button
             variant="outline"
@@ -182,8 +182,66 @@ const SharedScript = () => {
             ) : (
               <Copy className="w-4 h-4" />
             )}
-            {hasCopied ? "Copied!" : "Copy Full Script"}
+            {hasCopied ? "Copied!" : "Copy Script"}
           </Button>
+          
+          {/* Twitter Share */}
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => {
+              const text = `Check out this pitch script: "${script.idea}"`;
+              const url = window.location.href;
+              window.open(
+                `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
+                "_blank",
+                "width=550,height=420"
+              );
+            }}
+          >
+            <Twitter className="w-4 h-4" />
+            Tweet
+          </Button>
+          
+          {/* LinkedIn Share */}
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => {
+              const url = window.location.href;
+              window.open(
+                `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,
+                "_blank",
+                "width=550,height=420"
+              );
+            }}
+          >
+            <Linkedin className="w-4 h-4" />
+            Share
+          </Button>
+          
+          {/* Native Share (if available) */}
+          {navigator.share && (
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={async () => {
+                try {
+                  await navigator.share({
+                    title: script.idea,
+                    text: `Check out this pitch script: "${script.idea}"`,
+                    url: window.location.href,
+                  });
+                } catch (err) {
+                  // User cancelled or error
+                  console.log("Share cancelled");
+                }
+              }}
+            >
+              <Share2 className="w-4 h-4" />
+              More
+            </Button>
+          )}
         </motion.div>
 
         {/* Script Blocks */}

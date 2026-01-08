@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import QRCode from "qrcode";
 import { 
   FileText, Video, Play, Pause, RotateCcw, Monitor, 
   Smartphone, Presentation, RefreshCw, Download, Clock, Minus, 
   Smile, Zap, Timer, SkipForward, Volume2, VolumeX,
-  Gauge, Mic, Pencil, Check, X, Copy, CheckCheck, Share2, Link
+  Gauge, Mic, Pencil, Check, X, Copy, CheckCheck, Share2, Link, QrCode
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -151,6 +152,8 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
   const [showVersionComparison, setShowVersionComparison] = useState(false);
   const [hasCopied, setHasCopied] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const trackConfig = trackConfigs[data.track];
 
   // Handle edit start
@@ -1018,8 +1021,20 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
 
                       if (error) throw error;
 
-                      const shareUrl = `${window.location.origin}/shared/${insertedData.id}`;
-                      await navigator.clipboard.writeText(shareUrl);
+                      const generatedUrl = `${window.location.origin}/shared/${insertedData.id}`;
+                      setShareUrl(generatedUrl);
+                      await navigator.clipboard.writeText(generatedUrl);
+                      
+                      // Generate QR code
+                      const qrDataUrl = await QRCode.toDataURL(generatedUrl, {
+                        width: 200,
+                        margin: 2,
+                        color: {
+                          dark: "#000000",
+                          light: "#ffffff",
+                        },
+                      });
+                      setQrCodeUrl(qrDataUrl);
                       
                       toast({
                         title: "Link copied!",
@@ -1049,6 +1064,66 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
                   )}
                   {isSharing ? "Generating link..." : "Share Script"}
                 </Button>
+
+                {/* QR Code Display */}
+                <AnimatePresence>
+                  {shareUrl && qrCodeUrl && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="p-4 rounded-xl bg-card border border-border"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="bg-white p-2 rounded-lg">
+                          <img 
+                            src={qrCodeUrl} 
+                            alt="QR Code" 
+                            className="w-32 h-32"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground flex items-center gap-2 mb-2">
+                            <QrCode className="w-4 h-4" />
+                            Share via QR Code
+                          </p>
+                          <p className="text-xs text-muted-foreground mb-3">
+                            Display this during your presentation for easy access.
+                          </p>
+                          <div className="flex items-center gap-2 p-2 bg-muted rounded text-xs text-muted-foreground truncate">
+                            {shareUrl}
+                          </div>
+                          <div className="flex gap-2 mt-3">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={async () => {
+                                await navigator.clipboard.writeText(shareUrl);
+                                toast({ title: "Link copied!" });
+                              }}
+                              className="gap-1"
+                            >
+                              <Copy className="w-3 h-3" />
+                              Copy
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setShareUrl(null);
+                                setQrCodeUrl(null);
+                              }}
+                              className="gap-1"
+                            >
+                              <X className="w-3 h-3" />
+                              Dismiss
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Version Comparison Bar (shows after regeneration) */}
                 <AnimatePresence>
