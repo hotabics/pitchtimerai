@@ -5,7 +5,7 @@ import {
   FileText, Video, Play, Pause, RotateCcw, Monitor, 
   Smartphone, Presentation, RefreshCw, Download, Clock, Minus, 
   Smile, Zap, Timer, SkipForward, Volume2, VolumeX,
-  Gauge, Mic, Pencil, Check, X, Copy, CheckCheck, Share2, Link, QrCode
+  Gauge, Mic, Pencil, Check, X, Copy, CheckCheck, Share2, Link, QrCode, Printer
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,8 @@ import { trackEvent } from "@/utils/analytics";
 import { ScriptFeedbackBar } from "./feedback/ScriptFeedbackBar";
 import { VersionComparisonBar } from "./feedback/VersionComparisonBar";
 import { useUserStore } from "@/stores/userStore";
+import { ScriptVersionHistory, ScriptVersion } from "./dashboard/ScriptVersionHistory";
+import { openPrintView } from "./dashboard/PrintView";
 
 interface SpeechBlock {
   timeStart: string;
@@ -162,6 +164,55 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const trackConfig = trackConfigs[data.track];
+
+  // Version history state
+  const [savedVersions, setSavedVersions] = useState<ScriptVersion[]>(() => {
+    // Load from localStorage on mount
+    const stored = localStorage.getItem(`script_versions_${data.idea.slice(0, 50)}`);
+    return stored ? JSON.parse(stored) : [];
+  });
+
+  // Save versions to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem(
+      `script_versions_${data.idea.slice(0, 50)}`,
+      JSON.stringify(savedVersions)
+    );
+  }, [savedVersions, data.idea]);
+
+  const handleSaveVersion = (version: ScriptVersion) => {
+    setSavedVersions(prev => [version, ...prev]);
+  };
+
+  const handleDeleteVersion = (id: string) => {
+    setSavedVersions(prev => prev.filter(v => v.id !== id));
+  };
+
+  const handleRestoreVersion = (version: ScriptVersion) => {
+    setSpeechBlocks(version.blocks.map(b => ({
+      ...b,
+      isDemo: false,
+      visualCue: undefined,
+    })));
+    setMeta(prev => prev ? {
+      ...prev,
+      actualWordCount: version.wordCount,
+      fullScript: version.fullScript,
+      bulletPoints: version.bulletPoints,
+    } : null);
+  };
+
+  const handlePrint = () => {
+    openPrintView({
+      idea: data.idea,
+      track: trackConfig?.name || data.track,
+      audienceLabel: data.audienceLabel,
+      duration: data.duration,
+      blocks: speechBlocks,
+      wordCount: meta?.actualWordCount,
+      bulletPoints: meta?.bulletPoints,
+    });
+  };
 
   // Handle edit start
   const handleStartEdit = (index: number) => {
@@ -986,45 +1037,74 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-4"
             >
-              {/* View Mode Toggle */}
-              <div className="flex items-center gap-2 p-1 bg-muted/50 rounded-lg w-fit">
-                <button
-                  onClick={() => setViewMode("blocks")}
-                  className={cn(
-                    "px-3 py-1.5 rounded-md text-xs font-medium transition-all",
-                    viewMode === "blocks"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  Timed Blocks
-                </button>
-                <button
-                  onClick={() => setViewMode("full")}
-                  className={cn(
-                    "px-3 py-1.5 rounded-md text-xs font-medium transition-all",
-                    viewMode === "full"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  Full Script
-                </button>
-                <button
-                  onClick={() => setViewMode("bullets")}
-                  className={cn(
-                    "px-3 py-1.5 rounded-md text-xs font-medium transition-all",
-                    viewMode === "bullets"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  Bullet Points
-                </button>
+              {/* View Mode Toggle & Actions */}
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 p-1 bg-muted/50 rounded-lg">
+                    <button
+                      onClick={() => setViewMode("blocks")}
+                      className={cn(
+                        "px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                        viewMode === "blocks"
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      Timed Blocks
+                    </button>
+                    <button
+                      onClick={() => setViewMode("full")}
+                      className={cn(
+                        "px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                        viewMode === "full"
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      Full Script
+                    </button>
+                    <button
+                      onClick={() => setViewMode("bullets")}
+                      className={cn(
+                        "px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                        viewMode === "bullets"
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      Bullet Points
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground hidden sm:inline">
+                    ⌘/Ctrl+C to copy
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <ScriptVersionHistory
+                    currentBlocks={speechBlocks}
+                    currentMeta={meta ? {
+                      fullScript: meta.fullScript,
+                      bulletPoints: meta.bulletPoints,
+                      actualWordCount: meta.actualWordCount,
+                    } : undefined}
+                    versions={savedVersions}
+                    onSaveVersion={handleSaveVersion}
+                    onDeleteVersion={handleDeleteVersion}
+                    onRestoreVersion={handleRestoreVersion}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePrint}
+                    className="gap-2"
+                  >
+                    <Printer className="w-4 h-4" />
+                    Print
+                  </Button>
+                </div>
               </div>
-              <span className="text-[10px] text-muted-foreground ml-2 hidden sm:inline">
-                ⌘/Ctrl+C to copy
-              </span>
+
 
               {/* Full Script View */}
               {viewMode === "full" && meta?.fullScript && (
