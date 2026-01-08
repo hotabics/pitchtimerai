@@ -11,24 +11,18 @@
 
 import posthog from 'posthog-js';
 
-// PostHog configuration - reads from environment variables
-const POSTHOG_API_KEY = import.meta.env.VITE_POSTHOG_API_KEY || '';
-const POSTHOG_HOST = import.meta.env.VITE_POSTHOG_HOST || 'https://app.posthog.com';
+// PostHog configuration
+const POSTHOG_API_KEY = import.meta.env.VITE_POSTHOG_API_KEY || 'phc_1fY7Tst0Pjs1E4DeRlB7IYPSK76GsMLy7U1LKbjpG5z';
+const POSTHOG_HOST = 'https://us.i.posthog.com';
 
 // Track whether PostHog has been initialized
 let isInitialized = false;
 
 /**
  * Initialize PostHog analytics.
- * Only initializes if a valid API key is present.
+ * Initializes with the configured API key.
  */
 export const initializeAnalytics = (): void => {
-  // Skip initialization if no API key or already initialized
-  if (!POSTHOG_API_KEY || POSTHOG_API_KEY.length < 10) {
-    console.log('[Analytics] PostHog not initialized: No API key configured. Set VITE_POSTHOG_API_KEY to enable.');
-    return;
-  }
-
   if (isInitialized) {
     console.log('[Analytics] PostHog already initialized');
     return;
@@ -37,17 +31,19 @@ export const initializeAnalytics = (): void => {
   try {
     posthog.init(POSTHOG_API_KEY, {
       api_host: POSTHOG_HOST,
-      // Enable session replay by default
-      enable_recording_console_log: true,
+      // Person profiles configuration
+      person_profiles: 'identified_only',
       // Capture pageviews automatically
       capture_pageview: true,
       // Capture page leaves
       capture_pageleave: true,
       // Persistence type
       persistence: 'localStorage',
-      // Respect Do Not Track
-      respect_dnt: true,
-      // Disable in development if needed
+      // Enable autocapture for all events
+      autocapture: true,
+      // Capture performance metrics
+      capture_performance: true,
+      // Loaded callback
       loaded: (posthog) => {
         if (import.meta.env.DEV) {
           console.log('[Analytics] PostHog loaded in development mode');
@@ -69,11 +65,9 @@ export const initializeAnalytics = (): void => {
  * @param properties - Optional properties to attach to the event
  */
 export const trackEvent = (eventName: string, properties?: Record<string, unknown>): void => {
-  // Skip if not initialized or no valid API key
-  if (!isInitialized || !POSTHOG_API_KEY || POSTHOG_API_KEY.length < 10) {
-    // Log events in development for debugging
+  if (!isInitialized) {
     if (import.meta.env.DEV) {
-      console.log(`[Analytics] Event: ${eventName}`, properties || {});
+      console.log(`[Analytics] Event (not initialized): ${eventName}`, properties || {});
     }
     return;
   }
@@ -92,9 +86,9 @@ export const trackEvent = (eventName: string, properties?: Record<string, unknow
  * @param traits - Optional user properties
  */
 export const identifyUser = (userId: string, traits?: Record<string, unknown>): void => {
-  if (!isInitialized || !POSTHOG_API_KEY || POSTHOG_API_KEY.length < 10) {
+  if (!isInitialized) {
     if (import.meta.env.DEV) {
-      console.log(`[Analytics] Identify: ${userId}`, traits || {});
+      console.log(`[Analytics] Identify (not initialized): ${userId}`, traits || {});
     }
     return;
   }
@@ -110,7 +104,7 @@ export const identifyUser = (userId: string, traits?: Record<string, unknown>): 
  * Reset the current user session (for logout).
  */
 export const resetAnalytics = (): void => {
-  if (!isInitialized || !POSTHOG_API_KEY || POSTHOG_API_KEY.length < 10) {
+  if (!isInitialized) {
     return;
   }
 
