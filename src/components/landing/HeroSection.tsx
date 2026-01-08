@@ -201,25 +201,45 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
                   onBlur={() => setIsFocused(false)} 
                   onKeyDown={handleKeyDown} 
                   placeholder="Paste your Devpost URL or describe your idea..."
-                  className={`
+                  className="
                     w-full h-16 pl-12 pr-32
                     bg-muted/80 text-foreground text-base md:text-lg font-medium
                     placeholder:text-muted-foreground
                     focus:outline-none focus:bg-muted
                     rounded-xl
-                    border-2 ring-2
+                    border-2 border-primary/30 ring-2 ring-primary/20
                     transition-all duration-200
                     shadow-inner
-                    ${!projectInput.trim() && !isFocused 
-                      ? "border-primary/50 ring-primary/30 animate-[pulse_2s_ease-in-out_infinite]" 
-                      : "border-primary/30 ring-primary/20"
-                    }
-                  `} 
+                  " 
                 />
               </div>
 
-            </div>
           </div>
+        </div>
+
+        {/* Example chips */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="flex flex-wrap items-center justify-center gap-2 mt-3"
+        >
+          <span className="text-xs text-muted-foreground">Try:</span>
+          {[
+            "AI Study Buddy",
+            "Carbon Footprint Tracker", 
+            "Smart Medication Reminder",
+            "Local Event Finder"
+          ].map((example) => (
+            <button
+              key={example}
+              onClick={() => setProjectInput(example)}
+              className="px-3 py-1.5 text-xs font-medium rounded-full bg-muted/60 hover:bg-primary/20 text-muted-foreground hover:text-primary border border-border/50 hover:border-primary/30 transition-all duration-200"
+            >
+              {example}
+            </button>
+          ))}
+        </motion.div>
         </div>
         
         {/* Scraped data preview */}
