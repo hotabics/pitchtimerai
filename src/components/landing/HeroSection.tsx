@@ -203,12 +203,14 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
                   placeholder="Paste your Devpost URL or describe your idea..."
                   className="
                     w-full h-16 pl-12 pr-32
-                    bg-background text-foreground text-base md:text-lg
-                    placeholder:text-muted-foreground/60
-                    focus:outline-none
+                    bg-muted/80 text-foreground text-base md:text-lg font-medium
+                    placeholder:text-muted-foreground
+                    focus:outline-none focus:bg-muted
                     rounded-xl
-                    border-0
-                    transition-colors duration-200
+                    border-2 border-primary/30
+                    ring-2 ring-primary/20
+                    transition-all duration-200
+                    shadow-inner
                   " 
                 />
               </div>
