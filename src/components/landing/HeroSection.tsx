@@ -201,17 +201,20 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
                   onBlur={() => setIsFocused(false)} 
                   onKeyDown={handleKeyDown} 
                   placeholder="Paste your Devpost URL or describe your idea..."
-                  className="
+                  className={`
                     w-full h-16 pl-12 pr-32
                     bg-muted/80 text-foreground text-base md:text-lg font-medium
                     placeholder:text-muted-foreground
                     focus:outline-none focus:bg-muted
                     rounded-xl
-                    border-2 border-primary/30
-                    ring-2 ring-primary/20
+                    border-2 ring-2
                     transition-all duration-200
                     shadow-inner
-                  " 
+                    ${!projectInput.trim() && !isFocused 
+                      ? "border-primary/50 ring-primary/30 animate-[pulse_2s_ease-in-out_infinite]" 
+                      : "border-primary/30 ring-primary/20"
+                    }
+                  `} 
                 />
               </div>
 
