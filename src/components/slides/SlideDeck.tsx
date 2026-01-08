@@ -23,6 +23,7 @@ import { SpeakerNotesPanel, SpeakerNotesToggle } from './SpeakerNotesPanel';
 import { SlideImportDialog } from './SlideImportDialog';
 import { TransitionSelector, getTransitionVariants, getTransitionConfig } from './TransitionSelector';
 import { BulkImageGenerator } from './BulkImageGenerator';
+import { GeminiExportModal } from './GeminiExportModal';
 import { generateAISlides } from '@/services/slideAI';
 import { exportToPowerPoint } from '@/services/pptxExport';
 import { cn } from '@/lib/utils';
@@ -76,6 +77,7 @@ export const SlideDeck = ({
   const [showThumbnails, setShowThumbnails] = useState(true);
   const [isAIGenerating, setIsAIGenerating] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [showGeminiModal, setShowGeminiModal] = useState(false);
   
   // Drag and drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -284,6 +286,7 @@ export const SlideDeck = ({
     const newSlide: Slide = {
       id: slides.length + 1,
       type: 'bullets',
+      layout: 'default',
       title: 'New Slide',
       content: ['Add your content here'],
       scriptSegment: '',
@@ -525,6 +528,14 @@ export const SlideDeck = ({
           )}
         </AnimatePresence>
       </div>
+
+      {/* Gemini Export Modal */}
+      <GeminiExportModal
+        open={showGeminiModal}
+        onOpenChange={setShowGeminiModal}
+        slides={slides}
+        projectTitle={projectTitle}
+      />
     </div>
   );
 };
