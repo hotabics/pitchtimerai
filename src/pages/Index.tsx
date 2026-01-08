@@ -125,6 +125,7 @@ interface PitchData {
   entryMode: EntryMode;
   customScript?: string;
   structuredScript?: StructuredScript;
+  hookStyle?: 'auto' | 'statistic' | 'villain' | 'story' | 'contrarian' | 'question';
 }
 
 const Index = () => {
@@ -290,12 +291,12 @@ const Index = () => {
   };
 
   // Step 2: Audience selection -> determines track
-  const handleStep2 = (audience: string, audienceLabel: string) => {
+  const handleStep2 = (audience: string, audienceLabel: string, hookStyle?: 'auto' | 'statistic' | 'villain' | 'story' | 'contrarian' | 'question') => {
     const track = determineTrack(audience, "none");
-    setData({ ...data, audience, audienceLabel, track, trackData: {} });
+    setData({ ...data, audience, audienceLabel, track, trackData: {}, hookStyle: hookStyle || 'auto' });
     setStep(2);
     setTrackStep(0);
-    trackEvent('Onboarding: Step Completed', { step: 'Audience Selection' });
+    trackEvent('Onboarding: Step Completed', { step: 'Audience Selection', hookStyle });
     toast({
       title: "Track Selected!",
       description: `${trackConfigs[track].name} mode activated`,

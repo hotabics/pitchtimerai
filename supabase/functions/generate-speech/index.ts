@@ -10,6 +10,40 @@ const corsHeaders = {
 // Constants for time control engine
 const SPEAKING_RATE = 130; // words per minute
 
+// Hook style definitions for dynamic openers
+type HookStyle = 'auto' | 'statistic' | 'villain' | 'story' | 'contrarian' | 'question';
+
+const HOOK_STYLE_INSTRUCTIONS: Record<Exclude<HookStyle, 'auto'>, string> = {
+  statistic: `**THE STATISTIC:** Start with a hard, quantifiable fact that shows the scale of the problem. Example: "70% of food is wasted before it ever reaches a plate." or "Companies lose $4.7 trillion annually to poor communication."`,
+  villain: `**THE VILLAIN:** Immediately identify the enemy (inefficiency, cost, time, a broken system). Make it visceral. Example: "Manual data entry is the silent killer of productivity." or "Spreadsheets are where good ideas go to die."`,
+  story: `**THE STORY:** Start with a specific micro-moment or anecdote. Ground it in time and place. Example: "Last Tuesday, I tried to buy a train ticket. 45 minutes later, I was still stuck in a queue." or "When my grandmother called me crying because she couldn't use her medication app..."`,
+  contrarian: `**THE CONTRARIAN:** State something counter-intuitive or provocative. Challenge assumptions. Example: "Marketing is dead. Community is the new king." or "The best product doesn't always win. Distribution does."`,
+  question: `**THE QUESTION:** Ask the audience something relatable that they'll mentally answer. Example: "Who here has ever lost their keys?" or "How many hours did you spend this week in meetings that could have been emails?"`,
+};
+
+// Track-specific hook preferences
+const TRACK_HOOK_PREFERENCES: Record<string, HookStyle[]> = {
+  'investor': ['statistic', 'villain'],
+  'hackathon-no-demo': ['villain', 'question'],
+  'hackathon-with-demo': ['villain', 'question'],
+  'academic': ['statistic', 'contrarian'],
+  'grandma': ['story'],
+  'peers': ['question', 'story'],
+};
+
+function selectHookStyle(requestedStyle: HookStyle, track: string): Exclude<HookStyle, 'auto'> {
+  if (requestedStyle !== 'auto') {
+    return requestedStyle;
+  }
+  
+  // Get track preferences or default to all styles
+  const preferences = TRACK_HOOK_PREFERENCES[track] || ['statistic', 'villain', 'story', 'contrarian', 'question'];
+  
+  // Randomly select from preferences for variety
+  const selected = preferences[Math.floor(Math.random() * preferences.length)];
+  return selected as Exclude<HookStyle, 'auto'>;
+}
+
 interface SectionWeights {
   short: Record<string, number>;
   medium: Record<string, number>;
@@ -97,21 +131,35 @@ function buildSpeechPrompt(
   duration: number,
   targetWordCount: number,
   inputs: Record<string, unknown>,
-  hasDemo: boolean
+  hasDemo: boolean,
+  hookStyle: Exclude<HookStyle, 'auto'>
 ): { systemPrompt: string; userPrompt: string } {
   const config = trackConfigs[track] || trackConfigs['hackathon-no-demo'];
   const timeCategory = getTimeCategory(duration);
   
-  const systemPrompt = `You are a Pitch Deck Expert and professional speechwriter. Generate a pitch for a ${config.name} audience.
+  const hookInstruction = HOOK_STYLE_INSTRUCTIONS[hookStyle];
+  
+  const systemPrompt = `You are a World-Class Pitch Coach and professional speechwriter. Generate a pitch for a ${config.name} audience.
+
+OPENING STRATEGY - USE THIS EXACT STYLE:
+${hookInstruction}
 
 CRITICAL RULES:
 1. The script MUST be approximately ${targetWordCount} words (±10% tolerance: ${Math.round(targetWordCount * 0.9)}-${Math.round(targetWordCount * 1.1)} words).
 2. Break the script into time-blocked paragraphs with time ranges.
 3. Use the SAME LANGUAGE as the user's inputs (detect and match their language).
-4. NO generic intros like "Hello, today I will talk about..." - jump straight into the Hook.
-5. Write in a conversational, spoken style - this will be read aloud.
-6. Include natural pauses indicated by "..." for dramatic effect.
-${hasDemo ? '7. Include [ACTION: ...] cues in bold for demo transitions.' : ''}
+4. **ABSOLUTELY NO GENERIC OPENINGS.** Do NOT start with:
+   - "Imagine a world..."
+   - "In today's world..."
+   - "Picture this..."
+   - "Have you ever wondered..."
+   - "Let me tell you about..."
+   - "Hello/Hi everyone, today I will..."
+   - Any variation of "Imagine"
+5. The FIRST SENTENCE must grab attention IMMEDIATELY using the opening strategy above.
+6. Write in a conversational, spoken style - this will be read aloud.
+7. Include natural pauses indicated by "..." for dramatic effect.
+${hasDemo ? '8. Include [ACTION: ...] cues in bold for demo transitions.' : ''}
 
 TONE: ${config.tone}
 
@@ -127,7 +175,8 @@ Return a JSON object with:
   - "content": The spoken text for this section (natural, conversational)
   - "isDemo": boolean (true if this is a demo section)
   - "visualCue": Optional string describing what should be on screen (slide, demo action)
-- "totalWords": The actual word count of all content combined`;
+- "totalWords": The actual word count of all content combined
+- "hookStyle": "${hookStyle}" (the opening style used)`;
 
   const userInputsFormatted = Object.entries(inputs)
     .filter(([_, value]) => value !== undefined && value !== '')
@@ -140,6 +189,7 @@ Return a JSON object with:
 **Total Time:** ${duration} Minutes
 **Target Word Count:** ${targetWordCount} words (SPEAKING_RATE: ${SPEAKING_RATE} wpm)
 **Has Demo:** ${hasDemo ? 'Yes - include [ACTION: ...] cues' : 'No'}
+**Opening Style:** ${hookStyle.toUpperCase()} - Start IMMEDIATELY with this style. No preamble.
 
 **User Inputs:**
 ${userInputsFormatted}
@@ -147,9 +197,35 @@ ${userInputsFormatted}
 **Section Structure for ${timeCategory} speeches (${duration} min):**
 ${config.sections.join(' → ')}
 
-Generate a compelling, natural speech that hits the target word count. Make every word count - no filler.`;
+Generate a compelling, natural speech that hits the target word count. The first sentence is CRITICAL - make it impossible to ignore. No fluff, no filler.`;
 
   return { systemPrompt, userPrompt };
+}
+
+// Post-processing: Check for generic openings and flag for potential regeneration
+function validateOpening(content: string): { isValid: boolean; reason?: string } {
+  const firstSentence = content.split(/[.!?]/)[0]?.toLowerCase().trim() || '';
+  
+  const bannedPatterns = [
+    /^imagine\s/,
+    /^picture\s/,
+    /^in today's world/,
+    /^in a world/,
+    /^have you ever wondered/,
+    /^let me tell you/,
+    /^hello.*today/i,
+    /^hi.*today/i,
+    /^good morning.*today/i,
+    /^welcome.*today/i,
+  ];
+  
+  for (const pattern of bannedPatterns) {
+    if (pattern.test(firstSentence)) {
+      return { isValid: false, reason: `Opening starts with banned pattern: "${firstSentence.substring(0, 50)}..."` };
+    }
+  }
+  
+  return { isValid: true };
 }
 
 serve(async (req) => {
@@ -173,7 +249,7 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { track, duration, inputs, hasDemo } = body;
+    const { track, duration, inputs, hasDemo, hookStyle: requestedHookStyle } = body;
 
     // Validate track
     const trackResult = validateTrack(track);
@@ -202,7 +278,13 @@ serve(async (req) => {
       });
     }
     
-    console.log(`Generating speech for track: ${trackResult.sanitized}, duration: ${durationResult.value} min`);
+    // Select hook style (auto-select based on track if not specified)
+    const hookStyle = selectHookStyle(
+      (requestedHookStyle as HookStyle) || 'auto',
+      trackResult.sanitized!
+    );
+    
+    console.log(`Generating speech for track: ${trackResult.sanitized}, duration: ${durationResult.value} min, hookStyle: ${hookStyle}`);
     
     // Calculate target word count
     const targetWordCount = Math.round(durationResult.value! * SPEAKING_RATE);
@@ -213,70 +295,91 @@ serve(async (req) => {
       durationResult.value!,
       targetWordCount,
       inputsResult.sanitized || {},
-      hasDemo === true
+      hasDemo === true,
+      hookStyle
     );
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.7,
-      }),
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }), {
-          status: 429,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: 'AI credits depleted. Please add funds.' }), {
-          status: 402,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      const errorText = await response.text();
-      console.error('AI gateway error:', response.status, errorText);
-      throw new Error(`AI gateway error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
-    
-    if (!content) {
-      throw new Error('No content in AI response');
-    }
-
-    console.log('AI response received, parsing...');
-
-    // Parse the JSON from the response
+    // Retry logic for generic openings
     let parsed;
-    try {
-      const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
-      parsed = JSON.parse(cleanContent);
-    } catch (e) {
-      console.error('Failed to parse AI response:', e, content);
-      throw new Error('Failed to parse AI response');
-    }
+    let attempts = 0;
+    const maxAttempts = 2;
+    
+    while (attempts < maxAttempts) {
+      attempts++;
+      
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          temperature: attempts === 1 ? 0.7 : 0.9, // Higher temp on retry for creativity
+        }),
+      });
 
-    // Validate response structure
-    if (!parsed.blocks || !Array.isArray(parsed.blocks)) {
-      throw new Error('Invalid response structure: missing blocks array');
-    }
+      if (!response.ok) {
+        if (response.status === 429) {
+          return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }), {
+            status: 429,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        if (response.status === 402) {
+          return new Response(JSON.stringify({ error: 'AI credits depleted. Please add funds.' }), {
+            status: 402,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        const errorText = await response.text();
+        console.error('AI gateway error:', response.status, errorText);
+        throw new Error(`AI gateway error: ${response.status}`);
+      }
 
-    // Ensure full_script exists (fallback to concatenated blocks)
-    if (!parsed.full_script) {
-      parsed.full_script = parsed.blocks.map((b: { content: string }) => b.content).join('\n\n');
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content;
+      
+      if (!content) {
+        throw new Error('No content in AI response');
+      }
+
+      console.log(`AI response received (attempt ${attempts}), parsing...`);
+
+      // Parse the JSON from the response
+      try {
+        const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
+        parsed = JSON.parse(cleanContent);
+      } catch (e) {
+        console.error('Failed to parse AI response:', e, content);
+        throw new Error('Failed to parse AI response');
+      }
+
+      // Validate response structure
+      if (!parsed.blocks || !Array.isArray(parsed.blocks)) {
+        throw new Error('Invalid response structure: missing blocks array');
+      }
+
+      // Ensure full_script exists (fallback to concatenated blocks)
+      if (!parsed.full_script) {
+        parsed.full_script = parsed.blocks.map((b: { content: string }) => b.content).join('\n\n');
+      }
+
+      // Check for generic openings
+      const validation = validateOpening(parsed.full_script);
+      if (validation.isValid) {
+        console.log(`Opening validated successfully on attempt ${attempts}`);
+        break;
+      } else {
+        console.warn(`Generic opening detected on attempt ${attempts}: ${validation.reason}`);
+        if (attempts >= maxAttempts) {
+          console.warn('Max attempts reached, using last result despite generic opening');
+        }
+      }
     }
 
     // Ensure bullet_points exist (fallback to block titles)
@@ -293,7 +396,10 @@ serve(async (req) => {
       parsed.estimated_duration = secs > 0 ? `${mins} min ${secs} sec` : `${mins} min`;
     }
 
-    console.log(`Generated speech with ${parsed.blocks.length} blocks, ${parsed.totalWords} words, ${parsed.bullet_points.length} bullet points`);
+    // Add hook style to response
+    parsed.hookStyle = hookStyle;
+
+    console.log(`Generated speech with ${parsed.blocks.length} blocks, ${parsed.totalWords} words, hookStyle: ${hookStyle}`);
 
     return new Response(JSON.stringify({ 
       speech: parsed,
@@ -303,6 +409,7 @@ serve(async (req) => {
         targetWordCount,
         actualWordCount: parsed.totalWords,
         speakingRate: SPEAKING_RATE,
+        hookStyle,
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
