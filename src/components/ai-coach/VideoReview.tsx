@@ -1,6 +1,6 @@
 // Detailed Video Review - Smart Timeline with synchronized transcript
 
-import { useState, useRef, useMemo, useEffect } from 'react';
+import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Play, 
@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAICoachStore } from '@/stores/aiCoachStore';
 
 interface TimelineEvent {
@@ -33,20 +34,31 @@ interface GlowGrow {
   timestamp?: number; // optional linked timestamp
 }
 
+interface WordWithTimestamp {
+  word: string;
+  startTime: number;
+  endTime: number;
+  isFiller: boolean;
+}
+
 interface VideoReviewProps {
   videoUrl?: string;
   onClose: () => void;
 }
 
+const FILLER_WORDS = ['um', 'uh', 'like', 'you know', 'so', 'basically', 'actually', 'literally', 'right', 'okay'];
+
 export const VideoReview = ({ videoUrl, onClose }: VideoReviewProps) => {
   const { results, recordingData } = useAICoachStore();
   const videoRef = useRef<HTMLVideoElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
+  const transcriptRef = useRef<HTMLDivElement>(null);
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [hoveredEvent, setHoveredEvent] = useState<TimelineEvent | null>(null);
+  const [activeWordIndex, setActiveWordIndex] = useState(-1);
 
   // Generate mock timeline events from frame data
   const timelineEvents: TimelineEvent[] = useMemo(() => {
@@ -125,6 +137,51 @@ export const VideoReview = ({ videoUrl, onClose }: VideoReviewProps) => {
     return items;
   }, [results]);
 
+  // Generate word-level timestamps from transcript
+  const wordsWithTimestamps: WordWithTimestamp[] = useMemo(() => {
+    if (!results?.transcript) return [];
+    
+    const words = results.transcript.split(/\s+/).filter(w => w.length > 0);
+    const totalDuration = recordingData?.durationSeconds || 120;
+    const avgWordDuration = totalDuration / words.length;
+    
+    let currentTime = 0;
+    return words.map((word) => {
+      const cleanWord = word.toLowerCase().replace(/[.,!?;:'"]/g, '');
+      const isFiller = FILLER_WORDS.some(f => cleanWord === f || cleanWord.includes(f));
+      const wordDuration = avgWordDuration * (0.8 + Math.random() * 0.4); // Slight variation
+      
+      const result = {
+        word,
+        startTime: currentTime,
+        endTime: currentTime + wordDuration,
+        isFiller,
+      };
+      
+      currentTime += wordDuration;
+      return result;
+    });
+  }, [results?.transcript, recordingData?.durationSeconds]);
+
+  // Update active word based on current video time
+  useEffect(() => {
+    if (!isPlaying) return;
+    
+    const wordIdx = wordsWithTimestamps.findIndex(
+      w => currentTime >= w.startTime && currentTime < w.endTime
+    );
+    
+    if (wordIdx !== activeWordIndex && wordIdx !== -1) {
+      setActiveWordIndex(wordIdx);
+      
+      // Auto-scroll to keep active word visible
+      const activeWordEl = transcriptRef.current?.querySelector(`[data-word-index="${wordIdx}"]`);
+      if (activeWordEl) {
+        activeWordEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [currentTime, isPlaying, wordsWithTimestamps, activeWordIndex]);
+
   // Performance heatmap data (for timeline background)
   const getPerformanceAtTime = (timeSec: number): 'good' | 'warning' | 'bad' => {
     const eventsAtTime = timelineEvents.filter(e => Math.abs(e.time - timeSec) < 3);
@@ -151,11 +208,11 @@ export const VideoReview = ({ videoUrl, onClose }: VideoReviewProps) => {
     }
   };
 
-  const handleTimeUpdate = () => {
+  const handleTimeUpdate = useCallback(() => {
     if (videoRef.current) {
       setCurrentTime(videoRef.current.currentTime);
     }
-  };
+  }, []);
 
   const handleLoadedMetadata = () => {
     if (videoRef.current) {
@@ -167,6 +224,14 @@ export const VideoReview = ({ videoUrl, onClose }: VideoReviewProps) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Seek to word when clicked
+  const handleWordClick = (wordIndex: number) => {
+    const word = wordsWithTimestamps[wordIndex];
+    if (word) {
+      seekTo(word.startTime);
+    }
   };
 
   // Get event icon
@@ -357,33 +422,57 @@ export const VideoReview = ({ videoUrl, onClose }: VideoReviewProps) => {
 
         {/* Right: Transcript + Glows/Grows */}
         <div className="space-y-4">
-          {/* Transcript */}
+          {/* Transcript with word-level sync */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Transcript</CardTitle>
+              <CardTitle className="text-base flex items-center justify-between">
+                <span>Transcript</span>
+                {isPlaying && (
+                  <Badge variant="outline" className="text-xs animate-pulse">
+                    Live Sync
+                  </Badge>
+                )}
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-[200px] overflow-y-auto p-3 rounded-lg bg-muted/50 text-sm leading-relaxed">
-                {results?.transcript ? (
-                  <p className="whitespace-pre-wrap">
-                    {results.transcript.split(' ').map((word, idx) => {
-                      const isFillerWord = ['um', 'uh', 'like', 'you know', 'so', 'basically', 'actually', 'literally'].some(
-                        f => word.toLowerCase().replace(/[.,!?]/g, '') === f
-                      );
-                      return (
-                        <span
-                          key={idx}
-                          className={isFillerWord ? 'text-red-500 font-medium' : ''}
-                        >
-                          {word}{' '}
-                        </span>
-                      );
-                    })}
-                  </p>
-                ) : (
-                  <p className="text-muted-foreground">Transcript not available</p>
-                )}
-              </div>
+              <ScrollArea className="h-[200px]">
+                <div 
+                  ref={transcriptRef}
+                  className="p-3 rounded-lg bg-muted/50 text-sm leading-relaxed"
+                >
+                  {wordsWithTimestamps.length > 0 ? (
+                    <p className="whitespace-pre-wrap">
+                      {wordsWithTimestamps.map((wordData, idx) => {
+                        const isActive = idx === activeWordIndex;
+                        return (
+                          <span
+                            key={idx}
+                            data-word-index={idx}
+                            onClick={() => handleWordClick(idx)}
+                            className={`
+                              cursor-pointer transition-all duration-150 rounded px-0.5
+                              ${wordData.isFiller ? 'text-red-500 font-medium bg-red-500/10' : ''}
+                              ${isActive ? 'bg-primary text-primary-foreground font-semibold scale-105 inline-block' : ''}
+                              ${!isActive && !wordData.isFiller ? 'hover:bg-muted-foreground/20' : ''}
+                            `}
+                          >
+                            {wordData.word}{' '}
+                          </span>
+                        );
+                      })}
+                    </p>
+                  ) : results?.transcript ? (
+                    <p className="whitespace-pre-wrap text-muted-foreground">
+                      {results.transcript}
+                    </p>
+                  ) : (
+                    <p className="text-muted-foreground">Transcript not available</p>
+                  )}
+                </div>
+              </ScrollArea>
+              <p className="text-xs text-muted-foreground mt-2">
+                Click any word to jump to that moment
+              </p>
             </CardContent>
           </Card>
 
