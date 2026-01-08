@@ -2,14 +2,17 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ChevronLeft, ChevronRight, Play, Pause, Maximize2, Minimize2,
-  Plus, Pencil, Sparkles, Download, Loader2
+  Plus, Sparkles, Download, Loader2, Wand2, Radio
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import { useSlidesStore, generateSlidesFromBlocks, Slide } from '@/stores/slidesStore';
 import { SlidePreview } from './SlidePreview';
 import { SlideEditor } from './SlideEditor';
+import { DraggableThumbnail } from './DraggableThumbnail';
+import { generateAISlides } from '@/services/slideAI';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 
@@ -17,9 +20,20 @@ interface SlideDeckProps {
   scriptBlocks?: { title: string; content: string }[];
   projectTitle?: string;
   onClose?: () => void;
+  // Presentation sync props
+  isPresentationMode?: boolean;
+  currentPracticeBlock?: number;
+  isPlaying?: boolean;
 }
 
-export const SlideDeck = ({ scriptBlocks, projectTitle = 'My Pitch', onClose }: SlideDeckProps) => {
+export const SlideDeck = ({ 
+  scriptBlocks, 
+  projectTitle = 'My Pitch', 
+  onClose,
+  isPresentationMode = false,
+  currentPracticeBlock = 0,
+  isPlaying: externalIsPlaying = false,
+}: SlideDeckProps) => {
   const {
     slides,
     currentSlideIndex,
@@ -28,6 +42,7 @@ export const SlideDeck = ({ scriptBlocks, projectTitle = 'My Pitch', onClose }: 
     setCurrentSlideIndex,
     setIsGenerating,
     addSlide,
+    reorderSlides,
     clearSlides,
   } = useSlidesStore();
 
@@ -35,8 +50,29 @@ export const SlideDeck = ({ scriptBlocks, projectTitle = 'My Pitch', onClose }: 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [editingSlide, setEditingSlide] = useState<Slide | null>(null);
   const [showThumbnails, setShowThumbnails] = useState(true);
+  const [isAIGenerating, setIsAIGenerating] = useState(false);
+  
+  // Drag and drop state
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
-  // Generate slides from script blocks
+  // Sync slides with practice mode
+  useEffect(() => {
+    if (isPresentationMode && slides.length > 0) {
+      // Map practice block to slide (offset by 1 for title slide)
+      const slideIndex = Math.min(currentPracticeBlock + 1, slides.length - 1);
+      setCurrentSlideIndex(slideIndex);
+    }
+  }, [isPresentationMode, currentPracticeBlock, slides.length, setCurrentSlideIndex]);
+
+  // Use external playing state in presentation mode
+  useEffect(() => {
+    if (isPresentationMode) {
+      setIsPlaying(externalIsPlaying);
+    }
+  }, [isPresentationMode, externalIsPlaying]);
+
+  // Generate slides from script blocks (basic)
   const handleGenerateSlides = useCallback(async () => {
     if (!scriptBlocks || scriptBlocks.length === 0) {
       toast({
@@ -48,8 +84,6 @@ export const SlideDeck = ({ scriptBlocks, projectTitle = 'My Pitch', onClose }: 
     }
 
     setIsGenerating(true);
-    
-    // Simulate generation delay for better UX
     await new Promise(resolve => setTimeout(resolve, 1500));
     
     const generatedSlides = generateSlidesFromBlocks(scriptBlocks, projectTitle);
@@ -63,6 +97,42 @@ export const SlideDeck = ({ scriptBlocks, projectTitle = 'My Pitch', onClose }: 
     });
   }, [scriptBlocks, projectTitle, setSlides, setCurrentSlideIndex, setIsGenerating]);
 
+  // Generate slides with AI
+  const handleAIGenerateSlides = useCallback(async () => {
+    if (!scriptBlocks || scriptBlocks.length === 0) {
+      toast({
+        title: 'No script available',
+        description: 'Generate a pitch script first to create slides.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsAIGenerating(true);
+    
+    try {
+      const aiSlides = await generateAISlides(scriptBlocks, projectTitle);
+      setSlides(aiSlides);
+      setCurrentSlideIndex(0);
+      
+      toast({
+        title: 'AI slides generated!',
+        description: `Created ${aiSlides.length} enhanced slides with AI.`,
+      });
+    } catch (error) {
+      console.error('AI generation failed:', error);
+      // Fallback to basic generation
+      toast({
+        title: 'AI generation unavailable',
+        description: 'Using standard slide generation instead.',
+        variant: 'destructive',
+      });
+      await handleGenerateSlides();
+    } finally {
+      setIsAIGenerating(false);
+    }
+  }, [scriptBlocks, projectTitle, setSlides, setCurrentSlideIndex, handleGenerateSlides]);
+
   // Auto-generate on mount if no slides exist
   useEffect(() => {
     if (slides.length === 0 && scriptBlocks && scriptBlocks.length > 0) {
@@ -73,7 +143,7 @@ export const SlideDeck = ({ scriptBlocks, projectTitle = 'My Pitch', onClose }: 
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (editingSlide) return;
+      if (editingSlide || isPresentationMode) return;
       
       switch (e.key) {
         case 'ArrowLeft':
@@ -94,18 +164,41 @@ export const SlideDeck = ({ scriptBlocks, projectTitle = 'My Pitch', onClose }: 
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [editingSlide, currentSlideIndex, slides.length]);
+  }, [editingSlide, currentSlideIndex, slides.length, isPresentationMode]);
 
-  // Auto-play functionality
+  // Auto-play functionality (disabled in presentation mode)
   useEffect(() => {
-    if (!isPlaying || slides.length === 0) return;
+    if (!isPlaying || slides.length === 0 || isPresentationMode) return;
 
     const interval = setInterval(() => {
       setCurrentSlideIndex((currentSlideIndex + 1) % slides.length);
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [isPlaying, currentSlideIndex, slides.length, setCurrentSlideIndex]);
+  }, [isPlaying, currentSlideIndex, slides.length, setCurrentSlideIndex, isPresentationMode]);
+
+  // Drag and drop handlers
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (index: number) => {
+    if (draggedIndex !== null && draggedIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDragEnd = () => {
+    if (draggedIndex !== null && dragOverIndex !== null && draggedIndex !== dragOverIndex) {
+      reorderSlides(draggedIndex, dragOverIndex);
+      toast({
+        title: 'Slide reordered',
+        description: `Moved slide ${draggedIndex + 1} to position ${dragOverIndex + 1}`,
+      });
+    }
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
 
   const goToNextSlide = () => {
     if (currentSlideIndex < slides.length - 1) {
@@ -133,7 +226,6 @@ export const SlideDeck = ({ scriptBlocks, projectTitle = 'My Pitch', onClose }: 
   };
 
   const handleExportSlides = () => {
-    // Create a simple JSON export
     const exportData = {
       title: projectTitle,
       slides: slides.map(({ id, type, title, content, imageKeyword }) => ({
@@ -166,11 +258,13 @@ export const SlideDeck = ({ scriptBlocks, projectTitle = 'My Pitch', onClose }: 
   const progress = slides.length > 0 ? ((currentSlideIndex + 1) / slides.length) * 100 : 0;
 
   // Loading state
-  if (isGenerating) {
+  if (isGenerating || isAIGenerating) {
     return (
       <div className="flex flex-col items-center justify-center h-96 gap-4">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="text-muted-foreground">Generating your slide deck...</p>
+        <p className="text-muted-foreground">
+          {isAIGenerating ? 'AI is crafting your slides...' : 'Generating your slide deck...'}
+        </p>
       </div>
     );
   }
@@ -185,13 +279,19 @@ export const SlideDeck = ({ scriptBlocks, projectTitle = 'My Pitch', onClose }: 
         <div className="text-center">
           <h3 className="font-semibold text-foreground mb-2">Auto-Generate Slides</h3>
           <p className="text-muted-foreground text-sm max-w-sm">
-            Transform your pitch script into a professional slide deck with one click.
+            Transform your pitch script into a professional slide deck.
           </p>
         </div>
-        <Button onClick={handleGenerateSlides} disabled={!scriptBlocks?.length}>
-          <Sparkles className="w-4 h-4 mr-2" />
-          Generate Slides
-        </Button>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={handleGenerateSlides} disabled={!scriptBlocks?.length}>
+            <Sparkles className="w-4 h-4 mr-2" />
+            Quick Generate
+          </Button>
+          <Button onClick={handleAIGenerateSlides} disabled={!scriptBlocks?.length}>
+            <Wand2 className="w-4 h-4 mr-2" />
+            AI Generate
+          </Button>
+        </div>
       </div>
     );
   }
@@ -204,13 +304,20 @@ export const SlideDeck = ({ scriptBlocks, projectTitle = 'My Pitch', onClose }: 
       {/* Toolbar */}
       <div className="flex items-center justify-between p-3 border-b bg-card">
         <div className="flex items-center gap-2">
+          {isPresentationMode && (
+            <Badge variant="secondary" className="gap-1">
+              <Radio className="w-3 h-3 animate-pulse text-red-500" />
+              Synced
+            </Badge>
+          )}
           <Button
             variant="outline"
             size="sm"
-            onClick={handleGenerateSlides}
+            onClick={handleAIGenerateSlides}
+            disabled={isAIGenerating}
           >
-            <Sparkles className="w-4 h-4 mr-2" />
-            Regenerate
+            <Wand2 className="w-4 h-4 mr-2" />
+            AI Enhance
           </Button>
           <Button
             variant="outline"
@@ -249,31 +356,25 @@ export const SlideDeck = ({ scriptBlocks, projectTitle = 'My Pitch', onClose }: 
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Thumbnails sidebar */}
+        {/* Thumbnails sidebar with drag-and-drop */}
         {showThumbnails && !isFullscreen && (
-          <div className="w-48 border-r bg-muted/30">
+          <div className="w-52 border-r bg-muted/30">
             <ScrollArea className="h-full p-2">
               <div className="space-y-2">
                 {slides.map((slide, idx) => (
-                  <div key={slide.id} className="relative group">
-                    <SlidePreview
-                      slide={slide}
-                      isActive={idx === currentSlideIndex}
-                      isThumbnail
-                      onClick={() => setCurrentSlideIndex(idx)}
-                    />
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingSlide(slide);
-                      }}
-                    >
-                      <Pencil className="w-3 h-3" />
-                    </Button>
-                  </div>
+                  <DraggableThumbnail
+                    key={slide.id}
+                    slide={slide}
+                    index={idx}
+                    isActive={idx === currentSlideIndex}
+                    onSelect={() => setCurrentSlideIndex(idx)}
+                    onEdit={() => setEditingSlide(slide)}
+                    onDragStart={handleDragStart}
+                    onDragOver={handleDragOver}
+                    onDragEnd={handleDragEnd}
+                    isDragging={draggedIndex !== null}
+                    dragOverIndex={dragOverIndex}
+                  />
                 ))}
               </div>
             </ScrollArea>
@@ -318,7 +419,7 @@ export const SlideDeck = ({ scriptBlocks, projectTitle = 'My Pitch', onClose }: 
                 variant="outline"
                 size="icon"
                 onClick={goToPreviousSlide}
-                disabled={currentSlideIndex === 0}
+                disabled={currentSlideIndex === 0 || isPresentationMode}
               >
                 <ChevronLeft className="w-5 h-5" />
               </Button>
@@ -327,6 +428,7 @@ export const SlideDeck = ({ scriptBlocks, projectTitle = 'My Pitch', onClose }: 
                 variant="default"
                 size="icon"
                 onClick={() => setIsPlaying(!isPlaying)}
+                disabled={isPresentationMode}
                 className="h-12 w-12"
               >
                 {isPlaying ? (
@@ -340,11 +442,17 @@ export const SlideDeck = ({ scriptBlocks, projectTitle = 'My Pitch', onClose }: 
                 variant="outline"
                 size="icon"
                 onClick={goToNextSlide}
-                disabled={currentSlideIndex === slides.length - 1}
+                disabled={currentSlideIndex === slides.length - 1 || isPresentationMode}
               >
                 <ChevronRight className="w-5 h-5" />
               </Button>
             </div>
+            
+            {isPresentationMode && (
+              <p className="text-xs text-center text-muted-foreground">
+                Slides sync automatically with practice mode
+              </p>
+            )}
           </div>
         </div>
 
