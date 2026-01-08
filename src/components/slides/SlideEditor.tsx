@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Trash2, Plus, Type, List, Hash, Quote, Image,
-  ChevronUp, ChevronDown, Check, X, StickyNote
+  ChevronUp, ChevronDown, Check, X, StickyNote, ImagePlus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { Slide, SlideType, useSlidesStore } from '@/stores/slidesStore';
+import { SlideImageGenerator } from './SlideImageGenerator';
 import { cn } from '@/lib/utils';
 
 interface SlideEditorProps {
@@ -199,17 +200,20 @@ export const SlideEditor = ({ slide, onClose }: SlideEditorProps) => {
         )}
       </div>
 
-      {/* Image Keyword */}
-      {type === 'image' && (
-        <div className="space-y-2">
-          <Label className="text-muted-foreground">Image Keyword</Label>
-          <Input
-            value={imageKeyword}
-            onChange={(e) => setImageKeyword(e.target.value)}
-            placeholder="e.g., technology, growth, team..."
-          />
-        </div>
-      )}
+      {/* Image Keyword & AI Generation */}
+      <div className="space-y-2">
+        <Label className="text-muted-foreground flex items-center gap-2">
+          <ImagePlus className="w-4 h-4" />
+          Background Image
+        </Label>
+        <Input
+          value={imageKeyword}
+          onChange={(e) => setImageKeyword(e.target.value)}
+          placeholder="e.g., technology, growth, team..."
+          className="mb-2"
+        />
+        <SlideImageGenerator slide={slide} />
+      </div>
 
       {/* Speaker Notes */}
       <div className="space-y-2">

@@ -175,12 +175,30 @@ export const SlidePreview = ({ slide, isActive, isThumbnail, onClick }: SlidePre
     }
   };
 
+  // Wrapper with optional generated image background
+  const wrapperStyle: React.CSSProperties = slide.generatedImageUrl ? {
+    backgroundImage: `url(${slide.generatedImageUrl})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+  } : {};
+
   return (
-    <div className={baseClasses} onClick={onClick}>
-      {renderSlideContent()}
+    <div className={baseClasses} onClick={onClick} style={wrapperStyle}>
+      {/* Dark overlay for readability when image is present */}
+      {slide.generatedImageUrl && (
+        <div className="absolute inset-0 bg-black/50 z-0" />
+      )}
+      <div className={cn('relative z-10 h-full', slide.generatedImageUrl && '[&_*]:!text-white')}>
+        {renderSlideContent()}
+      </div>
       {isThumbnail && (
-        <div className="absolute bottom-1 right-1 bg-background/80 text-[10px] px-1.5 py-0.5 rounded text-muted-foreground">
+        <div className="absolute bottom-1 right-1 bg-background/80 text-[10px] px-1.5 py-0.5 rounded text-muted-foreground z-20">
           {slide.id}
+        </div>
+      )}
+      {slide.isGeneratingImage && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
+          <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
         </div>
       )}
     </div>
