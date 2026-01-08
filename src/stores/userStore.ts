@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { supabase } from '@/integrations/supabase/client';
+import { identifyUser, resetAnalytics, trackEvent } from '@/utils/analytics';
 
 export type UserPlan = 'free' | 'pass_48h' | 'pro';
 
@@ -79,6 +80,8 @@ export const useUserStore = create<UserState>()(
 
       logout: async () => {
         await supabase.auth.signOut();
+        resetAnalytics();
+        trackEvent('user_logout');
         set({ 
           user: null, 
           isLoggedIn: false, 
@@ -139,6 +142,19 @@ export const useUserStore = create<UserState>()(
               provider: session.user.app_metadata?.provider as User['provider'],
             };
             set({ user, isLoggedIn: true });
+            
+            // Identify user in PostHog for analytics
+            identifyUser(session.user.id, {
+              email: session.user.email,
+              name: user.name,
+              provider: user.provider,
+              created_at: session.user.created_at,
+            });
+            
+            // Track login event
+            if (event === 'SIGNED_IN') {
+              trackEvent('user_login', { provider: user.provider });
+            }
             
             // Check subscription after login
             setTimeout(() => {
