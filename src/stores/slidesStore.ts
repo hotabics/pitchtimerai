@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 
 export type SlideType = 'title' | 'bullets' | 'image' | 'big_number' | 'quote';
+export type LayoutType = 'shout' | 'split' | 'card' | 'grid' | 'default';
 export type TransitionEffect = 'fade' | 'slide' | 'zoom' | 'none';
 
 export interface SlideTheme {
@@ -15,6 +16,9 @@ export interface SlideTheme {
   accentColor: string;
   fontFamily: string;
   fontFamilyHeading: string;
+  gradientFrom?: string;
+  gradientTo?: string;
+  borderRadius?: string;
 }
 
 export const transitionEffects: { id: TransitionEffect; name: string; description: string }[] = [
@@ -24,7 +28,50 @@ export const transitionEffects: { id: TransitionEffect; name: string; descriptio
   { id: 'none', name: 'None', description: 'No animation' },
 ];
 
+// New curated themes based on user request
 export const slideThemes: SlideTheme[] = [
+  {
+    id: 'tech-dark',
+    name: 'Tech / Dark',
+    primaryColor: '#00D9FF',
+    secondaryColor: '#7C3AED',
+    backgroundColor: '#0A0A0F',
+    textColor: '#F8FAFC',
+    accentColor: '#10B981',
+    fontFamily: 'Inter, system-ui, sans-serif',
+    fontFamilyHeading: 'Inter, system-ui, sans-serif',
+    gradientFrom: '#0A0A0F',
+    gradientTo: '#1A1A2E',
+    borderRadius: '8px',
+  },
+  {
+    id: 'clean-light',
+    name: 'Clean / Light',
+    primaryColor: '#1E40AF',
+    secondaryColor: '#3B82F6',
+    backgroundColor: '#FFFFFF',
+    textColor: '#1E293B',
+    accentColor: '#F59E0B',
+    fontFamily: 'Georgia, serif',
+    fontFamilyHeading: 'system-ui, sans-serif',
+    gradientFrom: '#F8FAFC',
+    gradientTo: '#E2E8F0',
+    borderRadius: '12px',
+  },
+  {
+    id: 'bold-startup',
+    name: 'Bold / Startup',
+    primaryColor: '#EC4899',
+    secondaryColor: '#F97316',
+    backgroundColor: '#18181B',
+    textColor: '#FAFAFA',
+    accentColor: '#FACC15',
+    fontFamily: 'system-ui, sans-serif',
+    fontFamilyHeading: 'system-ui, sans-serif',
+    gradientFrom: '#EC4899',
+    gradientTo: '#F97316',
+    borderRadius: '16px',
+  },
   {
     id: 'modern',
     name: 'Modern',
@@ -35,6 +82,9 @@ export const slideThemes: SlideTheme[] = [
     accentColor: '#f59e0b',
     fontFamily: 'Inter, sans-serif',
     fontFamilyHeading: 'Inter, sans-serif',
+    gradientFrom: '#6366f1',
+    gradientTo: '#818cf8',
+    borderRadius: '8px',
   },
   {
     id: 'dark',
@@ -46,28 +96,9 @@ export const slideThemes: SlideTheme[] = [
     accentColor: '#22d3ee',
     fontFamily: 'Inter, sans-serif',
     fontFamilyHeading: 'Inter, sans-serif',
-  },
-  {
-    id: 'corporate',
-    name: 'Corporate',
-    primaryColor: '#1e40af',
-    secondaryColor: '#3b82f6',
-    backgroundColor: '#f8fafc',
-    textColor: '#1e293b',
-    accentColor: '#059669',
-    fontFamily: 'Georgia, serif',
-    fontFamilyHeading: 'Arial, sans-serif',
-  },
-  {
-    id: 'creative',
-    name: 'Creative',
-    primaryColor: '#ec4899',
-    secondaryColor: '#f472b6',
-    backgroundColor: '#fdf4ff',
-    textColor: '#4a044e',
-    accentColor: '#8b5cf6',
-    fontFamily: 'Poppins, sans-serif',
-    fontFamilyHeading: 'Poppins, sans-serif',
+    gradientFrom: '#1a1a2e',
+    gradientTo: '#16213e',
+    borderRadius: '8px',
   },
   {
     id: 'minimal',
@@ -79,23 +110,25 @@ export const slideThemes: SlideTheme[] = [
     accentColor: '#dc2626',
     fontFamily: 'system-ui, sans-serif',
     fontFamilyHeading: 'system-ui, sans-serif',
+    gradientFrom: '#fafafa',
+    gradientTo: '#f5f5f5',
+    borderRadius: '4px',
   },
-  {
-    id: 'nature',
-    name: 'Nature',
-    primaryColor: '#059669',
-    secondaryColor: '#10b981',
-    backgroundColor: '#f0fdf4',
-    textColor: '#14532d',
-    accentColor: '#84cc16',
-    fontFamily: 'Georgia, serif',
-    fontFamilyHeading: 'Georgia, serif',
-  },
+];
+
+// Layout type options with descriptions
+export const layoutTypes: { id: LayoutType; name: string; description: string }[] = [
+  { id: 'shout', name: 'The Shout', description: 'Big centered text for hooks & stats' },
+  { id: 'split', name: 'The Split', description: '50/50 image + text layout' },
+  { id: 'card', name: 'The Card', description: 'Glassmorphism overlay on image' },
+  { id: 'grid', name: 'The Grid', description: 'Icon-based bullet grid' },
+  { id: 'default', name: 'Classic', description: 'Standard slide layout' },
 ];
 
 export interface Slide {
   id: number;
   type: SlideType;
+  layout: LayoutType;
   title: string;
   content: string[];
   imageKeyword?: string;
@@ -185,10 +218,14 @@ export const generateSlidesFromBlocks = (
 ): Slide[] => {
   const slides: Slide[] = [];
   
-  // Title slide
+  // Layout rotation to prevent monotony
+  const layoutRotation: LayoutType[] = ['shout', 'split', 'card', 'grid', 'default'];
+  
+  // Title slide - always "shout" layout
   slides.push({
     id: 1,
     type: 'title',
+    layout: 'shout',
     title: projectTitle,
     content: ['Your Pitch Deck'],
     scriptSegment: blocks[0]?.content?.slice(0, 100) || '',
@@ -202,19 +239,24 @@ export const generateSlidesFromBlocks = (
     const sentences = block.content.split(/[.!?]+/).filter(s => s.trim());
     
     let slideType: SlideType = 'bullets';
+    let layout: LayoutType = layoutRotation[index % layoutRotation.length];
     let content: string[] = [];
     let imageKeyword: string | undefined;
     
     const numberMatch = block.content.match(/(\d+(?:\.\d+)?[%KMB]?)/);
     if (numberMatch && sentences.length <= 2) {
       slideType = 'big_number';
+      layout = 'shout'; // Big numbers always use shout layout
       content = [numberMatch[1], sentences[0]?.trim() || block.title];
     } else if (block.content.includes('"') || block.title.toLowerCase().includes('quote')) {
       slideType = 'quote';
+      layout = 'card'; // Quotes look great with card/glassmorphism
       const quoteMatch = block.content.match(/"([^"]+)"/);
       content = quoteMatch ? [quoteMatch[1]] : [sentences[0]?.trim() || ''];
     } else {
       slideType = 'bullets';
+      // Rotate between grid and default for bullet slides
+      layout = sentences.length >= 3 ? 'grid' : (index % 2 === 0 ? 'split' : 'default');
       content = sentences.slice(0, 4).map(s => s.trim()).filter(s => s.length > 0);
       if (content.length === 0) {
         content = [block.content.slice(0, 100)];
@@ -229,6 +271,7 @@ export const generateSlidesFromBlocks = (
     slides.push({
       id: slideId,
       type: slideType,
+      layout,
       title: block.title,
       content,
       imageKeyword,

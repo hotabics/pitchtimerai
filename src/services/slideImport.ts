@@ -119,6 +119,7 @@ export const importSlidesFromPPTX = async (file: File): Promise<{
       {
         id: 1,
         type: 'title',
+        layout: 'shout',
         title: file.name.replace('.pptx', ''),
         content: ['Imported from PowerPoint'],
         scriptSegment: '',
@@ -127,6 +128,7 @@ export const importSlidesFromPPTX = async (file: File): Promise<{
       {
         id: 2,
         type: 'bullets',
+        layout: 'default',
         title: 'Imported Content',
         content: [
           'PowerPoint import provides basic structure',
