@@ -43,6 +43,8 @@ interface AICoachRecordingProps {
   onStop: (audioBlob: Blob, videoBlob: Blob, duration: number, frameData: FrameData[]) => void;
   onCancel: () => void;
   initialStream?: MediaStream | null;
+  /** Optional audio source URL for voiceover sync - when provided, scroll syncs to audio playback */
+  voiceoverAudioSrc?: string;
 }
 
 type SpeechRecognitionCtor = new () => any;
@@ -68,7 +70,7 @@ const LANGUAGES = [
   { code: "ko-KR", label: "Korean" },
 ];
 
-export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRecordingProps) => {
+export const AICoachRecording = ({ onStop, onCancel, initialStream, voiceoverAudioSrc }: AICoachRecordingProps) => {
   const { 
     scriptBlocks, 
     bulletPoints,
@@ -107,9 +109,16 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
   const [duration, setDuration] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState("Initializing AI Vision...");
 
-  // Teleprompter state
+  // Teleprompter state - audio is the source of truth
   const [teleprompterPaused, setTeleprompterPaused] = useState(false);
   const [scrollSpeed, setScrollSpeed] = useState(1); // 0.5 to 2
+  
+  // Audio-driven sync state
+  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [isAudioBuffering, setIsAudioBuffering] = useState(false);
+  const audioElementRef = useRef<HTMLAudioElement | null>(null);
 
   // HUD metrics (updated less frequently to prevent flicker)
   const [hudMetrics, setHudMetrics] = useState<{
@@ -310,7 +319,7 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
     }
   }, [clearFrameData, isCameraReady, isRecording, mediaPipeFailed, mediaPipeReady]);
 
-  // Duration timer
+  // Duration timer (fallback when no audio sync)
   useEffect(() => {
     if (!isRecording) return;
     const interval = setInterval(() => {
@@ -319,9 +328,96 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
     return () => clearInterval(interval);
   }, [isRecording]);
 
-  // Teleprompter auto-scroll with speed control
+  // Auto-play voiceover audio when recording starts
   useEffect(() => {
-    if (!isRecording || !hasScript || teleprompterPaused || !teleprompterRef.current) {
+    const audio = audioElementRef.current;
+    if (!audio || !voiceoverAudioSrc || !isRecording) return;
+
+    const handleCanPlay = () => {
+      if (!teleprompterPaused) {
+        audio.play().catch(console.error);
+      }
+    };
+
+    audio.addEventListener('canplaythrough', handleCanPlay);
+    
+    // Try to play immediately if already loaded
+    if (audio.readyState >= 4 && !teleprompterPaused) {
+      audio.play().catch(console.error);
+    }
+
+    return () => {
+      audio.removeEventListener('canplaythrough', handleCanPlay);
+    };
+  }, [voiceoverAudioSrc, isRecording, teleprompterPaused]);
+
+  // Audio-driven teleprompter scroll (audio is the source of truth)
+  useEffect(() => {
+    const audio = audioElementRef.current;
+    const teleprompter = teleprompterRef.current;
+    
+    if (!audio || !teleprompter || !hasScript || promptMode !== 'teleprompter') return;
+
+    // Calculate scroll position based on audio progress
+    const updateScrollFromAudio = () => {
+      if (audio.duration && audio.duration > 0) {
+        const progress = audio.currentTime / audio.duration;
+        const maxScroll = teleprompter.scrollHeight - teleprompter.clientHeight;
+        teleprompter.scrollTop = progress * maxScroll;
+      }
+    };
+
+    const handleTimeUpdate = () => {
+      setAudioCurrentTime(audio.currentTime);
+      updateScrollFromAudio();
+    };
+
+    const handleDurationChange = () => {
+      setAudioDuration(audio.duration || 0);
+    };
+
+    const handlePlay = () => {
+      setIsAudioPlaying(true);
+      setIsAudioBuffering(false);
+    };
+
+    const handlePause = () => {
+      setIsAudioPlaying(false);
+    };
+
+    const handleWaiting = () => {
+      setIsAudioBuffering(true);
+    };
+
+    const handlePlaying = () => {
+      setIsAudioBuffering(false);
+      setIsAudioPlaying(true);
+    };
+
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('durationchange', handleDurationChange);
+    audio.addEventListener('play', handlePlay);
+    audio.addEventListener('pause', handlePause);
+    audio.addEventListener('waiting', handleWaiting);
+    audio.addEventListener('playing', handlePlaying);
+
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('durationchange', handleDurationChange);
+      audio.removeEventListener('play', handlePlay);
+      audio.removeEventListener('pause', handlePause);
+      audio.removeEventListener('waiting', handleWaiting);
+      audio.removeEventListener('playing', handlePlaying);
+    };
+  }, [hasScript, promptMode]);
+
+  // Fallback manual scroll when no audio (speed-controlled interval)
+  useEffect(() => {
+    // Only use manual scroll if there's no audio element or audio duration is 0
+    const audio = audioElementRef.current;
+    const hasAudioSync = audio && audioDuration > 0;
+    
+    if (!isRecording || !hasScript || teleprompterPaused || !teleprompterRef.current || hasAudioSync || promptMode !== 'teleprompter') {
       if (scrollIntervalRef.current) {
         clearInterval(scrollIntervalRef.current);
         scrollIntervalRef.current = null;
@@ -341,7 +437,7 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
     return () => {
       if (scrollIntervalRef.current) clearInterval(scrollIntervalRef.current);
     };
-  }, [hasScript, isRecording, teleprompterPaused, scrollSpeed]);
+  }, [hasScript, isRecording, teleprompterPaused, scrollSpeed, audioDuration, promptMode]);
 
   // Live transcription (also enabled for cue card mode's AI Voice advance)
   const shouldEnableTranscription = !hasScript || (hasScript && promptMode === 'cueCards');
@@ -488,12 +584,17 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
     if (speechRecognitionRef.current) try { speechRecognitionRef.current.stop?.(); } catch {}
     if (audioContextRef.current) audioContextRef.current.close().catch(() => {});
     if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
+    if (audioElementRef.current) {
+      audioElementRef.current.pause();
+      audioElementRef.current.src = '';
+    }
     animationFrameRef.current = null;
     scrollIntervalRef.current = null;
     speechRecognitionRef.current = null;
     audioContextRef.current = null;
     analyserRef.current = null;
     streamRef.current = null;
+    audioElementRef.current = null;
   }, []);
 
   useEffect(() => cleanup, [cleanup]);
@@ -520,7 +621,24 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
 
   const handleCancel = useCallback(() => { cleanup(); onCancel(); }, [cleanup, onCancel]);
 
-  // Keyboard shortcuts: Space = toggle teleprompter, Escape = cancel
+  // Unified pause handler - controls both audio and teleprompter
+  const handleTogglePause = useCallback(() => {
+    const audio = audioElementRef.current;
+    
+    if (audio && audioDuration > 0) {
+      // Audio is the source of truth - toggle audio playback
+      if (audio.paused) {
+        audio.play().catch(console.error);
+      } else {
+        audio.pause();
+      }
+    }
+    
+    // Always toggle teleprompter pause state (for fallback scroll mode)
+    setTeleprompterPaused(prev => !prev);
+  }, [audioDuration]);
+
+  // Keyboard shortcuts: Space = toggle pause, Escape = cancel
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if user is typing in an input
@@ -528,7 +646,7 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
 
       if (e.code === "Space" && hasScript) {
         e.preventDefault();
-        setTeleprompterPaused((prev) => !prev);
+        handleTogglePause();
       } else if (e.code === "Escape") {
         e.preventDefault();
         handleCancel();
@@ -537,13 +655,21 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [hasScript, handleCancel]);
+  }, [hasScript, handleCancel, handleTogglePause]);
 
+  // Format time helper - now uses audio time when available
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+    const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
+
+  // Determine the display time - use audio time if available, otherwise recording duration
+  const displayCurrentTime = audioDuration > 0 ? audioCurrentTime : duration;
+  const displayTotalTime = audioDuration > 0 ? audioDuration : null;
+  
+  // Determine if we're in a paused state (audio or teleprompter)
+  const isPaused = audioDuration > 0 ? !isAudioPlaying : teleprompterPaused;
 
   const liveTranscriptDisplay = useMemo(() => {
     const parts = liveTranscript.split(/\s*\[interim\]\s*/);
@@ -572,8 +698,20 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className={`w-3 h-3 rounded-full ${isRecording ? "bg-destructive animate-pulse" : "bg-muted"}`} />
-          <span className="font-semibold">{isRecording ? "Recording" : "Preparing"}</span>
-          <span className="text-2xl font-mono font-bold">{formatTime(duration)}</span>
+          <span className="font-semibold">
+            {isRecording ? (isPaused ? "Paused" : "Recording") : "Preparing"}
+          </span>
+          {/* Audio-synced timer display */}
+          <span className="text-2xl font-mono font-bold">
+            {formatTime(displayCurrentTime)}
+            {displayTotalTime !== null && (
+              <span className="text-base text-muted-foreground"> / {formatTime(displayTotalTime)}</span>
+            )}
+          </span>
+          {/* Buffering indicator */}
+          {isAudioBuffering && (
+            <span className="text-xs text-amber-400 animate-pulse">Buffering...</span>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -597,6 +735,16 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
           className="absolute inset-0 w-full h-full object-cover"
           style={{ zIndex: 0, transform: "scaleX(-1)" }}
         />
+
+        {/* Hidden audio element for voiceover sync - controlled programmatically */}
+        {voiceoverAudioSrc && (
+          <audio
+            ref={(el) => { audioElementRef.current = el; }}
+            src={voiceoverAudioSrc}
+            preload="auto"
+            className="hidden"
+          />
+        )}
 
         {/* Layer 10: Face Mesh Canvas */}
         {!mediaPipeFailed && (
@@ -751,24 +899,28 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
                 {/* Teleprompter-specific controls */}
                 {promptMode === 'teleprompter' && (
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-white/50">Speed</span>
-                      <Slider
-                        value={[scrollSpeed]}
-                        onValueChange={([v]) => setScrollSpeed(v)}
-                        min={0.5}
-                        max={3}
-                        step={0.5}
-                        className="w-20"
-                      />
-                    </div>
+                    {/* Speed slider only shown when NOT using audio sync */}
+                    {audioDuration === 0 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-white/50">Speed</span>
+                        <Slider
+                          value={[scrollSpeed]}
+                          onValueChange={([v]) => setScrollSpeed(v)}
+                          min={0.5}
+                          max={3}
+                          step={0.5}
+                          className="w-20"
+                        />
+                      </div>
+                    )}
+                    {/* Unified play/pause button */}
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7 text-white/70 hover:text-white"
-                      onClick={() => setTeleprompterPaused(!teleprompterPaused)}
+                      onClick={handleTogglePause}
                     >
-                      {teleprompterPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+                      {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
                     </Button>
                   </div>
                 )}
