@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-const CURRENT_VERSION = "1.6.0";
+const CURRENT_VERSION = "1.7.0";
 const STORAGE_KEY = "pitchdeck_last_seen_version";
 
 interface ChangelogItem {
@@ -20,6 +20,16 @@ interface ChangelogItem {
 
 const changelogItems: ChangelogItem[] = [
   {
+    icon: <Shield className="w-5 h-5 text-emerald-500" />,
+    title: "Forgot Password Flow",
+    description: "New password reset feature with email verification. Securely recover your account anytime.",
+  },
+  {
+    icon: <Zap className="w-5 h-5 text-purple-500" />,
+    title: "Streamlined Auth",
+    description: "Simplified sign-in options with Google OAuth and email/password for faster access.",
+  },
+  {
     icon: <CreditCard className="w-5 h-5 text-primary" />,
     title: "Tiered Pricing Plans",
     description: "Choose Free, 48h Hackathon Pass (€2.99), or Founder Pro (€9.99/mo) for premium features.",
@@ -28,16 +38,6 @@ const changelogItems: ChangelogItem[] = [
     icon: <Clock className="w-5 h-5 text-amber-500" />,
     title: "48h Pass Countdown",
     description: "Real-time countdown timer in header with expiration warnings when time is running low.",
-  },
-  {
-    icon: <Shield className="w-5 h-5 text-emerald-500" />,
-    title: "Premium Analysis Unlock",
-    description: "Paid users get full access to Eye Contact, Sentiment, and Jury Score analytics.",
-  },
-  {
-    icon: <Zap className="w-5 h-5 text-purple-500" />,
-    title: "Watermark-Free Exports",
-    description: "Pro users can export PDFs without the 'Created with PitchDeck.ai' watermark.",
   },
 ];
 
