@@ -1,6 +1,6 @@
 // Main AI Coach Page Component
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
@@ -9,8 +9,11 @@ import { AICoachSetup } from './AICoachSetup';
 import { AICoachRecording } from './AICoachRecording';
 import { AICoachProcessing } from './AICoachProcessing';
 import { AICoachResults } from './AICoachResults';
+import { FramingCheck } from './FramingCheck';
 import { useAICoachStore } from '@/stores/aiCoachStore';
 import type { FrameData } from '@/services/mediapipe';
+
+const FRAMING_SKIP_KEY = 'ai-coach-framing-skipped';
 
 export interface AICoachPageProps {
   onBack?: () => void;
@@ -20,17 +23,62 @@ export interface AICoachPageProps {
 
 export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachPageProps) => {
   const navigate = useNavigate();
-  const [view, setView] = useState<'setup' | 'recording' | 'processing' | 'results'>('setup');
+  const [view, setView] = useState<'setup' | 'framing' | 'recording' | 'processing' | 'results'>('setup');
   const [recordingData, setRecordingData] = useState<{
     audioBlob: Blob;
     videoBlob: Blob;
     duration: number;
     frameData: FrameData[];
   } | null>(null);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
 
   const { reset } = useAICoachStore();
 
-  const handleSetupReady = () => {
+  // Start camera when entering framing check
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { width: 1280, height: 720, facingMode: 'user' },
+        audio: true 
+      });
+      setCameraStream(stream);
+      return stream;
+    } catch (error) {
+      console.error('Failed to start camera:', error);
+      return null;
+    }
+  };
+
+  // Cleanup camera on unmount
+  useEffect(() => {
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [cameraStream]);
+
+  const handleSetupReady = async () => {
+    // Check if user has previously skipped framing check
+    const hasSkippedBefore = localStorage.getItem(FRAMING_SKIP_KEY) === 'true';
+    
+    if (hasSkippedBefore) {
+      // Returning user - go directly to recording
+      setView('recording');
+    } else {
+      // New user - show framing check
+      await startCamera();
+      setView('framing');
+    }
+  };
+
+  const handleFramingProceed = () => {
+    setView('recording');
+  };
+
+  const handleFramingSkip = () => {
+    // Remember the skip preference
+    localStorage.setItem(FRAMING_SKIP_KEY, 'true');
     setView('recording');
   };
 
@@ -85,11 +133,22 @@ export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachP
             </motion.div>
           )}
 
+          {view === 'framing' && (
+            <motion.div key="framing" exit={{ opacity: 0 }}>
+              <FramingCheck
+                stream={cameraStream}
+                onProceed={handleFramingProceed}
+                onSkip={handleFramingSkip}
+              />
+            </motion.div>
+          )}
+
           {view === 'recording' && (
             <motion.div key="recording" exit={{ opacity: 0 }}>
               <AICoachRecording 
                 onStop={handleRecordingStop}
                 onCancel={handleRecordingCancel}
+                initialStream={cameraStream}
               />
             </motion.div>
           )}
@@ -144,11 +203,22 @@ export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachP
             </motion.div>
           )}
 
+          {view === 'framing' && (
+            <motion.div key="framing" exit={{ opacity: 0 }}>
+              <FramingCheck
+                stream={cameraStream}
+                onProceed={handleFramingProceed}
+                onSkip={handleFramingSkip}
+              />
+            </motion.div>
+          )}
+
           {view === 'recording' && (
             <motion.div key="recording" exit={{ opacity: 0 }}>
               <AICoachRecording 
                 onStop={handleRecordingStop}
                 onCancel={handleRecordingCancel}
+                initialStream={cameraStream}
               />
             </motion.div>
           )}

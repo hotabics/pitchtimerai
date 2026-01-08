@@ -38,6 +38,7 @@ import { trackEvent } from "@/utils/analytics";
 interface AICoachRecordingProps {
   onStop: (audioBlob: Blob, videoBlob: Blob, duration: number, frameData: FrameData[]) => void;
   onCancel: () => void;
+  initialStream?: MediaStream | null;
 }
 
 type SpeechRecognitionCtor = new () => any;
@@ -63,7 +64,7 @@ const LANGUAGES = [
   { code: "ko-KR", label: "Korean" },
 ];
 
-export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) => {
+export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRecordingProps) => {
   const { 
     scriptBlocks, 
     transcriptionSettings, 
@@ -154,20 +155,30 @@ export const AICoachRecording = ({ onStop, onCancel }: AICoachRecordingProps) =>
     }
   }, []);
 
-  // 1) Initialize camera + mic
+  // 1) Initialize camera + mic (use initialStream if provided)
   useEffect(() => {
     let mounted = true;
 
     const initializeCamera = async () => {
       try {
         setLoadingMessage("Requesting camera access...");
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" },
-          audio: true,
-        });
+        
+        // Use initial stream if provided, otherwise request a new one
+        let stream: MediaStream;
+        if (initialStream) {
+          stream = initialStream;
+        } else {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" },
+            audio: true,
+          });
+        }
 
         if (!mounted) {
-          stream.getTracks().forEach((t) => t.stop());
+          // Only stop tracks if we created them (not from initialStream)
+          if (!initialStream) {
+            stream.getTracks().forEach((t) => t.stop());
+          }
           return;
         }
 
