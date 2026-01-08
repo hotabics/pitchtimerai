@@ -63,6 +63,7 @@ interface DashboardProps {
     originalScriptText?: string;
   };
   onBack?: () => void;
+  onEditInputs?: () => void;
 }
 
 const SPEAKING_RATE = 130; // words per minute
@@ -118,7 +119,7 @@ const formatTime = (ms: number): string => {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 };
 
-export const Dashboard = ({ data, onBack }: DashboardProps) => {
+export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
   const [activeTab, setActiveTab] = useState("script");
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentBlock, setCurrentBlock] = useState(0);
@@ -901,11 +902,33 @@ export const Dashboard = ({ data, onBack }: DashboardProps) => {
                 transition={{ delay: 0.3 }}
                 className="mt-8 space-y-4"
               >
+                {/* Edit Inputs Option */}
+                {onEditInputs && data.entryMode !== "custom_script" && (
+                  <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
+                    <p className="text-sm font-medium text-foreground mb-2 flex items-center gap-2">
+                      <Pencil className="w-4 h-4 text-primary" />
+                      Want to change something?
+                    </p>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Go back to tweak your inputs and generate a new version.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={onEditInputs}
+                      className="gap-2"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      Tweak Inputs & Regenerate
+                    </Button>
+                  </div>
+                )}
+
                 {/* Regenerate Options */}
                 <div className="p-4 rounded-xl bg-muted/50 border border-border">
                   <p className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
                     <RefreshCw className="w-4 h-4" />
-                    Regenerate with adjustments
+                    Quick adjustments
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {regenerateOptions.map((option) => (

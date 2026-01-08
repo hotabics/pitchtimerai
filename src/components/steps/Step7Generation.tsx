@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Sparkles, FileText, Clock, Mic, CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WizardStep } from "@/components/WizardStep";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { trackConfigs, TrackType } from "@/lib/tracks";
 
 interface Step7GenerationProps {
@@ -20,6 +20,46 @@ const generationSteps = [
   { id: "polish", label: "Polishing transitions", duration: 1000 },
 ];
 
+// Play a success chime using Web Audio API
+const playSuccessSound = () => {
+  try {
+    const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    
+    // Create a pleasant two-tone chime
+    const playTone = (frequency: number, startTime: number, duration: number) => {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime + startTime);
+      
+      gainNode.gain.setValueAtTime(0, audioContext.currentTime + startTime);
+      gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + startTime + 0.05);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + startTime + duration);
+      
+      oscillator.start(audioContext.currentTime + startTime);
+      oscillator.stop(audioContext.currentTime + startTime + duration);
+    };
+    
+    // Two ascending tones for success
+    playTone(523.25, 0, 0.2);     // C5
+    playTone(659.25, 0.15, 0.3);  // E5
+    playTone(783.99, 0.3, 0.4);   // G5
+  } catch (e) {
+    console.log("Audio not available:", e);
+  }
+};
+
+// Trigger haptic feedback if available
+const triggerHaptic = () => {
+  if (navigator.vibrate) {
+    navigator.vibrate([50, 30, 100]); // Short pattern
+  }
+};
+
 export const Step7Generation = ({ onNext, onBack, track, idea }: Step7GenerationProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
@@ -29,7 +69,7 @@ export const Step7Generation = ({ onNext, onBack, track, idea }: Step7Generation
   const trackName = trackConfig?.name || "Pitch";
   const outputSections = trackConfig?.outputStructure || [];
 
-  const handleGenerate = async () => {
+  const handleGenerate = useCallback(async () => {
     setIsGenerating(true);
     setCurrentStep(0);
     setCompletedSteps([]);
@@ -41,10 +81,14 @@ export const Step7Generation = ({ onNext, onBack, track, idea }: Step7Generation
       setCompletedSteps((prev) => [...prev, generationSteps[i].id]);
     }
 
+    // Play success feedback
+    playSuccessSound();
+    triggerHaptic();
+
     // Small delay before navigating
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 600));
     onNext("script", "Speech Only");
-  };
+  }, [onNext]);
 
   return (
     <WizardStep

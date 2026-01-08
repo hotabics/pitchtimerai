@@ -436,6 +436,14 @@ const Index = () => {
       );
     }
 
+    const handleEditInputs = () => {
+      // Go back to the last track step to edit inputs
+      setShowDashboard(false);
+      const maxTrackSteps = trackConfig?.stepCount || 4;
+      setStep(2);
+      setTrackStep(maxTrackSteps - 1); // Go to last track step
+    };
+
     return (
       <>
         <Header onLogoClick={handleLogoClick} />
@@ -448,6 +456,7 @@ const Index = () => {
             audienceLabel: data.audienceLabel,
             entryMode: "generate",
           }}
+          onEditInputs={handleEditInputs}
         />
       </>
     );
