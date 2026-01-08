@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Sparkles, Loader2 } from 'lucide-react';
+import { X, Mail, Sparkles, Loader2, ArrowLeft, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,11 +23,12 @@ const GoogleIcon = () => (
 
 export const AuthModal = () => {
   const { showAuthModal, authModalTrigger, closeAuthModal, login } = useUserStore();
-  const [mode, setMode] = useState<'signup' | 'login'>('signup');
+  const [mode, setMode] = useState<'signup' | 'login' | 'forgot'>('signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   const triggerMessages = {
     save: 'Save your winning pitch',
@@ -57,6 +58,35 @@ export const AuthModal = () => {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+
+    setIsLoading(true);
+    
+    try {
+      const redirectUrl = `${window.location.origin}/reset-password`;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectUrl,
+      });
+      
+      if (error) throw error;
+      
+      setResetEmailSent(true);
+      toast({
+        title: 'Reset email sent! 📧',
+        description: 'Check your inbox for the password reset link.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Failed to send reset email',
+        description: error.message || 'Please try again later.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,6 +157,11 @@ export const AuthModal = () => {
     }
   };
 
+  const handleBackToLogin = () => {
+    setMode('login');
+    setResetEmailSent(false);
+  };
+
   if (!showAuthModal) return null;
 
   return (
@@ -156,110 +191,196 @@ export const AuthModal = () => {
           {/* Header with gradient */}
           <div className="relative px-8 pt-8 pb-6 text-center bg-gradient-to-b from-primary/10 to-transparent">
             <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-primary/20 flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-primary" />
+              {mode === 'forgot' ? (
+                <KeyRound className="w-6 h-6 text-primary" />
+              ) : (
+                <Sparkles className="w-6 h-6 text-primary" />
+              )}
             </div>
             <h2 className="text-2xl font-bold">
-              {triggerMessages[authModalTrigger || 'save']}
+              {mode === 'forgot' 
+                ? 'Reset your password' 
+                : triggerMessages[authModalTrigger || 'save']}
             </h2>
             <p className="text-muted-foreground mt-2 text-sm">
-              {mode === 'signup' ? 'Create a free account to continue' : 'Sign in to your account'}
+              {mode === 'forgot'
+                ? "Enter your email and we'll send you a reset link"
+                : mode === 'signup' 
+                  ? 'Create a free account to continue' 
+                  : 'Sign in to your account'}
             </p>
           </div>
 
           {/* Auth options */}
           <div className="px-8 pb-8 space-y-4">
-            {/* Social buttons */}
-            <div className="space-y-3">
-              <Button
-                variant="outline"
-                className="w-full h-12 gap-3 text-base font-medium"
-                onClick={handleGoogleLogin}
-                disabled={!!loadingProvider || isLoading}
-              >
-                {loadingProvider === 'google' ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+            {/* Forgot Password Mode */}
+            {mode === 'forgot' ? (
+              <>
+                {resetEmailSent ? (
+                  <div className="text-center space-y-4 py-4">
+                    <div className="w-16 h-16 mx-auto rounded-full bg-success/10 flex items-center justify-center">
+                      <Mail className="w-8 h-8 text-success" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg">Check your email</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        We've sent a password reset link to <strong>{email}</strong>
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={handleBackToLogin}
+                      className="mt-4"
+                    >
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                      Back to login
+                    </Button>
+                  </div>
                 ) : (
-                  <GoogleIcon />
+                  <form onSubmit={handleForgotPassword} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="reset-email">Email address</Label>
+                      <Input
+                        id="reset-email"
+                        type="email"
+                        placeholder="you@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        disabled={isLoading}
+                        autoFocus
+                      />
+                    </div>
+
+                    <Button
+                      type="submit"
+                      className="w-full h-12 text-base font-medium"
+                      disabled={isLoading || !email}
+                    >
+                      {isLoading ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Mail className="w-4 h-4 mr-2" />
+                      )}
+                      Send Reset Link
+                    </Button>
+
+                    <button
+                      type="button"
+                      onClick={handleBackToLogin}
+                      className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <ArrowLeft className="w-3 h-3 inline mr-1" />
+                      Back to login
+                    </button>
+                  </form>
                 )}
-                Continue with Google
-              </Button>
-              
-            </div>
-
-            {/* Divider */}
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">or</span>
-              </div>
-            </div>
-
-            {/* Email form */}
-            <form onSubmit={handleEmailAuth} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isLoading || !!loadingProvider}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isLoading || !!loadingProvider}
-                />
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full h-12 text-base font-medium"
-                disabled={isLoading || !!loadingProvider || !email || !password}
-              >
-                {isLoading ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Mail className="w-4 h-4 mr-2" />
-                )}
-                {mode === 'signup' ? 'Create Account' : 'Sign In'}
-              </Button>
-            </form>
-
-            {/* Toggle mode */}
-            <p className="text-center text-sm text-muted-foreground">
-              {mode === 'signup' ? (
-                <>
-                  Already have an account?{' '}
-                  <button
-                    onClick={() => setMode('login')}
-                    className="text-primary hover:underline font-medium"
+              </>
+            ) : (
+              <>
+                {/* Social buttons */}
+                <div className="space-y-3">
+                  <Button
+                    variant="outline"
+                    className="w-full h-12 gap-3 text-base font-medium"
+                    onClick={handleGoogleLogin}
+                    disabled={!!loadingProvider || isLoading}
                   >
-                    Sign in
-                  </button>
-                </>
-              ) : (
-                <>
-                  Don't have an account?{' '}
-                  <button
-                    onClick={() => setMode('signup')}
-                    className="text-primary hover:underline font-medium"
+                    {loadingProvider === 'google' ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <GoogleIcon />
+                    )}
+                    Continue with Google
+                  </Button>
+                </div>
+
+                {/* Divider */}
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-border" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">or</span>
+                  </div>
+                </div>
+
+                {/* Email form */}
+                <form onSubmit={handleEmailAuth} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      disabled={isLoading || !!loadingProvider}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="password">Password</Label>
+                      {mode === 'login' && (
+                        <button
+                          type="button"
+                          onClick={() => setMode('forgot')}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Forgot password?
+                        </button>
+                      )}
+                    </div>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      disabled={isLoading || !!loadingProvider}
+                    />
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full h-12 text-base font-medium"
+                    disabled={isLoading || !!loadingProvider || !email || !password}
                   >
-                    Sign up
-                  </button>
-                </>
-              )}
-            </p>
+                    {isLoading ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Mail className="w-4 h-4 mr-2" />
+                    )}
+                    {mode === 'signup' ? 'Create Account' : 'Sign In'}
+                  </Button>
+                </form>
+
+                {/* Toggle mode */}
+                <p className="text-center text-sm text-muted-foreground">
+                  {mode === 'signup' ? (
+                    <>
+                      Already have an account?{' '}
+                      <button
+                        onClick={() => setMode('login')}
+                        className="text-primary hover:underline font-medium"
+                      >
+                        Sign in
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      Don't have an account?{' '}
+                      <button
+                        onClick={() => setMode('signup')}
+                        className="text-primary hover:underline font-medium"
+                      >
+                        Sign up
+                      </button>
+                    </>
+                  )}
+                </p>
+              </>
+            )}
           </div>
         </motion.div>
       </motion.div>
