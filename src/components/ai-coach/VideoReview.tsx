@@ -12,7 +12,8 @@ import {
   Check,
   ChevronRight,
   Volume2,
-  Maximize2
+  Maximize2,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -57,6 +58,7 @@ export const VideoReview = ({ videoUrl, onClose }: VideoReviewProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [hoveredEvent, setHoveredEvent] = useState<TimelineEvent | null>(null);
   const [activeWordIndex, setActiveWordIndex] = useState(-1);
 
@@ -217,6 +219,7 @@ export const VideoReview = ({ videoUrl, onClose }: VideoReviewProps) => {
   const handleLoadedMetadata = () => {
     if (videoRef.current) {
       setDuration(videoRef.current.duration);
+      setIsVideoLoaded(true);
     }
   };
 
@@ -294,15 +297,26 @@ export const VideoReview = ({ videoUrl, onClose }: VideoReviewProps) => {
           {/* Video Player */}
           <div className="relative aspect-video bg-black rounded-xl overflow-hidden">
             {videoBlobUrl ? (
-              <video
-                ref={videoRef}
-                src={videoBlobUrl}
-                onTimeUpdate={handleTimeUpdate}
-                onLoadedMetadata={handleLoadedMetadata}
-                onEnded={() => setIsPlaying(false)}
-                className="w-full h-full object-cover"
-                style={{ transform: 'scaleX(-1)' }}
-              />
+              <>
+                <video
+                  ref={videoRef}
+                  src={videoBlobUrl}
+                  onTimeUpdate={handleTimeUpdate}
+                  onLoadedMetadata={handleLoadedMetadata}
+                  onEnded={() => setIsPlaying(false)}
+                  className="w-full h-full object-cover"
+                  style={{ transform: 'scaleX(-1)' }}
+                />
+                {/* Loading overlay */}
+                {!isVideoLoaded && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                    <div className="text-center text-white">
+                      <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin" />
+                      <p className="text-sm">Loading video...</p>
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
                 <p>Video preview not available</p>
@@ -356,22 +370,28 @@ export const VideoReview = ({ videoUrl, onClose }: VideoReviewProps) => {
                   seekTo(percent * actualDuration);
                 }}
               >
-                {/* Heatmap background */}
-                <div className="absolute inset-0 flex">
-                  {Array.from({ length: Math.ceil(actualDuration / 5) }).map((_, i) => {
-                    const perf = getPerformanceAtTime(i * 5);
-                    return (
-                      <div
-                        key={i}
-                        className={`flex-1 ${
-                          perf === 'good' ? 'bg-green-500/20' :
-                          perf === 'warning' ? 'bg-yellow-500/20' :
-                          'bg-red-500/20'
-                        }`}
-                      />
-                    );
-                  })}
-                </div>
+              {/* Heatmap background - only render when video is loaded */}
+                {isVideoLoaded ? (
+                  <div className="absolute inset-0 flex">
+                    {Array.from({ length: Math.ceil(actualDuration / 5) }).map((_, i) => {
+                      const perf = getPerformanceAtTime(i * 5);
+                      return (
+                        <div
+                          key={i}
+                          className={`flex-1 ${
+                            perf === 'good' ? 'bg-green-500/20' :
+                            perf === 'warning' ? 'bg-yellow-500/20' :
+                            'bg-red-500/20'
+                          }`}
+                        />
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                  </div>
+                )}
 
                 {/* Event markers */}
                 {timelineEvents.map((event, idx) => (
