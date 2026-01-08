@@ -264,7 +264,9 @@ export const VideoReview = ({ videoUrl, onClose }: VideoReviewProps) => {
     };
   }, [videoBlobUrl, videoUrl]);
 
-  const actualDuration = duration || recordingData?.durationSeconds || 120;
+  // Ensure we have a valid, finite duration for array generation
+  const rawDuration = duration || recordingData?.durationSeconds || 120;
+  const actualDuration = isFinite(rawDuration) && rawDuration > 0 ? rawDuration : 120;
 
   return (
     <motion.div
