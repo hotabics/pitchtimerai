@@ -24,15 +24,10 @@ export interface AICoachPageProps {
 export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachPageProps) => {
   const navigate = useNavigate();
   const [view, setView] = useState<'setup' | 'framing' | 'recording' | 'processing' | 'results'>('setup');
-  const [recordingData, setRecordingData] = useState<{
-    audioBlob: Blob;
-    videoBlob: Blob;
-    duration: number;
-    frameData: FrameData[];
-  } | null>(null);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
 
-  const { reset } = useAICoachStore();
+  // Use global store for recording data to persist across navigation
+  const { recordingData, setRecordingData, reset } = useAICoachStore();
 
   // Start camera when entering framing check
   const startCamera = async () => {
@@ -83,7 +78,13 @@ export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachP
   };
 
   const handleRecordingStop = (audioBlob: Blob, videoBlob: Blob, duration: number, frameData: FrameData[]) => {
-    setRecordingData({ audioBlob, videoBlob, duration, frameData });
+    // Store in global state to persist across payment flow
+    setRecordingData({
+      audioBlob,
+      videoBlob,
+      durationSeconds: duration,
+      frameData,
+    });
     setView('processing');
   };
 
@@ -156,9 +157,9 @@ export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachP
           {view === 'processing' && recordingData && (
             <motion.div key="processing" exit={{ opacity: 0 }}>
               <AICoachProcessing
-                audioBlob={recordingData.audioBlob}
-                videoBlob={recordingData.videoBlob}
-                duration={recordingData.duration}
+                audioBlob={recordingData.audioBlob!}
+                videoBlob={recordingData.videoBlob!}
+                duration={recordingData.durationSeconds}
                 frameData={recordingData.frameData}
                 onComplete={handleProcessingComplete}
                 onError={handleProcessingError}
@@ -226,9 +227,9 @@ export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachP
           {view === 'processing' && recordingData && (
             <motion.div key="processing" exit={{ opacity: 0 }}>
               <AICoachProcessing
-                audioBlob={recordingData.audioBlob}
-                videoBlob={recordingData.videoBlob}
-                duration={recordingData.duration}
+                audioBlob={recordingData.audioBlob!}
+                videoBlob={recordingData.videoBlob!}
+                duration={recordingData.durationSeconds}
                 frameData={recordingData.frameData}
                 onComplete={handleProcessingComplete}
                 onError={handleProcessingError}
