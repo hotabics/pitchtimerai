@@ -4,7 +4,7 @@ import {
   FileText, Video, Play, Pause, RotateCcw, Monitor, 
   Smartphone, Presentation, RefreshCw, Download, Clock, Minus, 
   Smile, Zap, Timer, SkipForward, Volume2, VolumeX,
-  Gauge, Mic, Pencil, Check, X
+  Gauge, Mic, Pencil, Check, X, Copy, CheckCheck
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -149,7 +149,7 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
 
   // Feedback state
   const [showVersionComparison, setShowVersionComparison] = useState(false);
-
+  const [hasCopied, setHasCopied] = useState(false);
   const trackConfig = trackConfigs[data.track];
 
   // Handle edit start
@@ -793,6 +793,11 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
               {/* Script blocks with 3-column layout */}
               {speechBlocks.map((block, index) => {
                 const VisualIcon = getVisualIcon(block.visualCue, block.isDemo);
+                const wordCount = block.content.split(/\s+/).filter(w => w.length > 0).length;
+                const speakingSeconds = Math.round((wordCount / SPEAKING_RATE) * 60);
+                const speakingTime = speakingSeconds >= 60 
+                  ? `${Math.floor(speakingSeconds / 60)}m ${speakingSeconds % 60}s`
+                  : `${speakingSeconds}s`;
                 
                 return (
                   <motion.div
@@ -814,7 +819,11 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
                       )}>
                         {block.timeStart}
                       </span>
-                      <div className="h-full w-px bg-border my-1" />
+                      <div className="h-full w-px bg-border my-1 relative">
+                        <span className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 left-1/2 bg-muted px-1.5 py-0.5 rounded text-[10px] text-muted-foreground whitespace-nowrap">
+                          ~{speakingTime}
+                        </span>
+                      </div>
                       <span className="text-xs text-muted-foreground">
                         {block.timeEnd}
                       </span>
@@ -947,15 +956,40 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
                   </div>
                 </div>
 
-                {/* Export */}
-                <Button
-                  variant="secondary"
-                  className="w-full gap-2"
-                  onClick={handleExportPDF}
-                >
-                  <Download className="w-4 h-4" />
-                  Export to PDF
-                </Button>
+                {/* Export Actions */}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1 gap-2"
+                    onClick={async () => {
+                      const fullScript = speechBlocks
+                        .map(block => `[${block.title}]\n${block.content}`)
+                        .join("\n\n");
+                      await navigator.clipboard.writeText(fullScript);
+                      setHasCopied(true);
+                      setTimeout(() => setHasCopied(false), 2000);
+                      toast({
+                        title: "Copied!",
+                        description: "Script copied to clipboard",
+                      });
+                    }}
+                  >
+                    {hasCopied ? (
+                      <CheckCheck className="w-4 h-4 text-primary" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                    {hasCopied ? "Copied!" : "Copy Script"}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="flex-1 gap-2"
+                    onClick={handleExportPDF}
+                  >
+                    <Download className="w-4 h-4" />
+                    Export PDF
+                  </Button>
+                </div>
 
                 {/* Version Comparison Bar (shows after regeneration) */}
                 <AnimatePresence>
