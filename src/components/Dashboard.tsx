@@ -127,7 +127,14 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
   const [speechBlocks, setSpeechBlocks] = useState<SpeechBlock[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRegenerating, setIsRegenerating] = useState(false);
-  const [meta, setMeta] = useState<{ targetWordCount: number; actualWordCount: number } | null>(null);
+  const [meta, setMeta] = useState<{ 
+    targetWordCount: number; 
+    actualWordCount: number;
+    fullScript?: string;
+    bulletPoints?: string[];
+    estimatedDuration?: string;
+  } | null>(null);
+  const [viewMode, setViewMode] = useState<"blocks" | "full" | "bullets">("blocks");
   
   // Practice mode state
   const [blockProgress, setBlockProgress] = useState(0);
@@ -512,7 +519,12 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
       if (result.error) throw new Error(result.error);
 
       setSpeechBlocks(result.speech.blocks);
-      setMeta(result.meta);
+      setMeta({
+        ...result.meta,
+        fullScript: result.speech.full_script,
+        bulletPoints: result.speech.bullet_points,
+        estimatedDuration: result.speech.estimated_duration,
+      });
       setCurrentBlock(0);
       
       // Track successful script generation
@@ -794,8 +806,102 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-4"
             >
+              {/* View Mode Toggle */}
+              <div className="flex items-center gap-2 p-1 bg-muted/50 rounded-lg w-fit">
+                <button
+                  onClick={() => setViewMode("blocks")}
+                  className={cn(
+                    "px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                    viewMode === "blocks"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Timed Blocks
+                </button>
+                <button
+                  onClick={() => setViewMode("full")}
+                  className={cn(
+                    "px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                    viewMode === "full"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Full Script
+                </button>
+                <button
+                  onClick={() => setViewMode("bullets")}
+                  className={cn(
+                    "px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                    viewMode === "bullets"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Bullet Points
+                </button>
+              </div>
+
+              {/* Full Script View */}
+              {viewMode === "full" && meta?.fullScript && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="glass-card rounded-xl p-6"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold text-foreground">Complete Script</h3>
+                    {meta.estimatedDuration && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {meta.estimatedDuration}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-base text-foreground leading-relaxed whitespace-pre-wrap">
+                    {meta.fullScript}
+                  </p>
+                </motion.div>
+              )}
+
+              {/* Bullet Points View */}
+              {viewMode === "bullets" && meta?.bulletPoints && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="glass-card rounded-xl p-6"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold text-foreground">Key Points</h3>
+                    {meta.estimatedDuration && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {meta.estimatedDuration}
+                      </span>
+                    )}
+                  </div>
+                  <ul className="space-y-3">
+                    {meta.bulletPoints.map((point, index) => (
+                      <motion.li
+                        key={index}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="flex items-start gap-3 text-base text-foreground"
+                      >
+                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center mt-0.5">
+                          {index + 1}
+                        </span>
+                        <span className="leading-relaxed">{point}</span>
+                      </motion.li>
+                    ))}
+                  </ul>
+                </motion.div>
+              )}
+
               {/* Script blocks with 3-column layout */}
-              {speechBlocks.map((block, index) => {
+              {viewMode === "blocks" && speechBlocks.map((block, index) => {
                 const VisualIcon = getVisualIcon(block.visualCue, block.isDemo);
                 const wordCount = block.content.split(/\s+/).filter(w => w.length > 0).length;
                 const speakingSeconds = Math.round((wordCount / SPEAKING_RATE) * 60);

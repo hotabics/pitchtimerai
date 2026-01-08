@@ -102,7 +102,7 @@ function buildSpeechPrompt(
   const config = trackConfigs[track] || trackConfigs['hackathon-no-demo'];
   const timeCategory = getTimeCategory(duration);
   
-  const systemPrompt = `You are an expert Speech Coach and professional speechwriter. Generate a spoken-word script based on the parameters provided.
+  const systemPrompt = `You are a Pitch Deck Expert and professional speechwriter. Generate a pitch for a ${config.name} audience.
 
 CRITICAL RULES:
 1. The script MUST be approximately ${targetWordCount} words (±10% tolerance: ${Math.round(targetWordCount * 0.9)}-${Math.round(targetWordCount * 1.1)} words).
@@ -117,6 +117,9 @@ TONE: ${config.tone}
 
 OUTPUT FORMAT:
 Return a JSON object with:
+- "full_script": The complete spoken text as a single string (all blocks combined, natural flow)
+- "bullet_points": Array of strings, each a short summary of a key section (e.g., "The Hook: [Short summary]", "The Problem: [Short summary]")
+- "estimated_duration": Estimated speaking time (e.g., "2 min", "3 min 30 sec")
 - "blocks": Array of speech blocks, each with:
   - "timeStart": Start time in "M:SS" format (e.g., "0:00", "0:45", "1:30")
   - "timeEnd": End time in "M:SS" format
@@ -124,8 +127,7 @@ Return a JSON object with:
   - "content": The spoken text for this section (natural, conversational)
   - "isDemo": boolean (true if this is a demo section)
   - "visualCue": Optional string describing what should be on screen (slide, demo action)
-- "totalWords": The actual word count of all content combined
-- "estimatedDuration": Estimated speaking time based on word count`;
+- "totalWords": The actual word count of all content combined`;
 
   const userInputsFormatted = Object.entries(inputs)
     .filter(([_, value]) => value !== undefined && value !== '')
@@ -272,7 +274,26 @@ serve(async (req) => {
       throw new Error('Invalid response structure: missing blocks array');
     }
 
-    console.log(`Generated speech with ${parsed.blocks.length} blocks, ${parsed.totalWords} words`);
+    // Ensure full_script exists (fallback to concatenated blocks)
+    if (!parsed.full_script) {
+      parsed.full_script = parsed.blocks.map((b: { content: string }) => b.content).join('\n\n');
+    }
+
+    // Ensure bullet_points exist (fallback to block titles)
+    if (!parsed.bullet_points || !Array.isArray(parsed.bullet_points)) {
+      parsed.bullet_points = parsed.blocks.map((b: { title: string; content: string }) => 
+        `${b.title}: ${b.content.split('.')[0]}.`
+      );
+    }
+
+    // Ensure estimated_duration exists
+    if (!parsed.estimated_duration) {
+      const mins = Math.floor(parsed.totalWords / SPEAKING_RATE);
+      const secs = Math.round(((parsed.totalWords / SPEAKING_RATE) - mins) * 60);
+      parsed.estimated_duration = secs > 0 ? `${mins} min ${secs} sec` : `${mins} min`;
+    }
+
+    console.log(`Generated speech with ${parsed.blocks.length} blocks, ${parsed.totalWords} words, ${parsed.bullet_points.length} bullet points`);
 
     return new Response(JSON.stringify({ 
       speech: parsed,
