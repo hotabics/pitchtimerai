@@ -5,6 +5,42 @@ All notable changes to PitchPal will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-01-08
+
+### Added
+- **Slide Deck Builder**: Full presentation creation and management system
+  - Create, edit, reorder, and delete slides with drag-and-drop
+  - Speaker notes field for each slide (visible in edit mode, hidden during presentation)
+  - Slide thumbnails with real-time preview
+- **PowerPoint Export**: Export presentations as `.pptx` files
+  - Full PptxGenJS integration with title, content, bullet points, and speaker notes
+  - Theme-aware export with proper styling
+- **Slide Theme Customization**: Apply visual themes across all slides
+  - Preset themes: Default, Ocean, Forest, Sunset, Midnight, Lavender
+  - Custom color schemes for backgrounds, text, and accents
+  - Font style options (modern, classic, playful)
+- **Slide Import**: Import slides from existing presentations
+  - Support for JSON and PPTX file formats
+  - Drag-and-drop file upload dialog
+  - Merge imported slides with existing deck
+- **AI Image Generation for Slides**: Auto-generate relevant visuals
+  - Uses image keyword field to create contextual backgrounds
+  - OpenAI DALL-E integration via edge function
+  - Per-slide image generation with loading states
+- **Bulk Image Generation**: Generate images for all slides at once
+  - Progress tracking with slide count
+  - Skips slides that already have images
+- **Slide Transition Effects**: Smooth presentation animations
+  - Four transition types: Fade, Slide, Zoom, None
+  - Framer Motion powered animations
+  - Per-presentation transition selection
+- New components: `SlideDeck`, `SlideEditor`, `SlidePreview`, `SpeakerNotesPanel`
+- New components: `ThemeSelector`, `TransitionSelector`, `BulkImageGenerator`
+- New components: `SlideImportDialog`, `SlideImageGenerator`, `DraggableThumbnail`
+- New services: `pptxExport.ts`, `slideImport.ts`, `slideAI.ts`
+- New edge function: `generate-slide-image`
+- New store: `slidesStore.ts` with Zustand for slide state management
+
 ## [1.6.0] - 2026-01-07
 
 ### Added
