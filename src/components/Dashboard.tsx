@@ -757,6 +757,129 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
     });
   };
 
+  // Export bullet points as cheat sheet PDF
+  const handleExportCheatSheet = () => {
+    if (!meta?.bulletPoints || meta.bulletPoints.length === 0) {
+      toast({ title: "No bullet points", description: "Generate a script first", variant: "destructive" });
+      return;
+    }
+
+    const { canExportWithoutWatermark } = useUserStore.getState();
+    const showWatermark = !canExportWithoutWatermark();
+    
+    const pdf = new jsPDF();
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 15;
+    const contentWidth = pageWidth - margin * 2;
+    let yPosition = margin;
+
+    // Header
+    pdf.setFillColor(245, 247, 255);
+    pdf.rect(0, 0, pageWidth, 50, "F");
+    
+    pdf.setFontSize(20);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(30, 30, 30);
+    pdf.text("Quick Reference Cheat Sheet", pageWidth / 2, 25, { align: "center" });
+    
+    pdf.setFontSize(11);
+    pdf.setFont("helvetica", "normal");
+    pdf.setTextColor(100);
+    const ideaText = data.idea.length > 60 ? data.idea.slice(0, 57) + "..." : data.idea;
+    pdf.text(ideaText, pageWidth / 2, 38, { align: "center" });
+    
+    yPosition = 60;
+
+    // Bullet points in compact format
+    pdf.setTextColor(0);
+    meta.bulletPoints.forEach((point, index) => {
+      if (yPosition > pageHeight - margin - 25) {
+        // Shouldn't happen for a one-page cheat sheet, but safety check
+        return;
+      }
+
+      // Number badge
+      pdf.setFillColor(230, 240, 255);
+      pdf.circle(margin + 6, yPosition + 2, 6, "F");
+      pdf.setFontSize(9);
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(60, 100, 180);
+      pdf.text(String(index + 1), margin + 6, yPosition + 4, { align: "center" });
+
+      // Bullet text
+      pdf.setFontSize(11);
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(30);
+      const bulletLines = pdf.splitTextToSize(point, contentWidth - 20);
+      bulletLines.forEach((line: string, lineIndex: number) => {
+        pdf.text(line, margin + 18, yPosition + 4 + (lineIndex * 5));
+      });
+      
+      yPosition += Math.max(14, bulletLines.length * 5 + 8);
+    });
+
+    // Footer
+    pdf.setDrawColor(230);
+    pdf.line(margin, pageHeight - 20, pageWidth - margin, pageHeight - 20);
+    
+    pdf.setFontSize(9);
+    pdf.setTextColor(150);
+    if (meta.estimatedDuration) {
+      pdf.text(`Duration: ${meta.estimatedDuration}`, margin, pageHeight - 12);
+    }
+    pdf.text(`${meta.bulletPoints.length} key points`, pageWidth / 2, pageHeight - 12, { align: "center" });
+    
+    if (showWatermark) {
+      pdf.text("Created with PitchDeck.ai", pageWidth - margin, pageHeight - 12, { align: "right" });
+    }
+
+    // Save
+    const filename = `cheatsheet-${data.idea.slice(0, 20).replace(/[^a-zA-Z0-9]/g, '-')}.pdf`;
+    pdf.save(filename);
+
+    toast({
+      title: "Cheat Sheet Exported!",
+      description: "Your one-page reference has been downloaded",
+    });
+  };
+
+  // Keyboard shortcut for copying content
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only trigger on Cmd/Ctrl+C when in script tab and not editing
+      if ((e.metaKey || e.ctrlKey) && e.key === 'c' && activeTab === 'script' && editingBlockIndex === null) {
+        // Check if user has selected text - if so, let default copy behavior work
+        const selection = window.getSelection();
+        if (selection && selection.toString().length > 0) {
+          return; // Let default copy work for selected text
+        }
+
+        e.preventDefault();
+        
+        let textToCopy = '';
+        if (viewMode === 'full' && meta?.fullScript) {
+          textToCopy = meta.fullScript;
+        } else if (viewMode === 'bullets' && meta?.bulletPoints) {
+          textToCopy = meta.bulletPoints.map((p, i) => `${i + 1}. ${p}`).join('\n');
+        } else if (viewMode === 'blocks') {
+          textToCopy = speechBlocks.map(b => `[${b.title}]\n${b.content}`).join('\n\n');
+        }
+
+        if (textToCopy) {
+          navigator.clipboard.writeText(textToCopy);
+          toast({ 
+            title: "Copied!", 
+            description: `${viewMode === 'full' ? 'Full script' : viewMode === 'bullets' ? 'Bullet points' : 'All blocks'} copied to clipboard` 
+          });
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTab, viewMode, meta, speechBlocks, editingBlockIndex]);
+
 
   if (isLoading) {
     return (
@@ -899,6 +1022,9 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
                   Bullet Points
                 </button>
               </div>
+              <span className="text-[10px] text-muted-foreground ml-2 hidden sm:inline">
+                ⌘/Ctrl+C to copy
+              </span>
 
               {/* Full Script View */}
               {viewMode === "full" && meta?.fullScript && (
@@ -1186,6 +1312,18 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
                     Export PDF
                   </Button>
                 </div>
+
+                {/* Cheat Sheet Export */}
+                {meta?.bulletPoints && meta.bulletPoints.length > 0 && (
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={handleExportCheatSheet}
+                  >
+                    <FileText className="w-4 h-4" />
+                    Export Cheat Sheet (1-Page)
+                  </Button>
+                )}
 
                 {/* Share Button */}
                 <Button
