@@ -1,60 +1,237 @@
-import { motion } from "framer-motion";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, Sparkles, FileText, Clock, Mic, CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WizardStep } from "@/components/WizardStep";
+import { useState } from "react";
+import { trackConfigs, TrackType } from "@/lib/tracks";
 
 interface Step7GenerationProps {
   onNext: (tier: string, tierLabel: string) => void;
   onBack: () => void;
+  track?: TrackType;
+  idea?: string;
 }
 
-export const Step7Generation = ({ onNext, onBack }: Step7GenerationProps) => {
-  const handleNext = () => {
+const generationSteps = [
+  { id: "analyze", label: "Analyzing your inputs", duration: 1200 },
+  { id: "structure", label: "Structuring your narrative", duration: 1500 },
+  { id: "script", label: "Writing your script", duration: 2000 },
+  { id: "timing", label: "Adding timing cues", duration: 800 },
+  { id: "polish", label: "Polishing transitions", duration: 1000 },
+];
+
+export const Step7Generation = ({ onNext, onBack, track, idea }: Step7GenerationProps) => {
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [completedSteps, setCompletedSteps] = useState<string[]>([]);
+
+  const trackConfig = track ? trackConfigs[track] : null;
+  const trackName = trackConfig?.name || "Pitch";
+  const outputSections = trackConfig?.outputStructure || [];
+
+  const handleGenerate = async () => {
+    setIsGenerating(true);
+    setCurrentStep(0);
+    setCompletedSteps([]);
+
+    // Animate through generation steps
+    for (let i = 0; i < generationSteps.length; i++) {
+      setCurrentStep(i);
+      await new Promise((resolve) => setTimeout(resolve, generationSteps[i].duration));
+      setCompletedSteps((prev) => [...prev, generationSteps[i].id]);
+    }
+
+    // Small delay before navigating
+    await new Promise((resolve) => setTimeout(resolve, 500));
     onNext("script", "Speech Only");
   };
 
   return (
     <WizardStep
-      title="Ready to Generate"
-      subtitle="Your pitch script will be created based on your inputs"
+      title={isGenerating ? "Crafting Your Pitch" : "Ready to Generate"}
+      subtitle={isGenerating ? "This will only take a moment..." : "Review what we'll create for you"}
     >
       <div className="flex-1 flex flex-col">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="flex-1 flex items-center justify-center"
-        >
-          <div className="text-center space-y-4">
-            <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
-              <Sparkles className="w-10 h-10 text-primary" />
-            </div>
-            <p className="text-muted-foreground max-w-sm">
-              Click below to generate your AI-powered pitch script with timing cues and transitions.
-            </p>
-          </div>
-        </motion.div>
+        <AnimatePresence mode="wait">
+          {!isGenerating ? (
+            <motion.div
+              key="preview"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="flex-1 flex flex-col"
+            >
+              {/* Preview Card */}
+              <div className="bg-card border border-border rounded-2xl p-6 space-y-5">
+                {/* Header */}
+                <div className="flex items-start gap-4">
+                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center flex-shrink-0">
+                    <FileText className="w-7 h-7 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-foreground">
+                      Your 3-Minute {trackName} Script
+                    </h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {idea ? `"${idea.slice(0, 50)}${idea.length > 50 ? '...' : ''}"` : "Based on your inputs"}
+                    </p>
+                  </div>
+                </div>
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="mt-8 space-y-3"
-        >
-          <Button
-            variant="time"
-            size="xl"
-            onClick={handleNext}
-            className="w-full"
-          >
-            <Sparkles className="w-5 h-5" />
-            Generate My Pitch
-          </Button>
-          <Button variant="ghost" onClick={onBack} className="w-full">
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </Button>
-        </motion.div>
+                {/* What's included */}
+                <div className="space-y-3">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    What you'll get
+                  </p>
+                  <div className="grid gap-2">
+                    <div className="flex items-center gap-3 text-sm">
+                      <Mic className="w-4 h-4 text-primary" />
+                      <span className="text-foreground">Full speech script with natural pauses</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm">
+                      <Clock className="w-4 h-4 text-primary" />
+                      <span className="text-foreground">Timing markers for each section</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                      <span className="text-foreground">Smooth transitions between topics</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Script structure preview */}
+                {outputSections.length > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Script Structure
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {outputSections.map((section, index) => (
+                        <motion.span
+                          key={section}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.1 + index * 0.03 }}
+                          className="text-xs px-3 py-1.5 rounded-full bg-muted text-muted-foreground"
+                        >
+                          {section}
+                        </motion.span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-1" />
+
+              {/* Buttons */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="mt-8 space-y-3"
+              >
+                <Button
+                  variant="time"
+                  size="xl"
+                  onClick={handleGenerate}
+                  className="w-full"
+                >
+                  <Sparkles className="w-5 h-5" />
+                  Generate My Pitch
+                </Button>
+                <Button variant="ghost" onClick={onBack} className="w-full">
+                  <ArrowLeft className="w-4 h-4" />
+                  Back
+                </Button>
+              </motion.div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="generating"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="flex-1 flex flex-col items-center justify-center"
+            >
+              {/* Animated Icon */}
+              <motion.div
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                className="w-24 h-24 rounded-3xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-8"
+              >
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                >
+                  <Sparkles className="w-12 h-12 text-primary" />
+                </motion.div>
+              </motion.div>
+
+              {/* Progress Steps */}
+              <div className="w-full max-w-sm space-y-3">
+                {generationSteps.map((step, index) => {
+                  const isCompleted = completedSteps.includes(step.id);
+                  const isCurrent = currentStep === index && !isCompleted;
+                  const isPending = index > currentStep;
+
+                  return (
+                    <motion.div
+                      key={step.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${
+                        isCurrent ? "bg-primary/10" : isCompleted ? "bg-muted/50" : ""
+                      }`}
+                    >
+                      <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
+                        {isCompleted ? (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                          >
+                            <CheckCircle className="w-5 h-5 text-primary" />
+                          </motion.div>
+                        ) : isCurrent ? (
+                          <Loader2 className="w-5 h-5 text-primary animate-spin" />
+                        ) : (
+                          <div className="w-2 h-2 rounded-full bg-muted-foreground/30" />
+                        )}
+                      </div>
+                      <span
+                        className={`text-sm ${
+                          isCompleted
+                            ? "text-muted-foreground"
+                            : isCurrent
+                            ? "text-foreground font-medium"
+                            : "text-muted-foreground/50"
+                        }`}
+                      >
+                        {step.label}
+                      </span>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              {/* Progress bar */}
+              <div className="w-full max-w-sm mt-8">
+                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-primary rounded-full"
+                    initial={{ width: "0%" }}
+                    animate={{
+                      width: `${((completedSteps.length) / generationSteps.length) * 100}%`,
+                    }}
+                    transition={{ duration: 0.3 }}
+                  />
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </WizardStep>
   );

@@ -624,6 +624,8 @@ const Index = () => {
             key="generation"
             onNext={handleGeneration}
             onBack={handleBack}
+            track={data.track}
+            idea={data.idea}
           />
         )}
       </AnimatePresence>
