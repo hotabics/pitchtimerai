@@ -5,7 +5,8 @@ import {
   FileText, Video, Play, Pause, RotateCcw, Monitor, 
   Smartphone, Presentation, RefreshCw, Download, Clock, Minus, 
   Smile, Zap, Timer, SkipForward, Volume2, VolumeX,
-  Gauge, Mic, Pencil, Check, X, Copy, CheckCheck, Share2, Link, QrCode, Printer
+  Gauge, Mic, Pencil, Check, X, Copy, CheckCheck, Share2, Link, QrCode, Printer,
+  LayoutGrid
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ import { toast } from "@/hooks/use-toast";
 import { TrackType, trackConfigs } from "@/lib/tracks";
 import { SpeechCoach } from "./SpeechCoach";
 import { AICoachPage } from "./ai-coach/AICoachPage";
+import { SlideDeck } from "./slides/SlideDeck";
 import { useAICoachStore } from "@/stores/aiCoachStore";
 import jsPDF from "jspdf";
 import { trackEvent } from "@/utils/analytics";
@@ -85,6 +87,7 @@ const voiceOptions = [
 
 const tabs = [
   { id: "script", label: "Speech", icon: FileText },
+  { id: "slides", label: "Slides", icon: LayoutGrid },
   { id: "practice", label: "Practice", icon: Video },
   { id: "coach", label: "AI Coach", icon: Mic },
 ];
@@ -1547,6 +1550,24 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
                 {/* Script Feedback Bar */}
                 <ScriptFeedbackBar />
               </motion.div>
+            </motion.div>
+          )}
+
+          {activeTab === "slides" && (
+            <motion.div
+              key="slides"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="min-h-[500px]"
+            >
+              <SlideDeck
+                scriptBlocks={speechBlocks.map(block => ({
+                  title: block.title,
+                  content: block.content,
+                }))}
+                projectTitle={data.idea?.slice(0, 50) || 'My Pitch'}
+              />
             </motion.div>
           )}
 
