@@ -34,6 +34,7 @@ import { VersionComparisonBar } from "./feedback/VersionComparisonBar";
 import { useUserStore } from "@/stores/userStore";
 import { ScriptVersionHistory, ScriptVersion } from "./dashboard/ScriptVersionHistory";
 import { openPrintView } from "./dashboard/PrintView";
+import { HookRegenerator, HookStyleBadge } from "./dashboard/HookRegenerator";
 
 interface SpeechBlock {
   timeStart: string;
@@ -139,6 +140,7 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
     fullScript?: string;
     bulletPoints?: string[];
     estimatedDuration?: string;
+    hookStyle?: string;
   } | null>(null);
   const [viewMode, setViewMode] = useState<"blocks" | "full" | "bullets">("blocks");
   
@@ -580,6 +582,7 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
         fullScript: result.speech.full_script,
         bulletPoints: result.speech.bullet_points,
         estimatedDuration: result.speech.estimated_duration,
+        hookStyle: result.meta.hookStyle || result.speech.hookStyle,
       });
       setCurrentBlock(0);
       
@@ -969,7 +972,7 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
           className="mb-6"
         >
           {/* Project Info Badge */}
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
             <span className={cn(
               "px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r text-white",
               trackConfig?.color || "from-primary to-primary"
@@ -985,15 +988,50 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
                 • {meta.actualWordCount} words
               </span>
             )}
+            {meta?.hookStyle && (
+              <HookStyleBadge style={meta.hookStyle} />
+            )}
           </div>
           
-          <h1 className="text-2xl font-bold text-foreground">Your Speech Is Ready!</h1>
-          <p className="text-muted-foreground mt-1 text-lg font-medium">{data.idea}</p>
-          {data.audienceLabel && (
-            <p className="text-sm text-muted-foreground mt-1">
-              For: {data.audienceLabel}
-            </p>
-          )}
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">Your Speech Is Ready!</h1>
+              <p className="text-muted-foreground mt-1 text-lg font-medium">{data.idea}</p>
+              {data.audienceLabel && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  For: {data.audienceLabel}
+                </p>
+              )}
+            </div>
+            
+            {/* Hook Regenerator - only show when we have speech blocks */}
+            {speechBlocks.length > 0 && speechBlocks[0]?.content && (
+              <HookRegenerator
+                currentHook={speechBlocks[0].content}
+                currentStyle={meta?.hookStyle}
+                idea={data.idea}
+                track={data.track}
+                onHookRegenerated={(newHook, newStyle) => {
+                  // Update only the first block with new hook
+                  setSpeechBlocks(prev => [
+                    { ...prev[0], content: newHook },
+                    ...prev.slice(1)
+                  ]);
+                  // Update meta with new style
+                  setMeta(prev => prev ? { ...prev, hookStyle: newStyle } : null);
+                  // Update full script if present
+                  if (meta?.fullScript) {
+                    const restOfScript = meta.fullScript.split('\n\n').slice(1).join('\n\n');
+                    setMeta(prev => prev ? { 
+                      ...prev, 
+                      fullScript: newHook + '\n\n' + restOfScript,
+                      hookStyle: newStyle 
+                    } : null);
+                  }
+                }}
+              />
+            )}
+          </div>
         </motion.div>
 
         {/* Tabs */}
