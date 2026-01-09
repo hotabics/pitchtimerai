@@ -1,6 +1,7 @@
-// Video Storage Service - Upload recordings to Supabase Storage with thumbnail generation
+// Video Storage Service - Upload recordings to Supabase Storage with thumbnail generation and compression
 
 import { supabase } from '@/integrations/supabase/client';
+import { compressVideo, formatFileSize } from './videoCompression';
 
 /**
  * Generate a thumbnail from the first frame of a video blob
@@ -84,24 +85,59 @@ const generateFilename = (prefix: string, extension: string): string => {
  */
 export const uploadRecording = async (
   videoBlob: Blob,
-  sessionId?: string
-): Promise<{ videoUrl: string | null; thumbnailUrl: string | null; error: string | null }> => {
+  sessionId?: string,
+  onProgress?: (step: string, progress: number) => void
+): Promise<{ 
+  videoUrl: string | null; 
+  thumbnailUrl: string | null; 
+  error: string | null;
+  originalSize?: number;
+  compressedSize?: number;
+}> => {
   try {
     const prefix = sessionId || 'recording';
+    
+    // Step 1: Compress video if needed
+    onProgress?.('Compressing video...', 10);
+    const originalSize = videoBlob.size;
+    console.log(`Original video size: ${formatFileSize(originalSize)}`);
+    
+    let uploadBlob = videoBlob;
+    let compressedSize = originalSize;
+    
+    // Compress if > 5MB
+    if (originalSize > 5 * 1024 * 1024) {
+      try {
+        const result = await compressVideo(videoBlob, {
+          maxWidth: 1280,
+          maxHeight: 720,
+          videoBitrate: 1500000, // 1.5 Mbps
+        });
+        uploadBlob = result.compressed;
+        compressedSize = result.compressedSize;
+        console.log(`Compressed to: ${formatFileSize(compressedSize)} (${result.compressionRatio.toFixed(1)}x reduction)`);
+      } catch (compErr) {
+        console.warn('Compression failed, uploading original:', compErr);
+      }
+    }
+    
+    onProgress?.('Uploading video...', 40);
     
     // Upload video
     const videoFilename = generateFilename(prefix, 'webm');
     const { data: videoData, error: videoError } = await supabase.storage
       .from('pitch-recordings')
-      .upload(videoFilename, videoBlob, {
+      .upload(videoFilename, uploadBlob, {
         contentType: 'video/webm',
         cacheControl: '3600',
       });
 
     if (videoError) {
       console.error('Video upload error:', videoError);
-      return { videoUrl: null, thumbnailUrl: null, error: videoError.message };
+      return { videoUrl: null, thumbnailUrl: null, error: videoError.message, originalSize, compressedSize };
     }
+    
+    onProgress?.('Generating thumbnail...', 70);
 
     // Get video URL
     const { data: videoUrlData } = supabase.storage
@@ -115,9 +151,11 @@ export const uploadRecording = async (
 
     const videoUrl = signedVideoUrl?.signedUrl || videoUrlData?.publicUrl || null;
 
-    // Generate and upload thumbnail
+    // Generate and upload thumbnail (use original blob for better quality)
     let thumbnailUrl: string | null = null;
     const thumbnailBlob = await generateThumbnail(videoBlob);
+    
+    onProgress?.('Uploading thumbnail...', 85);
     
     if (thumbnailBlob) {
       const thumbnailFilename = generateFilename(`${prefix}_thumb`, 'jpg');
@@ -137,7 +175,8 @@ export const uploadRecording = async (
       }
     }
 
-    return { videoUrl, thumbnailUrl, error: null };
+    onProgress?.('Complete!', 100);
+    return { videoUrl, thumbnailUrl, error: null, originalSize, compressedSize };
   } catch (error) {
     console.error('Upload failed:', error);
     return { 
