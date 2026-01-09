@@ -1,4 +1,4 @@
-// AI Coach Recording View - Professional Teleprompter + Cue Cards + Face Mesh + Body Language HUD
+// AI Coach Recording View - Immersive Studio Mode with Teleprompter + Face Mesh + Body Language HUD
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,6 +19,10 @@ import {
   Move,
   FileText,
   ListChecks,
+  Maximize,
+  Minimize,
+  X,
+  Type,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -43,8 +47,6 @@ interface AICoachRecordingProps {
   onStop: (audioBlob: Blob, videoBlob: Blob, duration: number, frameData: FrameData[]) => void;
   onCancel: () => void;
   initialStream?: MediaStream | null;
-  /** Optional audio source URL for voiceover sync - when provided, scroll syncs to audio playback */
-  voiceoverAudioSrc?: string;
 }
 
 type SpeechRecognitionCtor = new () => any;
@@ -70,7 +72,7 @@ const LANGUAGES = [
   { code: "ko-KR", label: "Korean" },
 ];
 
-export const AICoachRecording = ({ onStop, onCancel, initialStream, voiceoverAudioSrc }: AICoachRecordingProps) => {
+export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRecordingProps) => {
   const { 
     scriptBlocks, 
     bulletPoints,
@@ -109,18 +111,16 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream, voiceoverAud
   const [duration, setDuration] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState("Initializing AI Vision...");
 
-  // Teleprompter state - audio is the source of truth
+  // Teleprompter state
   const [teleprompterPaused, setTeleprompterPaused] = useState(false);
-  const [scrollSpeed, setScrollSpeed] = useState(1); // 0.5 to 2
-  
-  // Audio-driven sync state
-  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
-  const [audioDuration, setAudioDuration] = useState(0);
-  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
-  const [isAudioBuffering, setIsAudioBuffering] = useState(false);
+  const [scrollSpeed, setScrollSpeed] = useState(1); // 0.5 to 3
+  const [fontSize, setFontSize] = useState(1.5); // rem multiplier
+  const [teleprompterOpacity, setTeleprompterOpacity] = useState(0.8);
   const [currentBlockIndex, setCurrentBlockIndex] = useState(0);
-  const audioElementRef = useRef<HTMLAudioElement | null>(null);
-  const blockTimestampsRef = useRef<{ start: number; end: number }[]>([]);
+  
+  // Studio Mode (Fullscreen)
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const studioContainerRef = useRef<HTMLDivElement>(null);
 
   // HUD metrics (updated less frequently to prevent flicker)
   const [hudMetrics, setHudMetrics] = useState<{
@@ -330,138 +330,9 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream, voiceoverAud
     return () => clearInterval(interval);
   }, [isRecording]);
 
-  // Auto-play voiceover audio when recording starts
+  // Manual scroll for teleprompter (speed-controlled interval)
   useEffect(() => {
-    const audio = audioElementRef.current;
-    if (!audio || !voiceoverAudioSrc || !isRecording) return;
-
-    const handleCanPlay = () => {
-      if (!teleprompterPaused) {
-        audio.play().catch(console.error);
-      }
-    };
-
-    audio.addEventListener('canplaythrough', handleCanPlay);
-    
-    // Try to play immediately if already loaded
-    if (audio.readyState >= 4 && !teleprompterPaused) {
-      audio.play().catch(console.error);
-    }
-
-    return () => {
-      audio.removeEventListener('canplaythrough', handleCanPlay);
-    };
-  }, [voiceoverAudioSrc, isRecording, teleprompterPaused]);
-
-  // Audio-driven teleprompter scroll (audio is the source of truth)
-  useEffect(() => {
-    const audio = audioElementRef.current;
-    const teleprompter = teleprompterRef.current;
-    
-    if (!audio || !teleprompter || !hasScript || promptMode !== 'teleprompter') return;
-
-    // Calculate block timestamps based on word counts
-    if (blockTimestampsRef.current.length === 0 && scriptBlocks.length > 0) {
-      const WPM = 150;
-      let currentTime = 0;
-      const timestamps: { start: number; end: number }[] = [];
-      
-      scriptBlocks.forEach(block => {
-        const wordCount = block.content.split(/\s+/).length;
-        const pauseTime = 0.5;
-        const duration = (wordCount / WPM) * 60;
-        timestamps.push({ start: currentTime, end: currentTime + duration });
-        currentTime += duration + pauseTime;
-      });
-      
-      blockTimestampsRef.current = timestamps;
-    }
-
-    // Calculate scroll position based on audio progress
-    const updateScrollFromAudio = () => {
-      if (audio.duration && audio.duration > 0) {
-        const progress = audio.currentTime / audio.duration;
-        const maxScroll = teleprompter.scrollHeight - teleprompter.clientHeight;
-        teleprompter.scrollTop = progress * maxScroll;
-      }
-    };
-
-    // Update current block based on audio time
-    const updateCurrentBlock = () => {
-      const currentTime = audio.currentTime;
-      const timestamps = blockTimestampsRef.current;
-      
-      // Scale timestamps to actual audio duration
-      const estimatedDuration = timestamps[timestamps.length - 1]?.end || 1;
-      const scale = audio.duration / estimatedDuration;
-      
-      for (let i = 0; i < timestamps.length; i++) {
-        const scaledStart = timestamps[i].start * scale;
-        const scaledEnd = timestamps[i].end * scale;
-        if (currentTime >= scaledStart && currentTime < scaledEnd) {
-          setCurrentBlockIndex(i);
-          return;
-        }
-      }
-      
-      // If past all blocks, show last
-      if (currentTime >= (timestamps[timestamps.length - 1]?.end || 0) * scale) {
-        setCurrentBlockIndex(timestamps.length - 1);
-      }
-    };
-
-    const handleTimeUpdate = () => {
-      setAudioCurrentTime(audio.currentTime);
-      updateScrollFromAudio();
-      updateCurrentBlock();
-    };
-
-    const handleDurationChange = () => {
-      setAudioDuration(audio.duration || 0);
-    };
-
-    const handlePlay = () => {
-      setIsAudioPlaying(true);
-      setIsAudioBuffering(false);
-    };
-
-    const handlePause = () => {
-      setIsAudioPlaying(false);
-    };
-
-    const handleWaiting = () => {
-      setIsAudioBuffering(true);
-    };
-
-    const handlePlaying = () => {
-      setIsAudioBuffering(false);
-      setIsAudioPlaying(true);
-    };
-
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('durationchange', handleDurationChange);
-    audio.addEventListener('play', handlePlay);
-    audio.addEventListener('pause', handlePause);
-    audio.addEventListener('waiting', handleWaiting);
-    audio.addEventListener('playing', handlePlaying);
-
-    return () => {
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
-      audio.removeEventListener('durationchange', handleDurationChange);
-      audio.removeEventListener('play', handlePlay);
-      audio.removeEventListener('pause', handlePause);
-      audio.removeEventListener('waiting', handleWaiting);
-      audio.removeEventListener('playing', handlePlaying);
-    };
-  }, [hasScript, promptMode, scriptBlocks]);
-
-  // Fallback manual scroll when no audio (speed-controlled interval)
-  useEffect(() => {
-    // Only use manual scroll if there's no audio element or audio duration is 0
-    const audio = audioElementRef.current;
-    const hasAudioSync = audio && audioDuration > 0;
-    
-    if (!isRecording || !hasScript || teleprompterPaused || !teleprompterRef.current || hasAudioSync || promptMode !== 'teleprompter') {
+    if (!isRecording || !hasScript || teleprompterPaused || !teleprompterRef.current || promptMode !== 'teleprompter') {
       if (scrollIntervalRef.current) {
         clearInterval(scrollIntervalRef.current);
         scrollIntervalRef.current = null;
@@ -475,13 +346,25 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream, voiceoverAud
     scrollIntervalRef.current = window.setInterval(() => {
       if (teleprompterRef.current) {
         teleprompterRef.current.scrollTop += pixelsPerTick;
+        
+        // Update current block based on scroll position
+        const scrollTop = teleprompterRef.current.scrollTop;
+        const scrollHeight = teleprompterRef.current.scrollHeight - teleprompterRef.current.clientHeight;
+        const progress = scrollHeight > 0 ? scrollTop / scrollHeight : 0;
+        const newBlockIndex = Math.min(
+          Math.floor(progress * scriptBlocks.length),
+          scriptBlocks.length - 1
+        );
+        if (newBlockIndex !== currentBlockIndex && newBlockIndex >= 0) {
+          setCurrentBlockIndex(newBlockIndex);
+        }
       }
     }, baseInterval);
 
     return () => {
       if (scrollIntervalRef.current) clearInterval(scrollIntervalRef.current);
     };
-  }, [hasScript, isRecording, teleprompterPaused, scrollSpeed, audioDuration, promptMode]);
+  }, [hasScript, isRecording, teleprompterPaused, scrollSpeed, promptMode, scriptBlocks.length, currentBlockIndex]);
 
   // Live transcription (also enabled for cue card mode's AI Voice advance)
   const shouldEnableTranscription = !hasScript || (hasScript && promptMode === 'cueCards');
@@ -628,17 +511,12 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream, voiceoverAud
     if (speechRecognitionRef.current) try { speechRecognitionRef.current.stop?.(); } catch {}
     if (audioContextRef.current) audioContextRef.current.close().catch(() => {});
     if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
-    if (audioElementRef.current) {
-      audioElementRef.current.pause();
-      audioElementRef.current.src = '';
-    }
     animationFrameRef.current = null;
     scrollIntervalRef.current = null;
     speechRecognitionRef.current = null;
     audioContextRef.current = null;
     analyserRef.current = null;
     streamRef.current = null;
-    audioElementRef.current = null;
   }, []);
 
   useEffect(() => cleanup, [cleanup]);
@@ -665,22 +543,10 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream, voiceoverAud
 
   const handleCancel = useCallback(() => { cleanup(); onCancel(); }, [cleanup, onCancel]);
 
-  // Unified pause handler - controls both audio and teleprompter
+  // Toggle pause handler for teleprompter
   const handleTogglePause = useCallback(() => {
-    const audio = audioElementRef.current;
-    
-    if (audio && audioDuration > 0) {
-      // Audio is the source of truth - toggle audio playback
-      if (audio.paused) {
-        audio.play().catch(console.error);
-      } else {
-        audio.pause();
-      }
-    }
-    
-    // Always toggle teleprompter pause state (for fallback scroll mode)
     setTeleprompterPaused(prev => !prev);
-  }, [audioDuration]);
+  }, []);
 
   // Keyboard shortcuts: Space = toggle pause, Escape = cancel
   useEffect(() => {
@@ -701,19 +567,36 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream, voiceoverAud
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [hasScript, handleCancel, handleTogglePause]);
 
-  // Format time helper - now uses audio time when available
+  // Format time helper
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // Determine the display time - use audio time if available, otherwise recording duration
-  const displayCurrentTime = audioDuration > 0 ? audioCurrentTime : duration;
-  const displayTotalTime = audioDuration > 0 ? audioDuration : null;
-  
-  // Determine if we're in a paused state (audio or teleprompter)
-  const isPaused = audioDuration > 0 ? !isAudioPlaying : teleprompterPaused;
+  // Fullscreen toggle
+  const toggleFullscreen = useCallback(() => {
+    if (!studioContainerRef.current) return;
+    
+    if (!document.fullscreenElement) {
+      studioContainerRef.current.requestFullscreen().then(() => {
+        setIsFullscreen(true);
+      }).catch(console.error);
+    } else {
+      document.exitFullscreen().then(() => {
+        setIsFullscreen(false);
+      }).catch(console.error);
+    }
+  }, []);
+
+  // Listen for fullscreen changes (e.g., Escape key)
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   const liveTranscriptDisplay = useMemo(() => {
     const parts = liveTranscript.split(/\s*\[interim\]\s*/);
@@ -737,40 +620,23 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream, voiceoverAud
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className={`w-3 h-3 rounded-full ${isRecording ? "bg-destructive animate-pulse" : "bg-muted"}`} />
-          <span className="font-semibold">
-            {isRecording ? (isPaused ? "Paused" : "Recording") : "Preparing"}
-          </span>
-          {/* Audio-synced timer display */}
-          <span className="text-2xl font-mono font-bold">
-            {formatTime(displayCurrentTime)}
-            {displayTotalTime !== null && (
-              <span className="text-base text-muted-foreground"> / {formatTime(displayTotalTime)}</span>
-            )}
-          </span>
-          {/* Buffering indicator */}
-          {isAudioBuffering && (
-            <span className="text-xs text-amber-400 animate-pulse">Buffering...</span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleCancel}>Cancel</Button>
-          <Button variant="destructive" size="sm" onClick={handleStop} disabled={!isRecording}>
-            <Square className="w-4 h-4 mr-2 fill-current" />
-            Stop
-          </Button>
-        </div>
-      </div>
-
-      {/* Main Recording Container - Layered Architecture */}
-      <div className="relative w-full rounded-xl overflow-hidden bg-black" style={{ aspectRatio: "16/9" }}>
+    <motion.div 
+      ref={studioContainerRef}
+      initial={{ opacity: 0 }} 
+      animate={{ opacity: 1 }} 
+      className={cn(
+        "relative",
+        isFullscreen ? "fixed inset-0 z-50 bg-black" : "space-y-4"
+      )}
+    >
+      {/* Main Recording Container - Fullscreen-Optimized */}
+      <div className={cn(
+        "relative overflow-hidden bg-black",
+        isFullscreen ? "w-full h-full" : "w-full rounded-xl",
+        !isFullscreen && "aspect-video"
+      )}>
         
-        {/* Layer 0: Video */}
+        {/* Layer 0: Video - Maximum Coverage */}
         <video
           ref={attachVideoEl}
           autoPlay
@@ -779,16 +645,6 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream, voiceoverAud
           className="absolute inset-0 w-full h-full object-cover"
           style={{ zIndex: 0, transform: "scaleX(-1)" }}
         />
-
-        {/* Hidden audio element for voiceover sync - controlled programmatically */}
-        {voiceoverAudioSrc && (
-          <audio
-            ref={(el) => { audioElementRef.current = el; }}
-            src={voiceoverAudioSrc}
-            preload="auto"
-            className="hidden"
-          />
-        )}
 
         {/* Layer 10: Face Mesh Canvas */}
         {!mediaPipeFailed && (
@@ -821,37 +677,72 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream, voiceoverAud
             )}
           </AnimatePresence>
 
-          {/* HUD: Top-Left - Audio Level */}
-          <div className="absolute top-4 left-4 flex items-center gap-2 px-3 py-2 rounded-lg bg-black/60 backdrop-blur-sm pointer-events-auto">
-            <Volume2 className="w-4 h-4 text-cyan-400" />
-            <div className="w-16 h-2 bg-white/20 rounded-full overflow-hidden">
-              <motion.div
-                className="h-full bg-gradient-to-r from-cyan-400 to-green-400"
-                animate={{ width: `${hudMetrics.micLevel}%` }}
-                transition={{ duration: 0.1 }}
-              />
+          {/* HUD: Top-Left - Timer + Status */}
+          <div className="absolute top-4 left-4 flex items-center gap-3 pointer-events-auto">
+            {/* Recording Status */}
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/60 backdrop-blur-sm">
+              <div className={`w-3 h-3 rounded-full ${isRecording ? (teleprompterPaused ? "bg-amber-400" : "bg-destructive animate-pulse") : "bg-muted"}`} />
+              <span className="text-sm font-medium text-white">
+                {isRecording ? (teleprompterPaused ? "Paused" : "REC") : "Ready"}
+              </span>
+              <span className="text-lg font-mono font-bold text-white">
+                {formatTime(duration)}
+              </span>
+            </div>
+            
+            {/* Mic Level */}
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/60 backdrop-blur-sm">
+              <Volume2 className="w-4 h-4 text-cyan-400" />
+              <div className="w-12 h-2 bg-white/20 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-cyan-400 to-green-400"
+                  animate={{ width: `${hudMetrics.micLevel}%` }}
+                  transition={{ duration: 0.1 }}
+                />
+              </div>
             </div>
           </div>
 
-          {/* HUD: Top-Right - Eye Contact Status */}
-          <div className="absolute top-4 right-4 flex items-center gap-2 px-3 py-2 rounded-lg bg-black/60 backdrop-blur-sm pointer-events-auto">
-            {hudMetrics.eyeContact ? (
-              <>
-                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                <Eye className="w-4 h-4 text-green-400" />
-                <span className="text-xs font-medium text-green-400">Locked On</span>
-              </>
-            ) : (
-              <>
-                <div className="w-2 h-2 rounded-full bg-red-400" />
-                <EyeOff className="w-4 h-4 text-red-400" />
-                <span className="text-xs font-medium text-red-400">Looking Away</span>
-              </>
-            )}
+          {/* HUD: Top-Right - Controls */}
+          <div className="absolute top-4 right-4 flex items-center gap-2 pointer-events-auto">
+            {/* Eye Contact Status */}
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/60 backdrop-blur-sm">
+              {hudMetrics.eyeContact ? (
+                <>
+                  <Eye className="w-4 h-4 text-green-400" />
+                  <span className="text-xs font-medium text-green-400">Eye Contact</span>
+                </>
+              ) : (
+                <>
+                  <EyeOff className="w-4 h-4 text-red-400" />
+                  <span className="text-xs font-medium text-red-400">Look at Camera</span>
+                </>
+              )}
+            </div>
+            
+            {/* Fullscreen Toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 bg-black/60 backdrop-blur-sm text-white hover:bg-black/80"
+              onClick={toggleFullscreen}
+            >
+              {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+            </Button>
+            
+            {/* Cancel Button (Small X) */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 bg-black/60 backdrop-blur-sm text-white/70 hover:text-red-400 hover:bg-black/80"
+              onClick={handleCancel}
+            >
+              <X className="w-4 h-4" />
+            </Button>
           </div>
 
           {/* HUD: Bottom-Left - Body Language */}
-          <div className="absolute bottom-4 left-4 flex flex-col gap-2 pointer-events-auto">
+          <div className="absolute bottom-24 left-4 flex flex-col gap-2 pointer-events-auto">
             {/* Posture */}
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-sm ${hudMetrics.postureScore >= 80 ? '' : 'border border-amber-500/50'}`}>
               <PersonStanding className={`w-4 h-4 ${hudMetrics.postureScore >= 80 ? 'text-green-400' : 'text-amber-400'}`} />
@@ -866,33 +757,13 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream, voiceoverAud
                 {hudMetrics.handsStatus === 'visible' ? 'Hands Visible' : hudMetrics.handsStatus === 'crossed' ? 'Arms Crossed' : 'Show Hands'}
               </span>
             </div>
-            {/* Stability */}
+            {/* Stability Warning */}
             {hudMetrics.bodyStability < 70 && (
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-sm border border-red-500/50 animate-pulse">
                 <Move className="w-4 h-4 text-red-400" />
                 <span className="text-xs font-medium text-red-400">Stop Swaying!</span>
               </div>
             )}
-          </div>
-
-          {/* HUD: Bottom-Center - System Status */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2 rounded-full bg-black/60 backdrop-blur-sm pointer-events-auto">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-              <span className="text-xs text-cyan-400 font-medium">Full Body Tracking</span>
-            </div>
-            <div className="w-px h-4 bg-white/20" />
-            <div className="flex items-center gap-2">
-              <Smile className={`w-4 h-4 ${hudMetrics.smiling ? "text-yellow-400" : "text-white/50"}`} />
-              <span className={`text-xs ${hudMetrics.smiling ? "text-yellow-400" : "text-white/50"}`}>
-                {hudMetrics.smiling ? "Smiling" : "Neutral"}
-              </span>
-            </div>
-            <div className="w-px h-4 bg-white/20" />
-            <div className="flex items-center gap-2">
-              <Mic className="w-4 h-4 text-red-400 animate-pulse" />
-              <span className="text-xs text-red-400">REC</span>
-            </div>
           </div>
 
           {/* MediaPipe failed notice */}
@@ -903,11 +774,11 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream, voiceoverAud
           )}
         </div>
 
-        {/* Layer 25: Prompt Overlay (Teleprompter or Cue Cards) */}
+        {/* Layer 25: Prompt Overlay (Teleprompter or Cue Cards) - Adjustable opacity */}
         {hasScript && isRecording && (
           <div
-            className="absolute bottom-20 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl pointer-events-auto"
-            style={{ zIndex: 25 }}
+            className="absolute bottom-28 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl pointer-events-auto"
+            style={{ zIndex: 25, opacity: teleprompterOpacity }}
           >
             <div className="relative rounded-xl bg-black/70 backdrop-blur-md border border-white/10 overflow-hidden">
               {/* Mode Toggle + Controls Header */}
@@ -940,32 +811,54 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream, voiceoverAud
                   </button>
                 </div>
 
-                {/* Teleprompter-specific controls */}
+                {/* Teleprompter-specific controls: Font Size + Speed + Pause */}
                 {promptMode === 'teleprompter' && (
-                  <div className="flex items-center gap-3">
-                    {/* Speed slider only shown when NOT using audio sync */}
-                    {audioDuration === 0 && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-white/50">Speed</span>
-                        <Slider
-                          value={[scrollSpeed]}
-                          onValueChange={([v]) => setScrollSpeed(v)}
-                          min={0.5}
-                          max={3}
-                          step={0.5}
-                          className="w-20"
-                        />
-                      </div>
-                    )}
-                    {/* Unified play/pause button */}
+                  <div className="flex items-center gap-4">
+                    {/* Font Size */}
+                    <div className="flex items-center gap-2">
+                      <Type className="w-3.5 h-3.5 text-white/50" />
+                      <Slider
+                        value={[fontSize]}
+                        onValueChange={([v]) => setFontSize(v)}
+                        min={1}
+                        max={2.5}
+                        step={0.25}
+                        className="w-16"
+                      />
+                    </div>
+                    {/* Speed */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-white/50">Speed</span>
+                      <Slider
+                        value={[scrollSpeed]}
+                        onValueChange={([v]) => setScrollSpeed(v)}
+                        min={0.5}
+                        max={3}
+                        step={0.5}
+                        className="w-16"
+                      />
+                    </div>
+                    {/* Play/Pause */}
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-7 w-7 text-white/70 hover:text-white"
                       onClick={handleTogglePause}
                     >
-                      {isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+                      {teleprompterPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
                     </Button>
+                    {/* Opacity */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-white/50">Opacity</span>
+                      <Slider
+                        value={[teleprompterOpacity]}
+                        onValueChange={([v]) => setTeleprompterOpacity(v)}
+                        min={0.3}
+                        max={1}
+                        step={0.1}
+                        className="w-14"
+                      />
+                    </div>
                   </div>
                 )}
               </div>
@@ -976,35 +869,22 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream, voiceoverAud
                   {/* Reading Zone Indicator */}
                   <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-12 bg-cyan-400/10 border-y border-cyan-400/30 pointer-events-none z-10" />
 
-                  {/* Progress Bar */}
-                  {audioDuration > 0 && (
-                    <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 z-10">
-                      <motion.div
-                        className="h-full bg-gradient-to-r from-cyan-400 to-green-400"
-                        animate={{ width: `${(audioCurrentTime / audioDuration) * 100}%` }}
-                        transition={{ duration: 0.1 }}
-                      />
-                    </div>
-                  )}
-
                   {/* Block Progress Indicator */}
-                  {audioDuration > 0 && (
-                    <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 px-2 py-1 rounded bg-black/50 backdrop-blur-sm">
-                      {scriptBlocks.map((_, idx) => (
-                        <div
-                          key={idx}
-                          className={cn(
-                            "w-2 h-2 rounded-full transition-all duration-300",
-                            idx === currentBlockIndex
-                              ? "bg-cyan-400 scale-125"
-                              : idx < currentBlockIndex
-                                ? "bg-green-400"
-                                : "bg-white/30"
-                          )}
-                        />
-                      ))}
-                    </div>
-                  )}
+                  <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 px-2 py-1 rounded bg-black/50 backdrop-blur-sm">
+                    {scriptBlocks.map((_, idx) => (
+                      <div
+                        key={idx}
+                        className={cn(
+                          "w-2 h-2 rounded-full transition-all duration-300",
+                          idx === currentBlockIndex
+                            ? "bg-cyan-400 scale-125"
+                            : idx < currentBlockIndex
+                              ? "bg-green-400"
+                              : "bg-white/30"
+                        )}
+                      />
+                    ))}
+                  </div>
 
                   {/* Script Content */}
                   <div
@@ -1028,7 +908,7 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream, voiceoverAud
                           )}
                         >
                           {/* Current block highlight bar */}
-                          {idx === currentBlockIndex && audioDuration > 0 && (
+                          {idx === currentBlockIndex && (
                             <div className="absolute -left-4 top-0 bottom-0 w-1 bg-gradient-to-b from-cyan-400 to-green-400 rounded-full" />
                           )}
                           <p className={cn(
@@ -1037,10 +917,13 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream, voiceoverAud
                           )}>
                             {block.title}
                           </p>
-                          <p className={cn(
-                            "text-2xl leading-relaxed font-medium transition-colors",
-                            idx === currentBlockIndex ? "text-white" : "text-white/60"
-                          )}>
+                          <p 
+                            className={cn(
+                              "leading-relaxed font-medium transition-colors",
+                              idx === currentBlockIndex ? "text-white" : "text-white/60"
+                            )}
+                            style={{ fontSize: `${fontSize}rem` }}
+                          >
                             {block.content}
                           </p>
                         </motion.div>
@@ -1060,6 +943,39 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream, voiceoverAud
                   />
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Layer 30: Floating Bottom Control Bar - Camera App Style */}
+        {isRecording && (
+          <div 
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center justify-center gap-8 pointer-events-auto"
+            style={{ zIndex: 30 }}
+          >
+            {/* Expression Indicator */}
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/60 backdrop-blur-sm">
+              <Smile className={`w-5 h-5 ${hudMetrics.smiling ? "text-yellow-400" : "text-white/50"}`} />
+              <span className={`text-sm ${hudMetrics.smiling ? "text-yellow-400" : "text-white/50"}`}>
+                {hudMetrics.smiling ? "Great!" : "Smile"}
+              </span>
+            </div>
+
+            {/* MAIN STOP BUTTON - Large, Centered, Prominent */}
+            <button
+              onClick={handleStop}
+              disabled={!isRecording}
+              className="relative w-20 h-20 rounded-full bg-white/90 hover:bg-white flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-2xl ring-4 ring-white/30"
+            >
+              <div className="w-8 h-8 rounded-sm bg-destructive" />
+              {/* Pulsing ring animation */}
+              <div className="absolute inset-0 rounded-full border-4 border-destructive/50 animate-ping" style={{ animationDuration: '2s' }} />
+            </button>
+
+            {/* AI Tracking Status */}
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/60 backdrop-blur-sm">
+              <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+              <span className="text-sm text-cyan-400">AI Active</span>
             </div>
           </div>
         )}
@@ -1145,10 +1061,12 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream, voiceoverAud
         </section>
       )}
 
-      {/* Tip */}
-      <p className="text-center text-sm text-muted-foreground">
-        Deliver your pitch naturally. {!mediaPipeFailed && "AI is tracking your eye contact and expressions."}
-      </p>
+      {/* Tip - Only shown when not fullscreen */}
+      {!isFullscreen && (
+        <p className="text-center text-sm text-muted-foreground">
+          Press <kbd className="px-1.5 py-0.5 rounded bg-muted text-xs font-mono">Space</kbd> to pause • <kbd className="px-1.5 py-0.5 rounded bg-muted text-xs font-mono">Esc</kbd> to cancel
+        </p>
+      )}
     </motion.div>
   );
 };
