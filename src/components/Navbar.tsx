@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, Sparkles, LogOut, User, CreditCard, Zap } from 'lucide-react';
+import { Menu, Sparkles, LogOut, User, CreditCard, Zap, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useUserStore } from '@/stores/userStore';
+import { useTheme } from '@/hooks/useTheme';
 import { cn } from '@/lib/utils';
 
 // Navigation links configuration
@@ -44,6 +45,7 @@ export const Navbar = () => {
   const navigate = useNavigate();
   
   const { user, isLoggedIn, userPlan, logout } = useUserStore();
+  const { toggleTheme, isDark } = useTheme();
 
   const handleLogout = async () => {
     await logout();
@@ -123,6 +125,21 @@ export const Navbar = () => {
 
         {/* Right: User Actions */}
         <div className="flex items-center gap-2">
+          {/* Theme Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            className="h-9 w-9"
+            aria-label="Toggle theme"
+          >
+            {isDark ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
+          </Button>
+
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-2">
             {isLoggedIn ? (
@@ -265,6 +282,24 @@ export const Navbar = () => {
                     {aiCoachLink.label}
                   </Link>
                 </div>
+
+                {/* Theme Toggle in Mobile */}
+                <button
+                  onClick={toggleTheme}
+                  className="px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors flex items-center gap-2 w-full text-left"
+                >
+                  {isDark ? (
+                    <>
+                      <Sun className="w-4 h-4" />
+                      Light Mode
+                    </>
+                  ) : (
+                    <>
+                      <Moon className="w-4 h-4" />
+                      Dark Mode
+                    </>
+                  )}
+                </button>
 
                 {/* Divider */}
                 <div className="h-px bg-border my-2" />
