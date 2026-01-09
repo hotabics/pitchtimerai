@@ -679,6 +679,8 @@ const Profile = () => {
           tone: selectedRecording.tone,
           track: selectedRecording.track,
           date: selectedRecording.created_at,
+          videoUrl: selectedRecording.video_url,
+          thumbnailUrl: selectedRecording.thumbnail_url,
         } : null}
       />
     </div>
