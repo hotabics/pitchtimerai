@@ -3,15 +3,39 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, TrendingUp, BarChart3, Calendar, ArrowLeft } from "lucide-react";
+import { RefreshCw, TrendingUp, BarChart3, Calendar, ArrowLeft, Mic, Clock, Target, ThumbsUp, ThumbsDown, Zap, Users, MessageSquare } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+
+interface ContentStats {
+  totalSessions: number;
+  avgScore: number;
+  avgWpm: number;
+  avgFillers: number;
+  avgDuration: number;
+  byTrack: Record<string, number>;
+  byEntryMode: Record<string, number>;
+  byTone: Record<string, number>;
+  sessionsByDay: Record<string, number>;
+  scoreDistribution: {
+    excellent: number;
+    good: number;
+    needsWork: number;
+  };
+}
+
+interface FeedbackStats {
+  total: number;
+  byType: Record<string, number>;
+}
 
 interface AnalyticsData {
   topSuggestions: Array<{ type: string; text: string; count: number }>;
   byType: Record<string, number>;
   byDay: Record<string, number>;
   totalSelections: number;
+  contentStats?: ContentStats;
+  feedbackStats?: FeedbackStats;
 }
 
 const typeColors: Record<string, string> = {
@@ -26,9 +50,18 @@ const typeColors: Record<string, string> = {
   peers_why_care: "bg-teal-500/20 text-teal-300 border-teal-500/30",
 };
 
+const trackColors: Record<string, string> = {
+  "hackathon-no-demo": "bg-orange-500/20 text-orange-300 border-orange-500/30",
+  "hackathon": "bg-red-500/20 text-red-300 border-red-500/30",
+  "investor": "bg-green-500/20 text-green-300 border-green-500/30",
+  "peers": "bg-blue-500/20 text-blue-300 border-blue-500/30",
+  "grandma": "bg-pink-500/20 text-pink-300 border-pink-500/30",
+  "academic": "bg-purple-500/20 text-purple-300 border-purple-500/30",
+};
+
 const formatTypeName = (type: string) => {
   return type
-    .split("_")
+    .split(/[-_]/)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 };
@@ -66,6 +99,19 @@ const AdminAnalytics = () => {
   const maxDayCount = sortedDays.length > 0
     ? Math.max(...sortedDays.map(([, count]) => count))
     : 0;
+
+  const sessionDays = data?.contentStats?.sessionsByDay
+    ? Object.entries(data.contentStats.sessionsByDay).sort(([a], [b]) => a.localeCompare(b))
+    : [];
+
+  const maxSessionDayCount = sessionDays.length > 0
+    ? Math.max(...sessionDays.map(([, count]) => count))
+    : 0;
+
+  // Calculate feedback ratios
+  const feedbackStats = data?.feedbackStats;
+  const thumbsUp = (feedbackStats?.byType?.['script_thumbs_up'] || 0) + (feedbackStats?.byType?.['verdict_helpful'] || 0);
+  const thumbsDown = (feedbackStats?.byType?.['script_thumbs_down'] || 0) + (feedbackStats?.byType?.['verdict_not_helpful'] || 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -111,12 +157,273 @@ const AdminAnalytics = () => {
           </div>
         ) : data ? (
           <div className="space-y-6">
-            {/* Summary Cards */}
+            {/* Content Generation Stats Section */}
+            {data.contentStats && (
+              <>
+                <div className="mb-2">
+                  <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                    <Mic className="h-5 w-5 text-primary" />
+                    Content Generation Stats
+                  </h2>
+                  <p className="text-sm text-muted-foreground">Track speech generation and practice patterns</p>
+                </div>
+
+                {/* Primary Content Stats */}
+                <div className="grid gap-4 md:grid-cols-4">
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+                    <Card className="border-primary/20 bg-primary/5">
+                      <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium">Speeches Generated</CardTitle>
+                        <Zap className="h-4 w-4 text-primary" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-3xl font-bold text-primary">{data.contentStats.totalSessions}</div>
+                        <p className="text-xs text-muted-foreground mt-1">Total practice sessions</p>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium">Avg. Score</CardTitle>
+                        <Target className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-3xl font-bold">{data.contentStats.avgScore}</div>
+                        <p className="text-xs text-muted-foreground mt-1">Out of 100</p>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium">Avg. WPM</CardTitle>
+                        <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-3xl font-bold">{data.contentStats.avgWpm}</div>
+                        <p className="text-xs text-muted-foreground mt-1">Words per minute</p>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium">Avg. Duration</CardTitle>
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-3xl font-bold">{data.contentStats.avgDuration}s</div>
+                        <p className="text-xs text-muted-foreground mt-1">Recording length</p>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                </div>
+
+                {/* Score Distribution & Sessions by Day */}
+                <div className="grid gap-6 md:grid-cols-2">
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Score Distribution</CardTitle>
+                        <CardDescription>How users are performing</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-24 text-sm text-muted-foreground">Excellent (80+)</div>
+                            <div className="flex-1 bg-muted rounded-full h-3 overflow-hidden">
+                              <div 
+                                className="h-full bg-green-500 transition-all"
+                                style={{ width: `${(data.contentStats.scoreDistribution.excellent / data.contentStats.totalSessions) * 100}%` }}
+                              />
+                            </div>
+                            <span className="text-sm font-medium w-8">{data.contentStats.scoreDistribution.excellent}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="w-24 text-sm text-muted-foreground">Good (60-79)</div>
+                            <div className="flex-1 bg-muted rounded-full h-3 overflow-hidden">
+                              <div 
+                                className="h-full bg-yellow-500 transition-all"
+                                style={{ width: `${(data.contentStats.scoreDistribution.good / data.contentStats.totalSessions) * 100}%` }}
+                              />
+                            </div>
+                            <span className="text-sm font-medium w-8">{data.contentStats.scoreDistribution.good}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="w-24 text-sm text-muted-foreground">Needs Work (&lt;60)</div>
+                            <div className="flex-1 bg-muted rounded-full h-3 overflow-hidden">
+                              <div 
+                                className="h-full bg-red-500 transition-all"
+                                style={{ width: `${(data.contentStats.scoreDistribution.needsWork / data.contentStats.totalSessions) * 100}%` }}
+                              />
+                            </div>
+                            <span className="text-sm font-medium w-8">{data.contentStats.scoreDistribution.needsWork}</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+
+                  {sessionDays.length > 0 && (
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-base">Sessions (Last 7 Days)</CardTitle>
+                          <CardDescription>Daily practice activity</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="flex items-end gap-2 h-24">
+                            {sessionDays.map(([day, count]) => (
+                              <div key={day} className="flex-1 flex flex-col items-center gap-1">
+                                <div
+                                  className="w-full bg-primary/80 rounded-t transition-all hover:bg-primary"
+                                  style={{ height: `${(count / maxSessionDayCount) * 100}%`, minHeight: "4px" }}
+                                />
+                                <span className="text-[10px] text-muted-foreground">
+                                  {new Date(day).toLocaleDateString("en", { weekday: "short" })}
+                                </span>
+                                <span className="text-xs font-medium">{count}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  )}
+                </div>
+
+                {/* Usage by Track & Entry Mode */}
+                <div className="grid gap-6 md:grid-cols-2">
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          Usage by Track
+                        </CardTitle>
+                        <CardDescription>Which audience types are most popular</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(data.contentStats.byTrack)
+                            .sort(([, a], [, b]) => b - a)
+                            .map(([track, count]) => (
+                              <Badge
+                                key={track}
+                                variant="outline"
+                                className={`px-3 py-1.5 text-sm ${trackColors[track] || "bg-muted"}`}
+                              >
+                                {formatTypeName(track)}: {count}
+                              </Badge>
+                            ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Entry Mode</CardTitle>
+                        <CardDescription>How users are creating content</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(data.contentStats.byEntryMode)
+                            .sort(([, a], [, b]) => b - a)
+                            .map(([mode, count]) => (
+                              <Badge
+                                key={mode}
+                                variant="outline"
+                                className="px-3 py-1.5 text-sm"
+                              >
+                                {formatTypeName(mode)}: {count}
+                              </Badge>
+                            ))}
+                        </div>
+                        {Object.keys(data.contentStats.byTone).length > 0 && (
+                          <div className="mt-4 pt-4 border-t">
+                            <p className="text-xs text-muted-foreground mb-2">By Tone</p>
+                            <div className="flex flex-wrap gap-2">
+                              {Object.entries(data.contentStats.byTone)
+                                .sort(([, a], [, b]) => b - a)
+                                .map(([tone, count]) => (
+                                  <Badge key={tone} variant="secondary" className="text-xs">
+                                    {tone}: {count}
+                                  </Badge>
+                                ))}
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                </div>
+              </>
+            )}
+
+            {/* Feedback Stats */}
+            {feedbackStats && feedbackStats.total > 0 && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <ThumbsUp className="h-4 w-4" />
+                      User Feedback
+                    </CardTitle>
+                    <CardDescription>What users think of the generated content</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-6 mb-4">
+                      <div className="flex items-center gap-2">
+                        <ThumbsUp className="h-5 w-5 text-green-500" />
+                        <span className="text-2xl font-bold text-green-500">{thumbsUp}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <ThumbsDown className="h-5 w-5 text-red-500" />
+                        <span className="text-2xl font-bold text-red-500">{thumbsDown}</span>
+                      </div>
+                      {thumbsUp + thumbsDown > 0 && (
+                        <div className="text-sm text-muted-foreground">
+                          ({Math.round((thumbsUp / (thumbsUp + thumbsDown)) * 100)}% positive)
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(feedbackStats.byType)
+                        .sort(([, a], [, b]) => b - a)
+                        .map(([type, count]) => (
+                          <Badge key={type} variant="outline" className="text-xs">
+                            {formatTypeName(type)}: {count}
+                          </Badge>
+                        ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+
+            {/* Divider */}
+            <div className="border-t my-6" />
+
+            <div className="mb-2">
+              <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                AI Suggestion Analytics
+              </h2>
+              <p className="text-sm text-muted-foreground">Track which AI suggestions resonate with users</p>
+            </div>
+
+            {/* Original Summary Cards */}
             <div className="grid gap-6 md:grid-cols-3">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
+                transition={{ delay: 0.5 }}
               >
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -133,7 +440,7 @@ const AdminAnalytics = () => {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
+                transition={{ delay: 0.55 }}
               >
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -150,7 +457,7 @@ const AdminAnalytics = () => {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
+                transition={{ delay: 0.6 }}
               >
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -170,11 +477,11 @@ const AdminAnalytics = () => {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
+                transition={{ delay: 0.65 }}
               >
                 <Card>
                   <CardHeader>
-                    <CardTitle>Last 7 Days Activity</CardTitle>
+                    <CardTitle>Suggestion Selections (Last 7 Days)</CardTitle>
                     <CardDescription>Daily suggestion selections</CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -201,7 +508,7 @@ const AdminAnalytics = () => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
+              transition={{ delay: 0.7 }}
             >
               <Card>
                 <CardHeader>
@@ -230,7 +537,7 @@ const AdminAnalytics = () => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
+              transition={{ delay: 0.75 }}
             >
               <Card>
                 <CardHeader>
