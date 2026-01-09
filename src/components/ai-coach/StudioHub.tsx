@@ -1,18 +1,34 @@
-// AI Coach Studio Hub - Selection Screen for Live vs Upload workflow
+// AI Coach Studio Hub - Selection Screen for Live vs Upload vs Phone workflow
 
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Video, Upload, Camera, FileVideo, Sparkles, ArrowRight } from "lucide-react";
+import { Video, Upload, Camera, FileVideo, Sparkles, ArrowRight, Smartphone, QrCode } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { MobileCompanionModal } from "./MobileCompanionModal";
 
 interface StudioHubProps {
   onSelectLive: () => void;
   onSelectUpload: () => void;
+  onMobileVideoReceived?: (videoUrl: string) => void;
 }
 
-export const StudioHub = ({ onSelectLive, onSelectUpload }: StudioHubProps) => {
-  const [hoveredCard, setHoveredCard] = useState<"live" | "upload" | null>(null);
+export const StudioHub = ({ onSelectLive, onSelectUpload, onMobileVideoReceived }: StudioHubProps) => {
+  const [hoveredCard, setHoveredCard] = useState<"live" | "upload" | "phone" | null>(null);
+  const [showMobileModal, setShowMobileModal] = useState(false);
+  const [mobileSessionId, setMobileSessionId] = useState<string>("");
+
+  const handlePhoneClick = () => {
+    // Generate unique session ID
+    const sessionId = crypto.randomUUID();
+    setMobileSessionId(sessionId);
+    setShowMobileModal(true);
+  };
+
+  const handleMobileVideoReceived = (videoUrl: string) => {
+    setShowMobileModal(false);
+    onMobileVideoReceived?.(videoUrl);
+  };
 
   return (
     <motion.div
@@ -176,6 +192,55 @@ export const StudioHub = ({ onSelectLive, onSelectUpload }: StudioHubProps) => {
             </CardContent>
           </Card>
         </motion.div>
+        {/* Use Phone Camera Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          onHoverStart={() => setHoveredCard("phone")}
+          onHoverEnd={() => setHoveredCard(null)}
+          className="md:col-span-2"
+        >
+          <Card
+            className={`relative cursor-pointer overflow-hidden transition-all duration-300 ${
+              hoveredCard === "phone"
+                ? "ring-2 ring-primary shadow-xl shadow-primary/20 scale-[1.01]"
+                : "hover:shadow-lg"
+            }`}
+            onClick={handlePhoneClick}
+          >
+            <CardContent className="p-6 flex items-center gap-6">
+              {/* Icon */}
+              <motion.div
+                animate={{
+                  scale: hoveredCard === "phone" ? 1.1 : 1,
+                }}
+                className="relative shrink-0"
+              >
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
+                  <Smartphone className="w-8 h-8 text-white" />
+                </div>
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-background flex items-center justify-center shadow">
+                  <QrCode className="w-4 h-4 text-primary" />
+                </div>
+              </motion.div>
+
+              {/* Content */}
+              <div className="flex-1 space-y-1">
+                <h3 className="text-lg font-bold">Use Phone Camera 📱</h3>
+                <p className="text-muted-foreground text-sm">
+                  Scan QR code to record on your phone, see results on your desktop
+                </p>
+              </div>
+
+              {/* CTA */}
+              <Button variant="secondary" className="shrink-0 gap-2">
+                <QrCode className="w-4 h-4" />
+                Show QR Code
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
       {/* Bottom tip */}
@@ -185,8 +250,16 @@ export const StudioHub = ({ onSelectLive, onSelectUpload }: StudioHubProps) => {
         transition={{ delay: 0.6 }}
         className="text-center text-sm text-muted-foreground"
       >
-        💡 Tip: Practice on your phone, then upload the recording for detailed AI analysis
+        💡 Tip: Use your phone for mobility, or upload a pre-recorded video for detailed AI analysis
       </motion.p>
+
+      {/* Mobile Companion Modal */}
+      <MobileCompanionModal
+        open={showMobileModal}
+        onOpenChange={setShowMobileModal}
+        sessionId={mobileSessionId}
+        onVideoReceived={handleMobileVideoReceived}
+      />
     </motion.div>
   );
 };

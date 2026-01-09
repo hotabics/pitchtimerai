@@ -22,6 +22,7 @@ import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import { AICoachPage } from "./components/ai-coach/AICoachPage";
+import MobileRecord from "./pages/MobileRecord";
 import { AuthModal } from "./components/auth/AuthModal";
 import { WhatsNewModal } from "./components/WhatsNewModal";
 import { Navbar } from "./components/Navbar";
@@ -48,6 +49,7 @@ const App = () => (
               <Route path="/admin/analytics" element={<AdminAnalytics />} />
               <Route path="/admin/feedback" element={<FeedbackAnalytics />} />
               <Route path="/ai-coach" element={<AICoachPage />} />
+              <Route path="/mobile-record/:sessionId" element={<MobileRecord />} />
               <Route path="/shared/:id" element={<SharedScript />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/blog" element={<Blog />} />
