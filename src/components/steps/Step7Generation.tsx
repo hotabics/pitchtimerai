@@ -2,9 +2,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Sparkles, FileText, Clock, Mic, CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WizardStep } from "@/components/WizardStep";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { trackConfigs, TrackType } from "@/lib/tracks";
 import { trackEvent } from "@/utils/analytics";
+import confetti from "canvas-confetti";
 
 interface Step7GenerationProps {
   onNext: (tier: string, tierLabel: string) => void;
@@ -61,6 +62,34 @@ const triggerHaptic = () => {
   }
 };
 
+// Fire confetti celebration
+const fireConfetti = () => {
+  const duration = 2000;
+  const end = Date.now() + duration;
+
+  const frame = () => {
+    confetti({
+      particleCount: 3,
+      angle: 60,
+      spread: 55,
+      origin: { x: 0, y: 0.7 },
+      colors: ['#6366f1', '#10b981', '#f59e0b', '#ec4899'],
+    });
+    confetti({
+      particleCount: 3,
+      angle: 120,
+      spread: 55,
+      origin: { x: 1, y: 0.7 },
+      colors: ['#6366f1', '#10b981', '#f59e0b', '#ec4899'],
+    });
+
+    if (Date.now() < end) {
+      requestAnimationFrame(frame);
+    }
+  };
+  frame();
+};
+
 export const Step7Generation = ({ onNext, onBack, track, idea }: Step7GenerationProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
@@ -69,6 +98,19 @@ export const Step7Generation = ({ onNext, onBack, track, idea }: Step7Generation
   const trackConfig = track ? trackConfigs[track] : null;
   const trackName = trackConfig?.name || "Pitch";
   const outputSections = trackConfig?.outputStructure || [];
+
+  // Calculate total and remaining time
+  const totalDuration = useMemo(() => 
+    generationSteps.reduce((sum, step) => sum + step.duration, 0), 
+  []);
+  
+  const elapsedDuration = useMemo(() => 
+    generationSteps
+      .slice(0, completedSteps.length)
+      .reduce((sum, step) => sum + step.duration, 0),
+  [completedSteps.length]);
+  
+  const remainingTime = Math.ceil((totalDuration - elapsedDuration) / 1000);
 
   const handleGenerate = useCallback(async () => {
     setIsGenerating(true);
@@ -91,9 +133,10 @@ export const Step7Generation = ({ onNext, onBack, track, idea }: Step7Generation
       sections_count: outputSections.length,
     });
 
-    // Play success feedback
+    // Play success feedback with confetti
     playSuccessSound();
     triggerHaptic();
+    fireConfetti();
 
     // Small delay before navigating
     await new Promise((resolve) => setTimeout(resolve, 600));
@@ -270,18 +313,28 @@ export const Step7Generation = ({ onNext, onBack, track, idea }: Step7Generation
                 })}
               </div>
 
-              {/* Progress bar with percentage */}
+              {/* Progress bar with percentage and time estimate */}
               <div className="w-full max-w-sm mt-8 space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Progress</span>
-                  <motion.span 
-                    key={completedSteps.length}
-                    initial={{ scale: 1.2, color: "hsl(var(--primary))" }}
-                    animate={{ scale: 1, color: "hsl(var(--foreground))" }}
-                    className="font-bold text-foreground"
-                  >
-                    {Math.round((completedSteps.length / generationSteps.length) * 100)}%
-                  </motion.span>
+                  <div className="flex items-center gap-3">
+                    <motion.span 
+                      key={remainingTime}
+                      initial={{ opacity: 0.5 }}
+                      animate={{ opacity: 1 }}
+                      className="text-xs text-muted-foreground"
+                    >
+                      ~{remainingTime}s remaining
+                    </motion.span>
+                    <motion.span 
+                      key={completedSteps.length}
+                      initial={{ scale: 1.2, color: "hsl(var(--primary))" }}
+                      animate={{ scale: 1, color: "hsl(var(--foreground))" }}
+                      className="font-bold text-foreground"
+                    >
+                      {Math.round((completedSteps.length / generationSteps.length) * 100)}%
+                    </motion.span>
+                  </div>
                 </div>
                 <div className="h-2 bg-muted rounded-full overflow-hidden">
                   <motion.div
