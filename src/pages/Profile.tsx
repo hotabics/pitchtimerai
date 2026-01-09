@@ -14,6 +14,9 @@ import { toast } from "sonner";
 import { Header } from "@/components/Header";
 import { Leaderboard } from "@/components/profile/Leaderboard";
 import { GoalSetting } from "@/components/profile/GoalSetting";
+import { PitchChallenges } from "@/components/profile/PitchChallenges";
+import { SocialShare } from "@/components/profile/SocialShare";
+import { ProgressCharts } from "@/components/profile/ProgressCharts";
 
 interface PracticeSession {
   id: string;
@@ -379,11 +382,31 @@ const Profile = () => {
             />
           </motion.div>
 
-          {/* Achievements */}
+          {/* Progress Charts */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.55 }}
+            className="md:col-span-2 lg:col-span-3"
+          >
+            <ProgressCharts sessions={sessions} />
+          </motion.div>
+
+          {/* Pitch Challenges */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="md:col-span-2 lg:col-span-3"
+          >
+            <PitchChallenges />
+          </motion.div>
+
+          {/* Achievements */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.65 }}
             className="md:col-span-2 lg:col-span-3"
           >
             <Card className="bg-card shadow-sm">
@@ -409,10 +432,18 @@ const Profile = () => {
                         title={achievement.description}
                       >
                         <span className="text-2xl">{achievement.icon}</span>
-                        <div>
+                        <div className="flex-1">
                           <p className="font-medium text-sm">{achievement.name}</p>
                           <p className="text-xs text-muted-foreground">{achievement.description}</p>
                         </div>
+                        {isUnlocked && (
+                          <SocialShare 
+                            achievement={{ name: achievement.name, icon: achievement.icon, description: achievement.description }}
+                            score={stats.bestScore}
+                            totalPitches={stats.totalPitches}
+                            streak={stats.currentStreak}
+                          />
+                        )}
                       </div>
                     );
                   })}
@@ -425,7 +456,7 @@ const Profile = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
+            transition={{ delay: 0.7 }}
             className="md:col-span-2 lg:col-span-3"
           >
             <Card className="bg-card shadow-sm">
