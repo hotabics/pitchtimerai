@@ -22,14 +22,32 @@
     <link rel="preload" href="https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2" as="font" type="font/woff2" crossorigin fetchpriority="high" />
     <!-- Preload critical custom font used in hero -->
     <link rel="preload" href="https://cdn.gpteng.co/mcp-widgets/v1/fonts/CameraPlainVariable.woff2" as="font" type="font/woff2" crossorigin fetchpriority="high" />
-    <!-- Inline critical CSS for immediate paint including LCP element styles -->
+    <!-- Inline critical CSS for immediate paint including LCP element and above-the-fold styles -->
     <style>
-      @font-face{font-family:'Inter';font-style:normal;font-weight:700;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2) format('woff2')}
-      body{margin:0;font-family:Inter,system-ui,-apple-system,sans-serif;background:#0a0a0a;color:#fff}
+      /* Critical fonts */
+      @font-face{font-family:'Inter';font-style:normal;font-weight:400 700;font-display:swap;src:url(https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2) format('woff2')}
+      
+      /* CSS Variables - Dark theme (default) */
+      :root{--background:222 47% 6%;--foreground:210 40% 98%;--primary:239 84% 67%;--primary-foreground:0 0% 100%;--muted:217 33% 17%;--muted-foreground:215 20% 65%;--border:217 33% 17%;--card:222 47% 8%;--card-foreground:210 40% 98%;--glow-primary:239 84% 67%;--glow-success:160 84% 50%;--radius:0.75rem}
+      
+      /* Base styles */
+      *,*::before,*::after{box-sizing:border-box;border-color:hsl(var(--border))}
+      body{margin:0;font-family:Inter,system-ui,-apple-system,sans-serif;background:hsl(var(--background));color:hsl(var(--foreground));-webkit-font-smoothing:antialiased;letter-spacing:-0.01em}
       #root{min-height:100vh;display:flex;flex-direction:column}
-      .initial-loader{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#0a0a0a}
-      .initial-loader div{width:40px;height:40px;border:3px solid #333;border-top-color:#6366f1;border-radius:50%;animation:spin 1s linear infinite}
+      
+      /* Navbar skeleton */
+      .nav-skeleton{position:fixed;top:0;left:0;right:0;height:64px;background:hsl(var(--background)/0.8);backdrop-filter:blur(12px);border-bottom:1px solid hsl(var(--border));z-index:50}
+      
+      /* Hero section skeleton */
+      .hero-skeleton{min-height:100vh;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse 80% 50% at 50% -20%,hsl(var(--primary)/0.15) 0%,transparent 60%),hsl(var(--background))}
+      
+      /* Initial loader */
+      .initial-loader{display:flex;align-items:center;justify-content:center;min-height:100vh;background:hsl(var(--background))}
+      .initial-loader div{width:40px;height:40px;border:3px solid hsl(var(--border));border-top-color:hsl(var(--primary));border-radius:50%;animation:spin 1s linear infinite}
       @keyframes spin{to{transform:rotate(360deg)}}
+      
+      /* Critical layout utilities */
+      .min-h-screen{min-height:100vh}.flex{display:flex}.flex-col{flex-direction:column}.flex-1{flex:1 1 0%}.items-center{align-items:center}.justify-center{justify-content:center}.text-center{text-align:center}.pt-16{padding-top:4rem}
     </style>
 
     <meta property="og:title" content="Pitch Cicero - Master Your Pitch with AI" />
