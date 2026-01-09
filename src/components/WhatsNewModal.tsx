@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sparkles, Clock, CreditCard, Shield, Zap } from "lucide-react";
+import { Sparkles, FileText, Presentation, Wand2, Share2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-const CURRENT_VERSION = "1.7.0";
+const CURRENT_VERSION = "1.8.0";
 const STORAGE_KEY = "pitchperfect_last_seen_version";
 
 interface ChangelogItem {
@@ -20,24 +20,24 @@ interface ChangelogItem {
 
 const changelogItems: ChangelogItem[] = [
   {
-    icon: <Shield className="w-5 h-5 text-emerald-500" />,
-    title: "Forgot Password Flow",
-    description: "New password reset feature with email verification. Securely recover your account anytime.",
+    icon: <FileText className="w-5 h-5 text-blue-500" />,
+    title: "Blog & Resources Hub",
+    description: "New /blog page with SEO-optimized articles on pitching, public speaking, and startup tips.",
   },
   {
-    icon: <Zap className="w-5 h-5 text-purple-500" />,
-    title: "Streamlined Auth",
-    description: "Simplified sign-in options with Google OAuth and email/password for faster access.",
+    icon: <Presentation className="w-5 h-5 text-purple-500" />,
+    title: "Slide Deck Builder",
+    description: "Create presentations with drag-and-drop, themes, transitions, and PowerPoint export.",
   },
   {
-    icon: <CreditCard className="w-5 h-5 text-primary" />,
-    title: "Tiered Pricing Plans",
-    description: "Choose Free, 48h Hackathon Pass (€2.99), or Founder Pro (€9.99/mo) for premium features.",
+    icon: <Wand2 className="w-5 h-5 text-emerald-500" />,
+    title: "AI Image Generation",
+    description: "Auto-generate slide visuals with DALL-E. Bulk generate images for entire decks.",
   },
   {
-    icon: <Clock className="w-5 h-5 text-amber-500" />,
-    title: "48h Pass Countdown",
-    description: "Real-time countdown timer in header with expiration warnings when time is running low.",
+    icon: <Share2 className="w-5 h-5 text-amber-500" />,
+    title: "Social Sharing",
+    description: "Share articles and pitches directly to Twitter, LinkedIn, or copy link.",
   },
 ];
 
