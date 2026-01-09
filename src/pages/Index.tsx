@@ -1,21 +1,23 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, lazy, Suspense } from "react";
 import { AnimatePresence } from "framer-motion";
 // Header is now global via Navbar in App.tsx
 import { WizardLayout } from "@/components/WizardLayout";
 import { BriefData } from "@/components/ProjectBrief";
 import { Step1Hook, EntryMode } from "@/components/steps/Step1Hook";
 import { Step2Audience } from "@/components/steps/Step2Audience";
-import { Step7Generation } from "@/components/steps/Step7Generation";
-import { CustomScriptStep } from "@/components/steps/CustomScriptStep";
-import { Dashboard } from "@/components/Dashboard";
-import { AICoachPage } from "@/components/ai-coach/AICoachPage";
 import { AutoGenerateOverlay } from "@/components/landing/AutoGenerateOverlay";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrapedProjectData } from "@/lib/api/firecrawl";
 import { generateAutoPitch, isUrl } from "@/services/mockScraper";
 import { trackEvent } from "@/utils/analytics";
-// Track-specific step imports
+
+// Lazy load heavy components to reduce initial bundle
+const Dashboard = lazy(() => import("@/components/Dashboard").then(m => ({ default: m.Dashboard })));
+const AICoachPage = lazy(() => import("@/components/ai-coach/AICoachPage").then(m => ({ default: m.AICoachPage })));
+const Step7Generation = lazy(() => import("@/components/steps/Step7Generation").then(m => ({ default: m.Step7Generation })));
+const CustomScriptStep = lazy(() => import("@/components/steps/CustomScriptStep").then(m => ({ default: m.CustomScriptStep })));
+// Track-specific step imports (kept synchronous as they're part of core wizard flow)
 import { 
   HackathonPainStep, 
   HackathonFixStep, 
@@ -57,6 +59,13 @@ import {
   PeersAuthenticWhyStep,
   PeersCTAStep,
 } from "@/components/steps/tracks/PeersSteps";
+
+// Loading fallback for lazy components
+const StepLoader = () => (
+  <div className="min-h-[50vh] flex items-center justify-center">
+    <div className="animate-pulse text-muted-foreground">Loading...</div>
+  </div>
+);
 
 import { TrackType, trackConfigs, determineTrack, calculateTrackPrepTime } from "@/lib/tracks";
 
@@ -405,10 +414,12 @@ const Index = () => {
   // AI Coach view
   if (showAICoach) {
     return (
-      <AICoachPage 
-        onBack={handleCloseAICoach} 
-        onEditScript={handleCloseAICoach}
-      />
+      <Suspense fallback={<StepLoader />}>
+        <AICoachPage 
+          onBack={handleCloseAICoach} 
+          onEditScript={handleCloseAICoach}
+        />
+      </Suspense>
     );
   }
 
@@ -419,18 +430,20 @@ const Index = () => {
     // For custom scripts, pass the structured data
     if (data.entryMode === "custom_script" && data.structuredScript) {
       return (
-        <Dashboard
-          data={{
-            idea: data.idea || "My Pitch",
-            duration: 3,
-            track: 'hackathon-no-demo', // Default track for custom scripts
-            trackData: {},
-            audienceLabel: "Custom Script",
-            entryMode: "custom_script",
-            structuredScript: data.structuredScript,
-            originalScriptText: data.customScript,
-          }}
-        />
+        <Suspense fallback={<StepLoader />}>
+          <Dashboard
+            data={{
+              idea: data.idea || "My Pitch",
+              duration: 3,
+              track: 'hackathon-no-demo', // Default track for custom scripts
+              trackData: {},
+              audienceLabel: "Custom Script",
+              entryMode: "custom_script",
+              structuredScript: data.structuredScript,
+              originalScriptText: data.customScript,
+            }}
+          />
+        </Suspense>
       );
     }
 
@@ -443,17 +456,19 @@ const Index = () => {
     };
 
     return (
-      <Dashboard
-        data={{
-          idea: data.idea || "",
-          duration: 3,
-          track: data.track || 'hackathon-no-demo',
-          trackData: td as Record<string, unknown>,
-          audienceLabel: data.audienceLabel,
-          entryMode: "generate",
-        }}
-        onEditInputs={handleEditInputs}
-      />
+      <Suspense fallback={<StepLoader />}>
+        <Dashboard
+          data={{
+            idea: data.idea || "",
+            duration: 3,
+            track: data.track || 'hackathon-no-demo',
+            trackData: td as Record<string, unknown>,
+            audienceLabel: data.audienceLabel,
+            entryMode: "generate",
+          }}
+          onEditInputs={handleEditInputs}
+        />
+      </Suspense>
     );
   }
 
@@ -486,11 +501,13 @@ const Index = () => {
         totalSteps={2}
         onLogoClick={handleLogoClick}
       >
-        <CustomScriptStep
-          onNext={handleCustomScriptSubmit}
-          onBack={handleBack}
-          initialValue={data.customScript}
-        />
+        <Suspense fallback={<StepLoader />}>
+          <CustomScriptStep
+            onNext={handleCustomScriptSubmit}
+            onBack={handleBack}
+            initialValue={data.customScript}
+          />
+        </Suspense>
         {isStructuring && (
           <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="text-center space-y-4">
@@ -623,13 +640,15 @@ const Index = () => {
         )}
         {step === 2 && renderTrackSteps()}
         {step === 3 && (
-          <Step7Generation
-            key="generation"
-            onNext={handleGeneration}
-            onBack={handleBack}
-            track={data.track}
-            idea={data.idea}
-          />
+          <Suspense fallback={<StepLoader />}>
+            <Step7Generation
+              key="generation"
+              onNext={handleGeneration}
+              onBack={handleBack}
+              track={data.track}
+              idea={data.idea}
+            />
+          </Suspense>
         )}
       </AnimatePresence>
     </WizardLayout>
