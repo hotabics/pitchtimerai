@@ -3,19 +3,19 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, Loader2, Camera, StopCircle, RotateCcw, Monitor, AlertCircle, SwitchCamera, Mic } from 'lucide-react';
+import { CheckCircle, Loader2, Camera, StopCircle, RotateCcw, Monitor, AlertCircle, SwitchCamera, Mic, Pause, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadRecording } from '@/services/videoStorage';
 
-type RecordingState = 'connecting' | 'ready' | 'countdown' | 'recording' | 'uploading' | 'success' | 'error';
+type RecordingState = 'connecting' | 'ready' | 'countdown' | 'recording' | 'paused' | 'uploading' | 'success' | 'error';
 type FacingMode = 'user' | 'environment';
 
 const MAX_RECORDING_SECONDS = 300; // 5 minutes
 const WARNING_THRESHOLD_SECONDS = 30; // Show warning when 30 seconds remaining
 
 // Haptic feedback helper
-const triggerHaptic = (pattern: 'start' | 'stop' | 'warning') => {
+const triggerHaptic = (pattern: 'start' | 'stop' | 'warning' | 'pause' | 'resume') => {
   if (!navigator.vibrate) return;
   
   switch (pattern) {
@@ -27,6 +27,12 @@ const triggerHaptic = (pattern: 'start' | 'stop' | 'warning') => {
       break;
     case 'warning':
       navigator.vibrate([50, 30, 50, 30, 50]); // Triple short pulse
+      break;
+    case 'pause':
+      navigator.vibrate(100); // Single short pulse
+      break;
+    case 'resume':
+      navigator.vibrate([50, 50, 100]); // Short-short-long
       break;
   }
 };
@@ -272,6 +278,51 @@ const MobileRecord = () => {
     setState('recording');
   }, []);
 
+  // Pause recording
+  const handlePauseRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.pause();
+      triggerHaptic('pause');
+      
+      // Pause timer
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      
+      setState('paused');
+    }
+  }, []);
+
+  // Resume recording
+  const handleResumeRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'paused') {
+      mediaRecorderRef.current.resume();
+      triggerHaptic('resume');
+      
+      // Resume timer
+      timerRef.current = setInterval(() => {
+        setRecordingTime(prev => {
+          const newTime = prev + 1;
+          
+          const remainingTime = MAX_RECORDING_SECONDS - newTime;
+          if (remainingTime === WARNING_THRESHOLD_SECONDS) {
+            setShowTimeWarning(true);
+            triggerHaptic('warning');
+          }
+          
+          if (newTime >= MAX_RECORDING_SECONDS) {
+            handleStopRecording();
+          }
+          
+          return newTime;
+        });
+      }, 1000);
+      
+      setState('recording');
+    }
+  }, []);
+
   // Stop recording
   const handleStopRecording = useCallback(() => {
     if (timerRef.current) {
@@ -283,7 +334,7 @@ const MobileRecord = () => {
     triggerHaptic('stop');
     setShowTimeWarning(false);
 
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+    if (mediaRecorderRef.current && (mediaRecorderRef.current.state === 'recording' || mediaRecorderRef.current.state === 'paused')) {
       mediaRecorderRef.current.stop();
     }
 
@@ -357,25 +408,32 @@ const MobileRecord = () => {
             <Monitor className="w-5 h-5 text-primary" />
             <span className="font-semibold">Connected to PC</span>
           </div>
-          {state === 'recording' && (
+          {(state === 'recording' || state === 'paused') && (
             <div className="flex items-center gap-2">
-              <motion.div
-                animate={{ opacity: [1, 0.3, 1] }}
-                transition={{ repeat: Infinity, duration: 1 }}
-                className="w-3 h-3 rounded-full bg-red-500"
-              />
+              {state === 'recording' ? (
+                <motion.div
+                  animate={{ opacity: [1, 0.3, 1] }}
+                  transition={{ repeat: Infinity, duration: 1 }}
+                  className="w-3 h-3 rounded-full bg-red-500"
+                />
+              ) : (
+                <div className="w-3 h-3 rounded-full bg-yellow-500" />
+              )}
               <span className={`font-mono text-lg ${isNearLimit ? 'text-red-500 font-bold' : ''}`}>
                 {formatTime(recordingTime)}
               </span>
               <span className="text-muted-foreground text-sm">
                 / {formatTime(MAX_RECORDING_SECONDS)}
               </span>
+              {state === 'paused' && (
+                <span className="text-yellow-500 text-sm font-medium ml-2">PAUSED</span>
+              )}
             </div>
           )}
         </div>
         
         {/* Recording Progress Bar */}
-        {state === 'recording' && (
+        {(state === 'recording' || state === 'paused') && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
@@ -383,7 +441,7 @@ const MobileRecord = () => {
           >
             <div className="h-1.5 bg-muted rounded-full overflow-hidden">
               <motion.div
-                className={`h-full transition-colors ${isNearLimit ? 'bg-red-500' : 'bg-primary'}`}
+                className={`h-full transition-colors ${isNearLimit ? 'bg-red-500' : state === 'paused' ? 'bg-yellow-500' : 'bg-primary'}`}
                 animate={{ width: `${timeProgress}%` }}
                 transition={{ duration: 0.3 }}
               />
@@ -539,11 +597,11 @@ const MobileRecord = () => {
         </div>
 
         {/* Controls */}
-        {(state === 'ready' || state === 'recording') && (
+        {(state === 'ready' || state === 'recording' || state === 'paused') && (
           <motion.div
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className="absolute bottom-0 left-0 right-0 p-8 flex justify-center"
+            className="absolute bottom-0 left-0 right-0 p-8 flex justify-center items-center gap-6"
           >
             {state === 'ready' ? (
               <Button
@@ -554,30 +612,51 @@ const MobileRecord = () => {
                 <Camera className="w-8 h-8" />
               </Button>
             ) : (
-              <Button
-                size="lg"
-                onClick={handleStopRecording}
-                className="w-20 h-20 rounded-full bg-red-500 hover:bg-red-600 shadow-xl animate-pulse"
-              >
-                <StopCircle className="w-8 h-8" />
-              </Button>
+              <>
+                {/* Pause/Resume Button */}
+                <Button
+                  size="lg"
+                  onClick={state === 'paused' ? handleResumeRecording : handlePauseRecording}
+                  variant="secondary"
+                  className="w-16 h-16 rounded-full shadow-lg"
+                >
+                  {state === 'paused' ? (
+                    <Play className="w-6 h-6" />
+                  ) : (
+                    <Pause className="w-6 h-6" />
+                  )}
+                </Button>
+                
+                {/* Stop Button */}
+                <Button
+                  size="lg"
+                  onClick={handleStopRecording}
+                  className={`w-20 h-20 rounded-full bg-red-500 hover:bg-red-600 shadow-xl ${state === 'recording' ? 'animate-pulse' : ''}`}
+                >
+                  <StopCircle className="w-8 h-8" />
+                </Button>
+              </>
             )}
           </motion.div>
         )}
 
         {/* Recording indicator */}
-        {state === 'recording' && (
+        {(state === 'recording' || state === 'paused') && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="absolute top-4 left-4 flex items-center gap-2 bg-red-500/90 text-white px-3 py-1.5 rounded-full"
+            className={`absolute top-4 left-4 flex items-center gap-2 ${state === 'paused' ? 'bg-yellow-500/90' : 'bg-red-500/90'} text-white px-3 py-1.5 rounded-full`}
           >
-            <motion.div
-              animate={{ opacity: [1, 0.3, 1] }}
-              transition={{ repeat: Infinity, duration: 1 }}
-              className="w-2 h-2 rounded-full bg-white"
-            />
-            <span className="text-sm font-medium">REC</span>
+            {state === 'recording' ? (
+              <motion.div
+                animate={{ opacity: [1, 0.3, 1] }}
+                transition={{ repeat: Infinity, duration: 1 }}
+                className="w-2 h-2 rounded-full bg-white"
+              />
+            ) : (
+              <Pause className="w-3 h-3" />
+            )}
+            <span className="text-sm font-medium">{state === 'paused' ? 'PAUSED' : 'REC'}</span>
           </motion.div>
         )}
 
