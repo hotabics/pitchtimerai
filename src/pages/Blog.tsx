@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { Clock, ArrowRight, BookOpen } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { LazyImage } from '@/components/ui/lazy-image';
 import { BLOG_POSTS, CATEGORY_COLORS, BlogCategory } from '@/data/blogPosts';
 import { cn } from '@/lib/utils';
 
@@ -81,11 +82,13 @@ const Blog = () => {
               className="mb-12"
             >
               <Link to={`/blog/${featuredPost.id}`} className="group block">
-                <div className="relative overflow-hidden rounded-2xl bg-muted aspect-[21/9]">
-                  <img
+                <div className="relative overflow-hidden rounded-2xl bg-muted">
+                  <LazyImage
                     src={featuredPost.image}
                     alt={featuredPost.title}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    aspectRatio="21/9"
+                    className="transition-transform duration-500 group-hover:scale-105"
+                    eager
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10">
@@ -132,11 +135,12 @@ const Blog = () => {
                   <Link to={`/blog/${post.id}`} className="group block h-full">
                     <div className="bg-card border border-border rounded-xl overflow-hidden h-full flex flex-col transition-all duration-300 hover:shadow-lg hover:border-primary/30 hover:-translate-y-1">
                       {/* Image */}
-                      <div className="relative aspect-[16/10] overflow-hidden">
-                        <img
+                      <div className="relative overflow-hidden">
+                        <LazyImage
                           src={post.image}
                           alt={post.title}
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          aspectRatio="16/10"
+                          className="transition-transform duration-500 group-hover:scale-105"
                         />
                         <div className="absolute top-3 left-3">
                           <Badge className={cn('border', CATEGORY_COLORS[post.category])}>

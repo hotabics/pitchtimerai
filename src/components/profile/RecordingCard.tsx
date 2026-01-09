@@ -4,6 +4,7 @@ import { Play, Video, Calendar, Trash2, ExternalLink, Download, FileText } from 
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { LazyImage } from '@/components/ui/lazy-image';
 import { motion } from 'framer-motion';
 
 interface RecordingCardProps {
@@ -89,10 +90,11 @@ export const RecordingCard = ({
         >
           {/* Thumbnail image if available */}
           {thumbnailUrl ? (
-            <img 
+            <LazyImage 
               src={thumbnailUrl} 
               alt={title}
-              className="absolute inset-0 w-full h-full object-cover"
+              aspectRatio="16/9"
+              containerClassName="absolute inset-0"
             />
           ) : null}
           
