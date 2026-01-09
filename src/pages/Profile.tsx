@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Settings, Trophy, Flame, Mic, Video, Plus, Target, TrendingUp } from "lucide-react";
+import { Settings, Trophy, Flame, Mic, Video, Plus, Target, TrendingUp, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
-
+import { useUserStore } from "@/stores/userStore";
 import { Leaderboard } from "@/components/profile/Leaderboard";
 import { GoalSetting } from "@/components/profile/GoalSetting";
 import { PitchChallenges } from "@/components/profile/PitchChallenges";
@@ -75,11 +75,9 @@ const formatTypeName = (type: string) => {
 
 const Profile = () => {
   const navigate = useNavigate();
+  const { user, isLoggedIn, userPlan, logout } = useUserStore();
   const [sessions, setSessions] = useState<PracticeSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [userEmail] = useState("demo@pitchpal.app"); // Mock user for demo
-  const [userName] = useState("Demo User");
-  const [isPro] = useState(false);
   const [selectedRecording, setSelectedRecording] = useState<PracticeSession | null>(null);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
@@ -90,9 +88,18 @@ const Profile = () => {
     sortBy: 'date-desc',
   });
 
+  // Redirect to auth if not logged in
   useEffect(() => {
-    fetchSessions();
-  }, []);
+    if (!isLoggedIn) {
+      navigate('/auth?returnTo=/profile');
+    }
+  }, [isLoggedIn, navigate]);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchSessions();
+    }
+  }, [isLoggedIn]);
 
   const fetchSessions = async () => {
     setIsLoading(true);
@@ -312,24 +319,29 @@ const Profile = () => {
               <CardContent className="pt-6">
                 <div className="flex items-center gap-4">
                   <Avatar className="h-16 w-16">
-                    <AvatarImage src="" />
+                    <AvatarImage src={user?.avatar || ""} />
                     <AvatarFallback className="bg-primary/10 text-primary text-xl">
-                      {userName.split(' ').map(n => n[0]).join('')}
+                      {user?.name?.split(' ').map(n => n[0]).join('') || 'U'}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <h3 className="text-xl font-semibold">{userName}</h3>
-                    <p className="text-sm text-muted-foreground">{userEmail}</p>
+                    <h3 className="text-xl font-semibold">{user?.name || 'User'}</h3>
+                    <p className="text-sm text-muted-foreground">{user?.email || ''}</p>
                     <Badge 
                       variant="outline" 
-                      className={`mt-2 ${isPro ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-muted'}`}
+                      className={`mt-2 ${userPlan !== 'free' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-muted'}`}
                     >
-                      {isPro ? '✨ Pro Member' : 'Free Plan'}
+                      {userPlan === 'pro' ? '✨ Pro Member' : userPlan === 'pass_48h' ? '⚡ 48h Pass' : 'Free Plan'}
                     </Badge>
                   </div>
-                  <Button variant="ghost" size="icon" title="Account Settings">
-                    <Settings className="h-5 w-5" />
-                  </Button>
+                  <div className="flex flex-col gap-2">
+                    <Button variant="ghost" size="icon" title="Account Settings">
+                      <Settings className="h-5 w-5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" title="Sign Out" onClick={logout}>
+                      <LogOut className="h-5 w-5" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
