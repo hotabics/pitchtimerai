@@ -1,15 +1,17 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { User, Camera, Save, Loader2, ArrowLeft, CheckCircle } from "lucide-react";
+import { User, Camera, Save, Loader2, ArrowLeft, CheckCircle, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { useNavigate } from "react-router-dom";
 import { useUserStore } from "@/stores/userStore";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getSoundEnabled, setSoundEnabled } from "@/utils/soundSettings";
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -19,6 +21,13 @@ const Settings = () => {
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar || "");
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [soundEnabled, setLocalSoundEnabled] = useState(getSoundEnabled());
+
+  const handleSoundToggle = (enabled: boolean) => {
+    setLocalSoundEnabled(enabled);
+    setSoundEnabled(enabled);
+    toast.success(enabled ? "Sound effects enabled" : "Sound effects muted");
+  };
 
   // Redirect if not logged in
   useEffect(() => {
@@ -220,6 +229,35 @@ const Settings = () => {
                     </>
                   )}
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Preferences Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                Preferences
+              </CardTitle>
+              <CardDescription>
+                Customize your app experience
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Sound Effects Toggle */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="sound-effects" className="text-base">Sound Effects</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Play sounds for success chimes and notifications
+                  </p>
+                </div>
+                <Switch
+                  id="sound-effects"
+                  checked={soundEnabled}
+                  onCheckedChange={handleSoundToggle}
+                />
               </div>
             </CardContent>
           </Card>

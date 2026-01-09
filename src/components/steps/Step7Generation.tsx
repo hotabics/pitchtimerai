@@ -1,10 +1,11 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Sparkles, FileText, Clock, Mic, CheckCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, Sparkles, FileText, Clock, Mic, CheckCircle, Loader2, FastForward } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WizardStep } from "@/components/WizardStep";
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import { trackConfigs, TrackType } from "@/lib/tracks";
 import { trackEvent } from "@/utils/analytics";
+import { getSoundEnabled } from "@/utils/soundSettings";
 import confetti from "canvas-confetti";
 
 interface Step7GenerationProps {
@@ -94,6 +95,7 @@ export const Step7Generation = ({ onNext, onBack, track, idea }: Step7Generation
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
+  const skipRef = useRef(false);
 
   const trackConfig = track ? trackConfigs[track] : null;
   const trackName = trackConfig?.name || "Pitch";
@@ -112,16 +114,27 @@ export const Step7Generation = ({ onNext, onBack, track, idea }: Step7Generation
   
   const remainingTime = Math.ceil((totalDuration - elapsedDuration) / 1000);
 
+  const handleSkipAnimation = useCallback(() => {
+    skipRef.current = true;
+  }, []);
+
   const handleGenerate = useCallback(async () => {
     setIsGenerating(true);
     setCurrentStep(0);
     setCompletedSteps([]);
+    skipRef.current = false;
 
     // Track pitch generation start
     trackEvent('pitch_generation_started', { track, idea: idea?.slice(0, 100) });
 
     // Animate through generation steps
     for (let i = 0; i < generationSteps.length; i++) {
+      if (skipRef.current) {
+        // Skip remaining animation - complete all steps immediately
+        setCompletedSteps(generationSteps.map(s => s.id));
+        setCurrentStep(generationSteps.length - 1);
+        break;
+      }
       setCurrentStep(i);
       await new Promise((resolve) => setTimeout(resolve, generationSteps[i].duration));
       setCompletedSteps((prev) => [...prev, generationSteps[i].id]);
@@ -131,15 +144,18 @@ export const Step7Generation = ({ onNext, onBack, track, idea }: Step7Generation
     trackEvent('pitch_generation_completed', { 
       track, 
       sections_count: outputSections.length,
+      skipped: skipRef.current,
     });
 
-    // Play success feedback with confetti
-    playSuccessSound();
+    // Play success feedback with confetti (only if sound is enabled)
+    if (getSoundEnabled()) {
+      playSuccessSound();
+    }
     triggerHaptic();
     fireConfetti();
 
     // Small delay before navigating
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    await new Promise((resolve) => setTimeout(resolve, skipRef.current ? 200 : 600));
     onNext("script", "Speech Only");
   }, [onNext, track, idea, outputSections.length]);
 
@@ -350,6 +366,24 @@ export const Step7Generation = ({ onNext, onBack, track, idea }: Step7Generation
                   {currentStep < generationSteps.length ? generationSteps[currentStep].label : "Completing..."}
                 </p>
               </div>
+
+              {/* Skip Animation Button */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.5 }}
+                className="mt-6"
+              >
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSkipAnimation}
+                  className="text-muted-foreground hover:text-foreground gap-2"
+                >
+                  <FastForward className="w-4 h-4" />
+                  Skip Animation
+                </Button>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
