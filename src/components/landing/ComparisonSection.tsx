@@ -115,7 +115,7 @@ export const ComparisonSection = () => {
                   <Check className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-foreground">PitchDeck AI</h3>
+                  <h3 className="font-semibold text-foreground">PitchPerfect</h3>
                   <p className="text-xs text-primary">All-in-One Platform</p>
                 </div>
               </div>

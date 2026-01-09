@@ -72,11 +72,11 @@ const handler = async (req: Request): Promise<Response> => {
               </div>
               <p>The competition is heating up! Keep practicing to stay on top of the leaderboard.</p>
               <p style="text-align: center; margin-top: 30px;">
-                <a href="https://pitchdeckai.app/profile" class="btn">View Challenge</a>
+                <a href="https://pitchperfect.app/profile" class="btn">View Challenge</a>
               </p>
             </div>
             <div class="footer">
-              <p>PitchDeck AI - Practice makes perfect!</p>
+              <p>PitchPerfect - Practice makes perfect!</p>
             </div>
           </div>
         </body>
@@ -123,11 +123,11 @@ const handler = async (req: Request): Promise<Response> => {
               
               <p style="text-align: center;">Time to reclaim your throne! 👑</p>
               <p style="text-align: center; margin-top: 30px;">
-                <a href="https://pitchdeckai.app/profile" class="btn">Practice Now</a>
+                <a href="https://pitchperfect.app/profile" class="btn">Practice Now</a>
               </p>
             </div>
             <div class="footer">
-              <p>PitchDeck AI - Practice makes perfect!</p>
+              <p>PitchPerfect - Practice makes perfect!</p>
             </div>
           </div>
         </body>
@@ -136,7 +136,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const emailResponse = await resend.emails.send({
-      from: "PitchDeck AI <notifications@resend.dev>",
+      from: "PitchPerfect <notifications@resend.dev>",
       to: [creatorEmail],
       subject: subject,
       html: htmlContent,

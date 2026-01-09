@@ -122,11 +122,11 @@ const ComparisonVisual = () => (
       </div>
     </div>
     
-    {/* PitchDeck - structured */}
+    {/* PitchPerfect - structured */}
     <div className="flex-1 p-3 rounded-lg bg-primary/5 border border-primary/20">
       <div className="flex items-center gap-1.5 mb-2">
         <Check className="w-3 h-3 text-time-low" />
-        <span className="text-[10px] text-primary">PitchDeck</span>
+        <span className="text-[10px] text-primary">PitchPerfect</span>
       </div>
       <div className="space-y-1">
         <div className="flex gap-1">

@@ -743,7 +743,7 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
       if (showWatermark) {
         pdf.setFontSize(10);
         pdf.setTextColor(180);
-        pdf.text("Created with PitchDeck.ai", pageWidth - margin, pageHeight - 10, { align: "right" });
+        pdf.text("Created with PitchPerfect", pageWidth - margin, pageHeight - 10, { align: "right" });
       }
       
       pdf.setTextColor(0);
@@ -800,7 +800,7 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
       if (showWatermark) {
         pdf.setFontSize(10);
         pdf.setTextColor(180);
-        pdf.text("Created with PitchDeck.ai", pageWidth - margin, pageHeight - 10, { align: "right" });
+        pdf.text("Created with PitchPerfect", pageWidth - margin, pageHeight - 10, { align: "right" });
       }
       
       pdf.setTextColor(0);
@@ -890,7 +890,7 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
     pdf.text(`${meta.bulletPoints.length} key points`, pageWidth / 2, pageHeight - 12, { align: "center" });
     
     if (showWatermark) {
-      pdf.text("Created with PitchDeck.ai", pageWidth - margin, pageHeight - 12, { align: "right" });
+      pdf.text("Created with PitchPerfect", pageWidth - margin, pageHeight - 12, { align: "right" });
     }
 
     // Save

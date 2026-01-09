@@ -81,7 +81,7 @@ export const Navbar = () => {
             <Sparkles className="w-5 h-5 text-primary-foreground" />
           </div>
           <span className="hidden sm:inline bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-            PitchPlease
+            PitchPerfect
           </span>
         </Link>
 
@@ -228,7 +228,7 @@ export const Navbar = () => {
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
                     <Sparkles className="w-5 h-5 text-primary-foreground" />
                   </div>
-                  PitchPlease
+                  PitchPerfect
                 </SheetTitle>
               </SheetHeader>
               

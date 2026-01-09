@@ -135,7 +135,7 @@ export const AICoachSpotlight = () => {
               <div className="w-3 h-3 rounded-full bg-green-500/70" />
               <div className="flex-1 mx-4">
                 <div className="bg-slate-700 rounded-md px-3 py-1 text-xs text-slate-400 text-center">
-                  pitchdeck.ai/coach
+                  pitchperfect.ai/coach
                 </div>
               </div>
             </div>

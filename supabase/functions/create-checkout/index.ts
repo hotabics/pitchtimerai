@@ -54,7 +54,7 @@ serve(async (req) => {
       logStep("Existing customer found", { customerId });
     }
 
-    const origin = req.headers.get("origin") || "https://pitchdeck.ai";
+    const origin = req.headers.get("origin") || "https://pitchperfect.ai";
     
     // Determine checkout mode based on plan type
     const isSubscription = planType === 'pro';

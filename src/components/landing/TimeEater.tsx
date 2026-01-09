@@ -389,7 +389,7 @@ export const TimeEater = ({
                     <div className="flex items-center gap-2">
                       <Zap className="w-4 h-4 text-emerald-400" />
                       <span className="text-sm font-medium text-muted-foreground">
-                        With PitchDeck AI
+                        With PitchPerfect
                       </span>
                     </div>
                     <motion.div className="text-right" animate={{

@@ -6,7 +6,7 @@ import { isUrl, scrapeUrl, ScrapedProjectData } from "@/lib/api/firecrawl";
 import { toast } from "@/hooks/use-toast";
 import { trackEvent } from "@/utils/analytics";
 
-const RECENT_IDEAS_KEY = "pitchdeck_recent_ideas";
+const RECENT_IDEAS_KEY = "pitchperfect_recent_ideas";
 const MAX_RECENT_IDEAS = 3;
 
 const getRecentIdeas = (): string[] => {

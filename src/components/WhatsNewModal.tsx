@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 const CURRENT_VERSION = "1.7.0";
-const STORAGE_KEY = "pitchdeck_last_seen_version";
+const STORAGE_KEY = "pitchperfect_last_seen_version";
 
 interface ChangelogItem {
   icon: React.ReactNode;
