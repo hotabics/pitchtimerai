@@ -12,6 +12,9 @@ import SharedScript from "./pages/SharedScript";
 import ResetPassword from "./pages/ResetPassword";
 import Blog from "./pages/Blog";
 import BlogArticle from "./pages/BlogArticle";
+import About from "./pages/About";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import { AICoachPage } from "./components/ai-coach/AICoachPage";
@@ -45,6 +48,9 @@ const App = () => (
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/blog" element={<Blog />} />
               <Route path="/blog/:id" element={<BlogArticle />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/privacy" element={<Privacy />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
