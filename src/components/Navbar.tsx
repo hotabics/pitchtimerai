@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, Sparkles, LogOut, User, CreditCard, Zap, Sun, Moon } from 'lucide-react';
+import { Menu, Sparkles, LogOut, User, CreditCard, Zap, Sun, Moon, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,7 @@ import { cn } from '@/lib/utils';
 
 // Navigation links configuration
 const guestLinks = [
-  { label: 'Features', href: '/#features' },
+  { label: 'Generate Pitch', href: '/#hero-input' },
   { label: 'Blog', href: '/blog' },
   { label: 'Pricing', href: '/pricing' },
 ];
@@ -212,6 +212,12 @@ export const Navbar = () => {
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
+                      <Link to="/settings" className="cursor-pointer">
+                        <Settings className="mr-2 h-4 w-4" />
+                        Settings
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
                       <Link to="/pricing" className="cursor-pointer">
                         <CreditCard className="mr-2 h-4 w-4" />
                         Subscription
@@ -357,6 +363,15 @@ export const Navbar = () => {
                     >
                       <User className="w-4 h-4" />
                       Profile & Stats
+                    </Link>
+                    
+                    <Link
+                      to="/settings"
+                      onClick={() => setMobileOpen(false)}
+                      className="px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors flex items-center gap-2"
+                    >
+                      <Settings className="w-4 h-4" />
+                      Settings
                     </Link>
                     
                     <Link

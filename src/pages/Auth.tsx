@@ -107,7 +107,18 @@ export default function Auth() {
           },
         });
         if (error) throw error;
-        if (data.user) {
+        
+        // Check if email confirmation is required
+        if (data.user && !data.session) {
+          // Email confirmation required
+          toast({
+            title: 'Check your email! 📧',
+            description: 'We sent you a confirmation link. Please verify your email to continue.',
+          });
+          setMode('login');
+          setPassword('');
+        } else if (data.user && data.session) {
+          // Auto-confirmed (for testing/development)
           login({
             id: data.user.id,
             email: data.user.email || email,
