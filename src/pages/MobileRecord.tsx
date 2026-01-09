@@ -11,6 +11,26 @@ import { uploadRecording } from '@/services/videoStorage';
 type RecordingState = 'connecting' | 'ready' | 'countdown' | 'recording' | 'uploading' | 'success' | 'error';
 type FacingMode = 'user' | 'environment';
 
+const MAX_RECORDING_SECONDS = 300; // 5 minutes
+const WARNING_THRESHOLD_SECONDS = 30; // Show warning when 30 seconds remaining
+
+// Haptic feedback helper
+const triggerHaptic = (pattern: 'start' | 'stop' | 'warning') => {
+  if (!navigator.vibrate) return;
+  
+  switch (pattern) {
+    case 'start':
+      navigator.vibrate([100, 50, 100]); // Double pulse
+      break;
+    case 'stop':
+      navigator.vibrate(200); // Long pulse
+      break;
+    case 'warning':
+      navigator.vibrate([50, 30, 50, 30, 50]); // Triple short pulse
+      break;
+  }
+};
+
 const MobileRecord = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   
@@ -21,6 +41,7 @@ const MobileRecord = () => {
   const [countdownValue, setCountdownValue] = useState(3);
   const [facingMode, setFacingMode] = useState<FacingMode>('user');
   const [audioLevel, setAudioLevel] = useState(0);
+  const [showTimeWarning, setShowTimeWarning] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -198,6 +219,7 @@ const MobileRecord = () => {
     if (!streamRef.current) return;
 
     chunksRef.current = [];
+    setShowTimeWarning(false);
     
     const mediaRecorder = new MediaRecorder(streamRef.current, {
       mimeType: 'video/webm;codecs=vp9,opus',
@@ -223,9 +245,28 @@ const MobileRecord = () => {
       payload: {},
     });
 
+    // Haptic feedback on start
+    triggerHaptic('start');
+
     setRecordingTime(0);
     timerRef.current = setInterval(() => {
-      setRecordingTime(prev => prev + 1);
+      setRecordingTime(prev => {
+        const newTime = prev + 1;
+        
+        // Check for warning threshold
+        const remainingTime = MAX_RECORDING_SECONDS - newTime;
+        if (remainingTime === WARNING_THRESHOLD_SECONDS) {
+          setShowTimeWarning(true);
+          triggerHaptic('warning');
+        }
+        
+        // Auto-stop at max time
+        if (newTime >= MAX_RECORDING_SECONDS) {
+          handleStopRecording();
+        }
+        
+        return newTime;
+      });
     }, 1000);
 
     setState('recording');
@@ -237,6 +278,10 @@ const MobileRecord = () => {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
+
+    // Haptic feedback on stop
+    triggerHaptic('stop');
+    setShowTimeWarning(false);
 
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
@@ -298,23 +343,52 @@ const MobileRecord = () => {
     return 'bg-red-500';
   };
 
+  // Calculate time progress
+  const timeProgress = (recordingTime / MAX_RECORDING_SECONDS) * 100;
+  const remainingTime = MAX_RECORDING_SECONDS - recordingTime;
+  const isNearLimit = remainingTime <= WARNING_THRESHOLD_SECONDS;
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <header className="p-4 flex items-center justify-between bg-background/80 backdrop-blur-sm border-b">
-        <div className="flex items-center gap-2">
-          <Monitor className="w-5 h-5 text-primary" />
-          <span className="font-semibold">Connected to PC</span>
-        </div>
-        {state === 'recording' && (
+      <header className="p-4 flex flex-col gap-2 bg-background/80 backdrop-blur-sm border-b">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <motion.div
-              animate={{ opacity: [1, 0.3, 1] }}
-              transition={{ repeat: Infinity, duration: 1 }}
-              className="w-3 h-3 rounded-full bg-red-500"
-            />
-            <span className="font-mono text-lg">{formatTime(recordingTime)}</span>
+            <Monitor className="w-5 h-5 text-primary" />
+            <span className="font-semibold">Connected to PC</span>
           </div>
+          {state === 'recording' && (
+            <div className="flex items-center gap-2">
+              <motion.div
+                animate={{ opacity: [1, 0.3, 1] }}
+                transition={{ repeat: Infinity, duration: 1 }}
+                className="w-3 h-3 rounded-full bg-red-500"
+              />
+              <span className={`font-mono text-lg ${isNearLimit ? 'text-red-500 font-bold' : ''}`}>
+                {formatTime(recordingTime)}
+              </span>
+              <span className="text-muted-foreground text-sm">
+                / {formatTime(MAX_RECORDING_SECONDS)}
+              </span>
+            </div>
+          )}
+        </div>
+        
+        {/* Recording Progress Bar */}
+        {state === 'recording' && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            className="w-full"
+          >
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+              <motion.div
+                className={`h-full transition-colors ${isNearLimit ? 'bg-red-500' : 'bg-primary'}`}
+                animate={{ width: `${timeProgress}%` }}
+                transition={{ duration: 0.3 }}
+              />
+            </div>
+          </motion.div>
         )}
       </header>
 
@@ -506,6 +580,25 @@ const MobileRecord = () => {
             <span className="text-sm font-medium">REC</span>
           </motion.div>
         )}
+
+        {/* Time Warning Overlay */}
+        <AnimatePresence>
+          {showTimeWarning && state === 'recording' && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="absolute top-20 left-1/2 -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg"
+            >
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-5 h-5" />
+                <span className="font-medium">
+                  {formatTime(remainingTime)} remaining
+                </span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
 
       {/* Footer hint */}
