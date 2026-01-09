@@ -1,4 +1,4 @@
-// WYSIWYG Slide Editor - Inline text editing directly on slides
+// WYSIWYG Slide Editor - Inline text editing directly on slides with rich text support
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
@@ -6,9 +6,10 @@ import { Slide, useSlidesStore } from '@/stores/slidesStore';
 import { cn } from '@/lib/utils';
 import { 
   Lightbulb, Target, Zap, TrendingUp, Users, Rocket, CheckCircle2,
-  Plus, Trash2, GripVertical
+  Plus, Trash2, Bold, Italic
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { toast } from '@/hooks/use-toast';
 
 interface SlideWYSIWYGProps {
   slide: Slide;
@@ -17,6 +18,18 @@ interface SlideWYSIWYGProps {
 }
 
 const BULLET_ICONS = [Lightbulb, Target, Zap, TrendingUp, Users, Rocket, CheckCircle2];
+
+// Rich text formatting helpers
+const applyFormatting = (tag: 'b' | 'i') => {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return false;
+  
+  const range = selection.getRangeAt(0);
+  if (range.collapsed) return false;
+  
+  document.execCommand(tag === 'b' ? 'bold' : 'italic', false);
+  return true;
+};
 
 export const SlideWYSIWYG = ({ slide, isEditing = true, onExitEdit }: SlideWYSIWYGProps) => {
   const { updateSlide, currentTheme } = useSlidesStore();
@@ -27,13 +40,40 @@ export const SlideWYSIWYG = ({ slide, isEditing = true, onExitEdit }: SlideWYSIW
   
   const titleRef = useRef<HTMLDivElement>(null);
   
+  // Keyboard shortcuts for formatting
+  useEffect(() => {
+    if (!isEditing) return;
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if we're in an editable element
+      const activeEl = document.activeElement;
+      const isEditable = activeEl?.getAttribute('contenteditable') === 'true';
+      if (!isEditable) return;
+      
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        if (applyFormatting('b')) {
+          toast({ title: 'Bold applied', duration: 1000 });
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'i') {
+        e.preventDefault();
+        if (applyFormatting('i')) {
+          toast({ title: 'Italic applied', duration: 1000 });
+        }
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isEditing]);
+  
   // Sync with slide changes
   useEffect(() => {
     setLocalTitle(slide.title);
     setLocalContent(slide.content);
   }, [slide.id, slide.title, slide.content]);
 
-  // Save changes
+  // Save changes - now captures innerHTML for rich text
   const saveChanges = useCallback(() => {
     updateSlide(slide.id, {
       title: localTitle,
@@ -52,12 +92,14 @@ export const SlideWYSIWYG = ({ slide, isEditing = true, onExitEdit }: SlideWYSIW
   };
 
   const handleTitleInput = (e: React.FormEvent<HTMLDivElement>) => {
-    setLocalTitle(e.currentTarget.textContent || '');
+    // Use innerHTML to preserve formatting
+    setLocalTitle(e.currentTarget.innerHTML || '');
   };
 
   const handleContentInput = (index: number, e: React.FormEvent<HTMLDivElement>) => {
     const newContent = [...localContent];
-    newContent[index] = e.currentTarget.textContent || '';
+    // Use innerHTML to preserve formatting
+    newContent[index] = e.currentTarget.innerHTML || '';
     setLocalContent(newContent);
   };
 
@@ -87,7 +129,7 @@ export const SlideWYSIWYG = ({ slide, isEditing = true, onExitEdit }: SlideWYSIW
     fontFamily: currentTheme.fontFamilyHeading,
   };
 
-  // Editable text component
+  // Rich text editable component
   const EditableText = ({ 
     value, 
     onInput, 
@@ -116,9 +158,8 @@ export const SlideWYSIWYG = ({ slide, isEditing = true, onExitEdit }: SlideWYSIW
       )}
       style={style}
       data-placeholder={placeholder}
-    >
-      {value || placeholder}
-    </Tag>
+      dangerouslySetInnerHTML={{ __html: value || placeholder }}
+    />
   );
 
   const layout = slide.layout || 'default';
@@ -419,10 +460,19 @@ export const SlideWYSIWYG = ({ slide, isEditing = true, onExitEdit }: SlideWYSIW
     >
       {renderContent()}
       
-      {/* Edit mode indicator */}
+      {/* Edit mode indicator with formatting hint */}
       {isEditing && (
-        <div className="absolute top-2 right-2 px-2 py-1 rounded bg-cyan-500/20 text-cyan-400 text-xs font-medium">
-          Editing
+        <div className="absolute top-2 right-2 flex items-center gap-2">
+          <div className="flex items-center gap-1 px-2 py-1 rounded bg-black/40 text-white/50 text-[10px]">
+            <Bold className="w-3 h-3" />
+            <span>Ctrl+B</span>
+            <span className="mx-1">|</span>
+            <Italic className="w-3 h-3" />
+            <span>Ctrl+I</span>
+          </div>
+          <div className="px-2 py-1 rounded bg-cyan-500/20 text-cyan-400 text-xs font-medium">
+            Editing
+          </div>
         </div>
       )}
     </motion.div>

@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ChevronLeft, ChevronRight, Play, Pause, Maximize2, Minimize2,
   Plus, Sparkles, Download, Loader2, Wand2, Radio, FileDown, Upload,
-  Edit3, Eye
+  Edit3, Eye, Mic, MicOff
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -30,6 +30,53 @@ import { generateAISlides } from '@/services/slideAI';
 import { exportToPowerPoint } from '@/services/pptxExport';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+
+// Voice commands for slide navigation
+const NEXT_COMMANDS = ['next slide', 'next', 'go next', 'forward', 'advance'];
+const PREV_COMMANDS = ['previous slide', 'previous', 'go back', 'back'];
+
+// TypeScript declarations for Web Speech API
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
+}
+
+interface SpeechRecognitionResultList {
+  length: number;
+  item(index: number): SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionResult {
+  isFinal: boolean;
+  length: number;
+  item(index: number): SpeechRecognitionAlternative;
+  [index: number]: SpeechRecognitionAlternative;
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start(): void;
+  stop(): void;
+  onstart: ((this: SpeechRecognition, ev: Event) => void) | null;
+  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => void) | null;
+  onerror: ((this: SpeechRecognition, ev: Event & { error: string }) => void) | null;
+  onend: ((this: SpeechRecognition, ev: Event) => void) | null;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition: new () => SpeechRecognition;
+    webkitSpeechRecognition: new () => SpeechRecognition;
+  }
+}
 
 interface SlideDeckProps {
   scriptBlocks?: { title: string; content: string }[];
@@ -81,6 +128,12 @@ export const SlideDeck = ({
   const [isExporting, setIsExporting] = useState(false);
   const [showGeminiModal, setShowGeminiModal] = useState(false);
   const [isWYSIWYGMode, setIsWYSIWYGMode] = useState(false);
+  
+  // Voice control state
+  const [voiceControlEnabled, setVoiceControlEnabled] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const lastCommandTimeRef = useRef(0);
   
   // Drag and drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -273,17 +326,109 @@ export const SlideDeck = ({
     setDragOverIndex(null);
   };
 
-  const goToNextSlide = () => {
+  const goToNextSlide = useCallback(() => {
     if (currentSlideIndex < slides.length - 1) {
       setCurrentSlideIndex(currentSlideIndex + 1);
     }
-  };
+  }, [currentSlideIndex, slides.length, setCurrentSlideIndex]);
 
-  const goToPreviousSlide = () => {
+  const goToPreviousSlide = useCallback(() => {
     if (currentSlideIndex > 0) {
       setCurrentSlideIndex(currentSlideIndex - 1);
     }
-  };
+  }, [currentSlideIndex, setCurrentSlideIndex]);
+
+  // Voice control for slide navigation
+  useEffect(() => {
+    if (!voiceControlEnabled) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      }
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast({
+        title: 'Voice control unavailable',
+        description: 'Your browser does not support speech recognition.',
+        variant: 'destructive',
+      });
+      setVoiceControlEnabled(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      toast({ title: 'Voice control active', description: 'Say "next slide" or "previous slide"', duration: 2000 });
+    };
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      const now = Date.now();
+      // Cooldown of 1.5 seconds between commands
+      if (now - lastCommandTimeRef.current < 1500) return;
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript.toLowerCase().trim();
+        
+        // Check for next commands
+        if (NEXT_COMMANDS.some(cmd => transcript.includes(cmd))) {
+          lastCommandTimeRef.current = now;
+          goToNextSlide();
+          toast({ title: '→ Next slide', duration: 1000 });
+          break;
+        }
+        
+        // Check for previous commands
+        if (PREV_COMMANDS.some(cmd => transcript.includes(cmd))) {
+          lastCommandTimeRef.current = now;
+          goToPreviousSlide();
+          toast({ title: '← Previous slide', duration: 1000 });
+          break;
+        }
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+      if (event.error === 'not-allowed') {
+        toast({
+          title: 'Microphone access denied',
+          description: 'Please allow microphone access for voice control.',
+          variant: 'destructive',
+        });
+        setVoiceControlEnabled(false);
+      }
+    };
+
+    recognition.onend = () => {
+      // Restart if still enabled
+      if (voiceControlEnabled && recognitionRef.current) {
+        try {
+          recognition.start();
+        } catch (e) {
+          // Ignore if already started
+        }
+      } else {
+        setIsListening(false);
+      }
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+
+    return () => {
+      recognition.stop();
+      recognitionRef.current = null;
+    };
+  }, [voiceControlEnabled, goToNextSlide, goToPreviousSlide]);
 
   const handleAddSlide = () => {
     const newSlide: Slide = {
@@ -386,6 +531,27 @@ export const SlideDeck = ({
               <>
                 <Edit3 className="w-4 h-4 mr-2" />
                 Edit Text
+              </>
+            )}
+          </Button>
+          <Button
+            variant={voiceControlEnabled ? "default" : "outline"}
+            size="sm"
+            onClick={() => setVoiceControlEnabled(!voiceControlEnabled)}
+            title={voiceControlEnabled ? 'Disable voice control' : 'Enable voice control (say "next slide")'}
+            className={cn(
+              voiceControlEnabled && "bg-green-600 hover:bg-green-700"
+            )}
+          >
+            {voiceControlEnabled ? (
+              <>
+                <Mic className={cn("w-4 h-4 mr-2", isListening && "animate-pulse")} />
+                Voice On
+              </>
+            ) : (
+              <>
+                <MicOff className="w-4 h-4 mr-2" />
+                Voice
               </>
             )}
           </Button>
