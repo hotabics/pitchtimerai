@@ -1,34 +1,44 @@
+import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import AdminAnalytics from "./pages/AdminAnalytics";
-import FeedbackAnalytics from "./pages/FeedbackAnalytics";
-import Pricing from "./pages/Pricing";
-import SharedScript from "./pages/SharedScript";
-import ResetPassword from "./pages/ResetPassword";
-import Blog from "./pages/Blog";
-import BlogArticle from "./pages/BlogArticle";
-import About from "./pages/About";
-import Terms from "./pages/Terms";
-import Privacy from "./pages/Privacy";
-import Contact from "./pages/Contact";
-import Cookies from "./pages/Cookies";
-import Careers from "./pages/Careers";
-import Settings from "./pages/Settings";
-import Profile from "./pages/Profile";
-import Auth from "./pages/Auth";
-import { AICoachPage } from "./components/ai-coach/AICoachPage";
-import MobileRecord from "./pages/MobileRecord";
 import { AuthModal } from "./components/auth/AuthModal";
 import { WhatsNewModal } from "./components/WhatsNewModal";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 
+// Lazy load pages for code splitting - reduces initial CSS bundle
+const Index = lazy(() => import("./pages/Index"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const AdminAnalytics = lazy(() => import("./pages/AdminAnalytics"));
+const FeedbackAnalytics = lazy(() => import("./pages/FeedbackAnalytics"));
+const Pricing = lazy(() => import("./pages/Pricing"));
+const SharedScript = lazy(() => import("./pages/SharedScript"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const Blog = lazy(() => import("./pages/Blog"));
+const BlogArticle = lazy(() => import("./pages/BlogArticle"));
+const About = lazy(() => import("./pages/About"));
+const Terms = lazy(() => import("./pages/Terms"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const Contact = lazy(() => import("./pages/Contact"));
+const Cookies = lazy(() => import("./pages/Cookies"));
+const Careers = lazy(() => import("./pages/Careers"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Profile = lazy(() => import("./pages/Profile"));
+const Auth = lazy(() => import("./pages/Auth"));
+const MobileRecord = lazy(() => import("./pages/MobileRecord"));
+const AICoachPage = lazy(() => import("./components/ai-coach/AICoachPage").then(m => ({ default: m.AICoachPage })));
+
 const queryClient = new QueryClient();
+
+// Minimal loading fallback to avoid layout shift
+const PageLoader = () => (
+  <div className="min-h-[50vh] flex items-center justify-center">
+    <div className="animate-pulse text-muted-foreground">Loading...</div>
+  </div>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -41,29 +51,31 @@ const App = () => (
         <div className="min-h-screen flex flex-col">
           <Navbar />
           <main className="flex-1 pt-16">
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/pricing" element={<Pricing />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/admin/analytics" element={<AdminAnalytics />} />
-              <Route path="/admin/feedback" element={<FeedbackAnalytics />} />
-              <Route path="/ai-coach" element={<AICoachPage />} />
-              <Route path="/mobile-record/:sessionId" element={<MobileRecord />} />
-              <Route path="/shared/:id" element={<SharedScript />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/blog" element={<Blog />} />
-              <Route path="/blog/:id" element={<BlogArticle />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/terms" element={<Terms />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/cookies" element={<Cookies />} />
-              <Route path="/careers" element={<Careers />} />
-              <Route path="/settings" element={<Settings />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/admin/analytics" element={<AdminAnalytics />} />
+                <Route path="/admin/feedback" element={<FeedbackAnalytics />} />
+                <Route path="/ai-coach" element={<AICoachPage />} />
+                <Route path="/mobile-record/:sessionId" element={<MobileRecord />} />
+                <Route path="/shared/:id" element={<SharedScript />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/blog" element={<Blog />} />
+                <Route path="/blog/:id" element={<BlogArticle />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/cookies" element={<Cookies />} />
+                <Route path="/careers" element={<Careers />} />
+                <Route path="/settings" element={<Settings />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
           </main>
           <Footer />
         </div>
