@@ -151,9 +151,7 @@ export const Pricing = () => {
     });
 
     setLoadingPlan(null);
-
-    // Redirect to AI Coach to experience unlocked features
-    navigate('/ai-coach');
+    // User stays on current page - UI will auto-update via Zustand state change
   };
 
   const handleManageSubscription = async () => {
