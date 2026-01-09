@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { useUserStore } from '@/stores/userStore';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
-import { Header } from '@/components/Header';
+
 import { supabase } from '@/integrations/supabase/client';
 import { STRIPE_PLANS } from '@/config/stripe';
 import { trackEvent } from '@/utils/analytics';
@@ -193,9 +193,7 @@ export const Pricing = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header showNavigation onLogoClick={() => navigate('/')} />
-      
-      <main className="pt-24 pb-16 px-4">
+      <main className="py-16 px-4">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <motion.div

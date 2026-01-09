@@ -10,7 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
-import { Header } from "@/components/Header";
+
 import { Leaderboard } from "@/components/profile/Leaderboard";
 import { GoalSetting } from "@/components/profile/GoalSetting";
 import { PitchChallenges } from "@/components/profile/PitchChallenges";
@@ -293,8 +293,7 @@ const Profile = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header showNavigation onLogoClick={() => navigate("/")} />
-      <div className="container mx-auto px-4 pt-24 pb-8 max-w-7xl">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Page Title */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight">Your Profile</h1>
