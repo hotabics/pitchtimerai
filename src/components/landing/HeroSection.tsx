@@ -325,9 +325,9 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
             onClick={handleGenerateScript}
             disabled={(!projectInput.trim() && !scrapedData) || isScrapingUrl}
             size="lg"
-            className="flex-1 min-w-fit h-14 px-4 sm:px-6 rounded-xl bg-gradient-to-r from-primary via-amber-500 to-primary text-white hover:opacity-90 shadow-lg shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-sm sm:text-base transition-all duration-300 border-2 border-amber-400/30 whitespace-nowrap"
+            className="flex-1 min-w-fit h-14 sm:h-14 px-5 sm:px-6 rounded-xl bg-gradient-to-r from-primary via-amber-500 to-primary text-white hover:opacity-90 shadow-lg shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed font-bold text-base sm:text-lg transition-all duration-300 border-2 border-amber-400/30 whitespace-nowrap"
           >
-            <Zap className="w-5 h-5 mr-2 flex-shrink-0" />
+            <Zap className="w-5 h-5 sm:w-6 sm:h-6 mr-2 flex-shrink-0" />
             Auto-Generate
           </Button>
 
@@ -337,9 +337,9 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
             disabled={(!projectInput.trim() && !scrapedData) || isScrapingUrl}
             variant="outline"
             size="lg"
-            className="flex-1 min-w-fit h-14 px-4 sm:px-6 rounded-xl border-2 border-muted-foreground/30 hover:border-primary/50 hover:bg-primary/5 font-semibold text-sm sm:text-base transition-all duration-300 whitespace-nowrap"
+            className="flex-1 min-w-fit h-14 sm:h-14 px-5 sm:px-6 rounded-xl border-2 border-primary/40 hover:border-primary/60 hover:bg-primary/10 font-bold text-base sm:text-lg text-foreground transition-all duration-300 whitespace-nowrap"
           >
-            <Settings className="w-5 h-5 mr-2 flex-shrink-0" />
+            <Settings className="w-5 h-5 sm:w-6 sm:h-6 mr-2 flex-shrink-0" />
             Customize Pitch
           </Button>
         </motion.div>

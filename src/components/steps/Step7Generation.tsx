@@ -270,11 +270,22 @@ export const Step7Generation = ({ onNext, onBack, track, idea }: Step7Generation
                 })}
               </div>
 
-              {/* Progress bar */}
-              <div className="w-full max-w-sm mt-8">
-                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+              {/* Progress bar with percentage */}
+              <div className="w-full max-w-sm mt-8 space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Progress</span>
+                  <motion.span 
+                    key={completedSteps.length}
+                    initial={{ scale: 1.2, color: "hsl(var(--primary))" }}
+                    animate={{ scale: 1, color: "hsl(var(--foreground))" }}
+                    className="font-bold text-foreground"
+                  >
+                    {Math.round((completedSteps.length / generationSteps.length) * 100)}%
+                  </motion.span>
+                </div>
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
                   <motion.div
-                    className="h-full bg-primary rounded-full"
+                    className="h-full bg-gradient-to-r from-primary to-emerald-500 rounded-full"
                     initial={{ width: "0%" }}
                     animate={{
                       width: `${((completedSteps.length) / generationSteps.length) * 100}%`,
@@ -282,6 +293,9 @@ export const Step7Generation = ({ onNext, onBack, track, idea }: Step7Generation
                     transition={{ duration: 0.3 }}
                   />
                 </div>
+                <p className="text-xs text-muted-foreground text-center">
+                  {currentStep < generationSteps.length ? generationSteps[currentStep].label : "Completing..."}
+                </p>
               </div>
             </motion.div>
           )}
