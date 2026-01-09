@@ -11,8 +11,19 @@
     <!-- Preconnect to font origins for faster loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Preload critical font file -->
+    <link rel="preload" href="https://fonts.gstatic.com/s/inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2" as="font" type="font/woff2" crossorigin />
     <!-- Load fonts with display=swap and media=print to prevent render blocking -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" /></noscript>
+    <!-- Inline critical CSS for immediate paint -->
+    <style>
+      body{margin:0;font-family:system-ui,-apple-system,sans-serif}
+      #root{min-height:100vh;display:flex;flex-direction:column}
+      .initial-loader{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#0a0a0a}
+      .initial-loader div{width:40px;height:40px;border:3px solid #333;border-top-color:#6366f1;border-radius:50%;animation:spin 1s linear infinite}
+      @keyframes spin{to{transform:rotate(360deg)}}
+    </style>
 
     <meta property="og:title" content="Pitch Cicero - Master Your Pitch with AI" />
     <meta property="og:description" content="AI-powered pitch coaching. Generate presentations, scripts, and practice with real-time feedback." />
@@ -25,7 +36,7 @@
   </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root"><div class="initial-loader"><div></div></div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
