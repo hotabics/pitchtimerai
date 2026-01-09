@@ -186,33 +186,12 @@ export const useUserStore = create<UserState>()(
         }
       },
 
-      // Plan access checks
-      canAccessDeepAnalysis: () => {
-        const { userPlan, planExpiresAt } = get();
-        if (userPlan === 'free') return false;
-        if (userPlan === 'pass_48h' && planExpiresAt) {
-          return new Date() < new Date(planExpiresAt);
-        }
-        return userPlan === 'pro';
-      },
+      // Plan access checks - All features unlocked for hackathon demo
+      canAccessDeepAnalysis: () => true,
 
-      canExportWithoutWatermark: () => {
-        const { userPlan, planExpiresAt } = get();
-        if (userPlan === 'free') return false;
-        if (userPlan === 'pass_48h' && planExpiresAt) {
-          return new Date() < new Date(planExpiresAt);
-        }
-        return userPlan === 'pro';
-      },
+      canExportWithoutWatermark: () => true,
 
-      canSaveHistory: () => {
-        const { userPlan, planExpiresAt } = get();
-        if (userPlan === 'free') return false;
-        if (userPlan === 'pass_48h' && planExpiresAt) {
-          return new Date() < new Date(planExpiresAt);
-        }
-        return userPlan === 'pro';
-      },
+      canSaveHistory: () => true,
     }),
     {
       name: 'pitchdeck-user',
