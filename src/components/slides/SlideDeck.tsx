@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ChevronLeft, ChevronRight, Play, Pause, Maximize2, Minimize2,
-  Plus, Sparkles, Download, Loader2, Wand2, Radio, FileDown, Upload
+  Plus, Sparkles, Download, Loader2, Wand2, Radio, FileDown, Upload,
+  Edit3, Eye
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -16,6 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useSlidesStore, generateSlidesFromBlocks, Slide, SlideTheme } from '@/stores/slidesStore';
 import { SlidePreview } from './SlidePreview';
+import { SlideWYSIWYG } from './SlideWYSIWYG';
 import { SlideEditor } from './SlideEditor';
 import { DraggableThumbnail } from './DraggableThumbnail';
 import { ThemeSelector } from './ThemeSelector';
@@ -78,6 +80,7 @@ export const SlideDeck = ({
   const [isAIGenerating, setIsAIGenerating] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [showGeminiModal, setShowGeminiModal] = useState(false);
+  const [isWYSIWYGMode, setIsWYSIWYGMode] = useState(false);
   
   // Drag and drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -368,6 +371,24 @@ export const SlideDeck = ({
             <Plus className="w-4 h-4 mr-2" />
             Add
           </Button>
+          <Button
+            variant={isWYSIWYGMode ? "default" : "outline"}
+            size="sm"
+            onClick={() => setIsWYSIWYGMode(!isWYSIWYGMode)}
+            title={isWYSIWYGMode ? "Switch to preview mode" : "Edit slide content directly"}
+          >
+            {isWYSIWYGMode ? (
+              <>
+                <Eye className="w-4 h-4 mr-2" />
+                Preview
+              </>
+            ) : (
+              <>
+                <Edit3 className="w-4 h-4 mr-2" />
+                Edit Text
+              </>
+            )}
+          </Button>
           <ThemeSelector />
           <TransitionSelector />
           <SpeakerNotesToggle />
@@ -455,7 +476,7 @@ export const SlideDeck = ({
             <AnimatePresence mode="wait">
               {currentSlide && (
                 <motion.div
-                  key={currentSlide.id}
+                  key={`${currentSlide.id}-${isWYSIWYGMode ? 'edit' : 'view'}`}
                   variants={getTransitionVariants(transitionEffect)}
                   initial="initial"
                   animate="animate"
@@ -463,7 +484,15 @@ export const SlideDeck = ({
                   transition={getTransitionConfig(transitionEffect)}
                   className="w-full max-w-4xl shadow-xl rounded-xl overflow-hidden"
                 >
-                  <SlidePreview slide={currentSlide} />
+                  {isWYSIWYGMode ? (
+                    <SlideWYSIWYG 
+                      slide={currentSlide} 
+                      isEditing={true}
+                      onExitEdit={() => setIsWYSIWYGMode(false)}
+                    />
+                  ) : (
+                    <SlidePreview slide={currentSlide} />
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>

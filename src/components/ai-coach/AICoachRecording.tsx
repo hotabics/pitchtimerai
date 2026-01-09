@@ -294,20 +294,48 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
     setCountdown(3);
   }, [isCameraReady, mediaPipeReady, isRecording, countdown]);
 
-  // Countdown timer effect
+  // Countdown timer effect with beep sounds
   useEffect(() => {
     if (countdown === null) return;
     if (countdown === 0) {
-      // Countdown finished, start recording
+      // Final "GO" beep - higher pitch
+      playBeep(880, 200);
       setCountdown(null);
       startRecordingRef.current();
       return;
     }
+    // Play beep for 3, 2, 1
+    playBeep(440, 150);
     const timer = setTimeout(() => {
       setCountdown(prev => (prev !== null ? prev - 1 : null));
     }, 1000);
     return () => clearTimeout(timer);
   }, [countdown]);
+
+  // Beep sound generator using Web Audio API
+  const playBeep = useCallback((frequency: number, duration: number) => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      
+      oscillator.frequency.value = frequency;
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration / 1000);
+      
+      oscillator.start(audioCtx.currentTime);
+      oscillator.stop(audioCtx.currentTime + duration / 1000);
+      
+      setTimeout(() => audioCtx.close(), duration + 100);
+    } catch (e) {
+      console.warn('Beep failed:', e);
+    }
+  }, []);
 
   // Start recording function - defined as ref to avoid dependency issues
   const startRecordingRef = useRef<() => void>(() => {});
@@ -743,23 +771,65 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
             )}
           </AnimatePresence>
 
-          {/* Countdown Overlay (3-2-1) */}
+          {/* Countdown Overlay (3-2-1) with Framing Guide */}
           <AnimatePresence>
             {countdown !== null && countdown > 0 && (
               <motion.div
                 initial={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm pointer-events-auto"
+                className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm pointer-events-auto"
               >
+                {/* Framing Guide - Head & Shoulders Silhouette */}
+                <svg
+                  className="absolute inset-0 w-full h-full pointer-events-none"
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="xMidYMid meet"
+                >
+                  {/* Semi-transparent overlay with cutout */}
+                  <defs>
+                    <mask id="framingMask">
+                      <rect x="0" y="0" width="100" height="100" fill="white" />
+                      {/* Head oval cutout */}
+                      <ellipse cx="50" cy="30" rx="12" ry="15" fill="black" />
+                      {/* Shoulders trapezoid cutout */}
+                      <path d="M 26 55 Q 38 42, 50 42 Q 62 42, 74 55 L 80 70 L 20 70 Z" fill="black" />
+                    </mask>
+                  </defs>
+                  
+                  {/* Darkened area outside the framing zone */}
+                  <rect x="0" y="0" width="100" height="100" fill="rgba(0,0,0,0.4)" mask="url(#framingMask)" />
+                  
+                  {/* Framing guide outline */}
+                  <ellipse 
+                    cx="50" cy="30" rx="12" ry="15" 
+                    fill="none" 
+                    stroke="rgba(34, 211, 238, 0.8)" 
+                    strokeWidth="0.5" 
+                    strokeDasharray="2,2"
+                  />
+                  <path 
+                    d="M 26 55 Q 38 42, 50 42 Q 62 42, 74 55 L 80 70 L 20 70 Z" 
+                    fill="none" 
+                    stroke="rgba(34, 211, 238, 0.8)" 
+                    strokeWidth="0.5"
+                    strokeDasharray="2,2"
+                  />
+                  
+                  {/* Center crosshair */}
+                  <line x1="48" y1="30" x2="52" y2="30" stroke="rgba(34, 211, 238, 0.6)" strokeWidth="0.3" />
+                  <line x1="50" y1="28" x2="50" y2="32" stroke="rgba(34, 211, 238, 0.6)" strokeWidth="0.3" />
+                </svg>
+
+                {/* Countdown Number */}
                 <motion.div
                   key={countdown}
                   initial={{ scale: 0.5, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 1.5, opacity: 0 }}
                   transition={{ duration: 0.5, ease: "easeOut" }}
-                  className="relative"
+                  className="relative z-10"
                 >
-                  <span className="text-[12rem] font-bold text-white drop-shadow-2xl">
+                  <span className="text-[10rem] font-bold text-white drop-shadow-2xl">
                     {countdown}
                   </span>
                   {/* Circular progress ring */}
@@ -789,9 +859,16 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
                     />
                   </svg>
                 </motion.div>
-                <p className="absolute bottom-1/4 text-lg text-white/70 font-medium">
-                  Get Ready...
-                </p>
+
+                {/* Instructions */}
+                <div className="absolute bottom-1/4 flex flex-col items-center gap-2">
+                  <p className="text-lg text-white font-medium">
+                    Position yourself in the frame
+                  </p>
+                  <p className="text-sm text-cyan-400/80">
+                    Head & shoulders should be visible
+                  </p>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
