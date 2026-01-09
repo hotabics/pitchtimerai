@@ -1,8 +1,8 @@
-// AI Coach Processing View - API chain execution
+// AI Coach Processing View - API chain execution with video storage
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mic, Brain, BarChart3, Check, Loader2 } from 'lucide-react';
+import { Mic, Brain, BarChart3, Check, Loader2, Upload } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { useAICoachStore } from '@/stores/aiCoachStore';
 import type { FrameData } from '@/services/mediapipe';
@@ -18,7 +18,9 @@ import {
   type GPTAnalysisResponse,
 } from '@/services/openai';
 import { aggregateMetrics } from '@/services/mediapipe';
+import { uploadRecording, generateThumbnail } from '@/services/videoStorage';
 import { trackEvent } from '@/utils/analytics';
+import { toast } from 'sonner';
 
 interface AICoachProcessingProps {
   audioBlob: Blob;
@@ -29,12 +31,13 @@ interface AICoachProcessingProps {
   onError: (error: string) => void;
 }
 
-type ProcessingStep = 'transcribing' | 'analyzing' | 'aggregating';
+type ProcessingStep = 'transcribing' | 'analyzing' | 'aggregating' | 'saving';
 
 const steps: { key: ProcessingStep; label: string; icon: React.ElementType }[] = [
   { key: 'transcribing', label: 'Transcribing audio with Whisper', icon: Mic },
   { key: 'analyzing', label: 'Analyzing content with GPT-4', icon: Brain },
   { key: 'aggregating', label: 'Processing video metrics', icon: BarChart3 },
+  { key: 'saving', label: 'Saving recording to cloud', icon: Upload },
 ];
 
 export const AICoachProcessing = ({
@@ -122,9 +125,33 @@ export const AICoachProcessing = ({
         : undefined;
 
       setCompletedSteps(prev => [...prev, 'aggregating']);
+      setProgress(85);
+
+      // Step 4: Save recording to cloud storage
+      setCurrentStep('saving');
+      
+      let videoUrl: string | null = null;
+      let thumbnailUrl: string | null = null;
+      
+      try {
+        const uploadResult = await uploadRecording(videoBlob);
+        if (uploadResult.error) {
+          console.warn('Video upload failed:', uploadResult.error);
+          toast.warning('Recording saved locally only - cloud upload failed');
+        } else {
+          videoUrl = uploadResult.videoUrl;
+          thumbnailUrl = uploadResult.thumbnailUrl;
+          toast.success('Recording saved to cloud!');
+        }
+      } catch (uploadErr) {
+        console.warn('Video upload error:', uploadErr);
+        // Non-blocking - continue without cloud save
+      }
+
+      setCompletedSteps(prev => [...prev, 'saving']);
       setProgress(100);
 
-      // Store results
+      // Store results with video URLs
       setResults({
         transcript,
         deliveryMetrics: {
@@ -145,6 +172,8 @@ export const AICoachProcessing = ({
         processedAt: new Date(),
         promptMode,
         bulletPointsCoverage,
+        videoUrl,
+        thumbnailUrl,
       });
 
       // Track AI coach session complete
@@ -155,6 +184,7 @@ export const AICoachProcessing = ({
         eye_contact_percent: videoMetrics.averageEyeContact,
         score: contentAnalysis?.score,
         using_real_api: useRealAPI,
+        video_saved: !!videoUrl,
       });
 
       // Small delay before transitioning

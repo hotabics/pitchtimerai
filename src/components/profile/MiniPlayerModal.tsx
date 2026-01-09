@@ -1,8 +1,8 @@
 // Mini Player Modal - Quick video preview with simplified feedback
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Play, Pause, Volume2, VolumeX, TrendingUp, Mic, MessageCircle, Target } from 'lucide-react';
-import { useState } from 'react';
+import { X, Play, Pause, Volume2, VolumeX, TrendingUp, Mic, MessageCircle, Target, Video } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -19,6 +19,8 @@ interface MiniPlayerModalProps {
     tone: string | null;
     track: string;
     date: string;
+    videoUrl?: string | null;
+    thumbnailUrl?: string | null;
   } | null;
 }
 
@@ -38,7 +40,63 @@ const getPacingLabel = (wpm: number) => {
 export const MiniPlayerModal = ({ isOpen, onClose, recording }: MiniPlayerModalProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const [progress] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const hasVideo = !!recording?.videoUrl;
+
+  // Reset state when modal opens/closes
+  useEffect(() => {
+    if (!isOpen) {
+      setIsPlaying(false);
+      setProgress(0);
+    }
+  }, [isOpen]);
+
+  // Handle video time update
+  const handleTimeUpdate = () => {
+    if (videoRef.current && duration > 0) {
+      setProgress((videoRef.current.currentTime / duration) * 100);
+    }
+  };
+
+  const handleLoadedMetadata = () => {
+    if (videoRef.current) {
+      setDuration(videoRef.current.duration);
+    }
+  };
+
+  const togglePlayPause = () => {
+    if (!videoRef.current) {
+      setIsPlaying(!isPlaying);
+      return;
+    }
+
+    if (isPlaying) {
+      videoRef.current.pause();
+    } else {
+      videoRef.current.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  const toggleMute = () => {
+    if (videoRef.current) {
+      videoRef.current.muted = !isMuted;
+    }
+    setIsMuted(!isMuted);
+  };
+
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!videoRef.current || !duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const newProgress = (clickX / rect.width) * 100;
+    const newTime = (newProgress / 100) * duration;
+    videoRef.current.currentTime = newTime;
+    setProgress(newProgress);
+  };
 
   if (!recording) return null;
 
@@ -84,19 +142,43 @@ export const MiniPlayerModal = ({ isOpen, onClose, recording }: MiniPlayerModalP
               </div>
 
               {/* Video Player Area */}
-              <div className="relative aspect-video bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
-                {/* Mock video placeholder */}
-                <div className="text-center">
-                  <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
-                    {isPlaying ? (
-                      <Pause className="w-10 h-10 text-primary" />
-                    ) : (
-                      <Play className="w-10 h-10 text-primary ml-1" />
+              <div className="relative aspect-video bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center overflow-hidden">
+                {/* Actual video player */}
+                {hasVideo ? (
+                  <>
+                    <video
+                      ref={videoRef}
+                      src={recording.videoUrl!}
+                      poster={recording.thumbnailUrl || undefined}
+                      className="absolute inset-0 w-full h-full object-contain bg-black"
+                      onTimeUpdate={handleTimeUpdate}
+                      onLoadedMetadata={handleLoadedMetadata}
+                      onEnded={() => setIsPlaying(false)}
+                      muted={isMuted}
+                      playsInline
+                    />
+                    {/* Click to play/pause overlay */}
+                    {!isPlaying && (
+                      <div 
+                        className="absolute inset-0 flex items-center justify-center bg-black/30 cursor-pointer"
+                        onClick={togglePlayPause}
+                      >
+                        <div className="w-20 h-20 rounded-full bg-primary/90 flex items-center justify-center shadow-lg">
+                          <Play className="w-10 h-10 text-primary-foreground ml-1" />
+                        </div>
+                      </div>
                     )}
+                  </>
+                ) : (
+                  /* Mock video placeholder */
+                  <div className="text-center" onClick={togglePlayPause}>
+                    <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
+                      <Video className="w-10 h-10 text-primary/50" />
+                    </div>
+                    <p className="text-muted-foreground text-sm">No Video Available</p>
+                    <p className="text-muted-foreground text-xs mt-1">(Recording not saved to cloud)</p>
                   </div>
-                  <p className="text-muted-foreground text-sm">Recording Preview</p>
-                  <p className="text-muted-foreground text-xs mt-1">(Demo Mode)</p>
-                </div>
+                )}
 
                 {/* Video controls overlay */}
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
@@ -105,12 +187,15 @@ export const MiniPlayerModal = ({ isOpen, onClose, recording }: MiniPlayerModalP
                       variant="ghost"
                       size="icon"
                       className="text-white hover:text-white hover:bg-white/20"
-                      onClick={() => setIsPlaying(!isPlaying)}
+                      onClick={togglePlayPause}
                     >
                       {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
                     </Button>
                     
-                    <div className="flex-1">
+                    <div 
+                      className="flex-1 cursor-pointer"
+                      onClick={handleSeek}
+                    >
                       <Progress value={progress} className="h-1" />
                     </div>
                     
@@ -118,7 +203,7 @@ export const MiniPlayerModal = ({ isOpen, onClose, recording }: MiniPlayerModalP
                       variant="ghost"
                       size="icon"
                       className="text-white hover:text-white hover:bg-white/20"
-                      onClick={() => setIsMuted(!isMuted)}
+                      onClick={toggleMute}
                     >
                       {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
                     </Button>

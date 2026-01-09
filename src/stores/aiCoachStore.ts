@@ -44,6 +44,8 @@ export interface AnalysisResults {
   processedAt: Date;
   promptMode?: PromptMode;
   bulletPointsCoverage?: { point: string; covered: boolean }[];
+  videoUrl?: string | null;
+  thumbnailUrl?: string | null;
 }
 
 // Transcription settings
