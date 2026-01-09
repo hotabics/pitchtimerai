@@ -29,6 +29,7 @@ import { cn } from '@/lib/utils';
 // Navigation links configuration
 const guestLinks = [
   { label: 'Features', href: '/#features' },
+  { label: 'Blog', href: '/blog' },
   { label: 'Pricing', href: '/pricing' },
 ];
 
