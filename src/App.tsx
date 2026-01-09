@@ -16,6 +16,7 @@ import { AICoachPage } from "./components/ai-coach/AICoachPage";
 import { AuthModal } from "./components/auth/AuthModal";
 import { WhatsNewModal } from "./components/WhatsNewModal";
 import { Navbar } from "./components/Navbar";
+import { Footer } from "./components/Footer";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>
+          <Footer />
         </div>
       </BrowserRouter>
     </TooltipProvider>
