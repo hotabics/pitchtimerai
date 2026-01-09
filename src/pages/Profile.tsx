@@ -4,9 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Settings, Trophy, Zap, Brain, Flame, Eye, Mic, Edit, FileText, Trash2, Plus, Target, Clock, TrendingUp } from "lucide-react";
+import { Settings, Trophy, Flame, Mic, Video, Plus, Target, TrendingUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
@@ -17,6 +16,9 @@ import { GoalSetting } from "@/components/profile/GoalSetting";
 import { PitchChallenges } from "@/components/profile/PitchChallenges";
 import { SocialShare } from "@/components/profile/SocialShare";
 import { ProgressCharts } from "@/components/profile/ProgressCharts";
+import { RecordingCard } from "@/components/profile/RecordingCard";
+import { MiniPlayerModal } from "@/components/profile/MiniPlayerModal";
+import { PerformanceStats } from "@/components/profile/PerformanceStats";
 
 interface PracticeSession {
   id: string;
@@ -70,6 +72,8 @@ const Profile = () => {
   const [userEmail] = useState("demo@pitchpal.app"); // Mock user for demo
   const [userName] = useState("Demo User");
   const [isPro] = useState(false);
+  const [selectedRecording, setSelectedRecording] = useState<PracticeSession | null>(null);
+  const [isPlayerOpen, setIsPlayerOpen] = useState(false);
 
   useEffect(() => {
     fetchSessions();
@@ -182,10 +186,14 @@ const Profile = () => {
     }
   };
 
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return "bg-green-500/20 text-green-400 border-green-500/30";
-    if (score >= 50) return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
-    return "bg-red-500/20 text-red-400 border-red-500/30";
+  const handlePlayRecording = (session: PracticeSession) => {
+    setSelectedRecording(session);
+    setIsPlayerOpen(true);
+  };
+
+  const handleAuditRecording = (sessionId: string) => {
+    // Navigate to AI Coach with this session pre-loaded
+    navigate(`/ai-coach?session=${sessionId}`);
   };
 
   // Calculate average WPM for goals
@@ -452,19 +460,29 @@ const Profile = () => {
             </Card>
           </motion.div>
 
-          {/* Project History */}
+          {/* Performance Stats */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.7 }}
             className="md:col-span-2 lg:col-span-3"
           >
+            <PerformanceStats sessions={sessions} />
+          </motion.div>
+
+          {/* My Recordings - Video Library Grid */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.75 }}
+            className="md:col-span-2 lg:col-span-3"
+          >
             <Card className="bg-card shadow-sm">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-primary" />
-                    Your Pitch Library
+                    <Video className="h-5 w-5 text-primary" />
+                    My Recordings
                   </span>
                   <Button onClick={() => navigate('/')} size="sm">
                     <Plus className="h-4 w-4 mr-2" />
@@ -475,15 +493,19 @@ const Profile = () => {
               </CardHeader>
               <CardContent>
                 {isLoading ? (
-                  <div className="space-y-3">
-                    {[1, 2, 3].map((i) => (
-                      <Skeleton key={i} className="h-12 w-full" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="space-y-3">
+                        <Skeleton className="aspect-video w-full rounded-lg" />
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-3 w-1/2" />
+                      </div>
                     ))}
                   </div>
                 ) : sessions.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <div className="text-6xl mb-4">📝</div>
-                    <h3 className="text-lg font-medium mb-2">No pitches yet</h3>
+                    <div className="text-6xl mb-4">🎬</div>
+                    <h3 className="text-lg font-medium mb-2">No recordings yet</h3>
                     <p className="text-muted-foreground mb-4">Start your speaking journey today!</p>
                     <Button onClick={() => navigate('/')}>
                       <Plus className="h-4 w-4 mr-2" />
@@ -491,60 +513,22 @@ const Profile = () => {
                     </Button>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Project Name</TableHead>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Track</TableHead>
-                          <TableHead>Score</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {sessions.map((session) => (
-                          <TableRow key={session.id}>
-                            <TableCell className="font-medium max-w-[200px] truncate">
-                              {session.idea}
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {new Date(session.created_at).toLocaleDateString()}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="text-xs">
-                                {formatTypeName(session.track)}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className={getScoreColor(session.score)}>
-                                {(session.score / 10).toFixed(1)}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  title="View Report"
-                                  onClick={() => toast.info("View report coming soon")}
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  title="Delete"
-                                  onClick={() => handleDelete(session.id)}
-                                >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {sessions.map((session) => (
+                      <RecordingCard
+                        key={session.id}
+                        id={session.id}
+                        title={session.idea}
+                        date={session.created_at}
+                        score={session.score}
+                        track={session.track}
+                        tone={session.tone}
+                        wpm={session.wpm}
+                        onPlay={() => handlePlayRecording(session)}
+                        onAudit={() => handleAuditRecording(session.id)}
+                        onDelete={() => handleDelete(session.id)}
+                      />
+                    ))}
                   </div>
                 )}
               </CardContent>
@@ -552,6 +536,25 @@ const Profile = () => {
           </motion.div>
         </div>
       </div>
+
+      {/* Mini Player Modal */}
+      <MiniPlayerModal
+        isOpen={isPlayerOpen}
+        onClose={() => {
+          setIsPlayerOpen(false);
+          setSelectedRecording(null);
+        }}
+        recording={selectedRecording ? {
+          id: selectedRecording.id,
+          title: selectedRecording.idea,
+          score: selectedRecording.score,
+          wpm: selectedRecording.wpm,
+          filler_count: selectedRecording.filler_count,
+          tone: selectedRecording.tone,
+          track: selectedRecording.track,
+          date: selectedRecording.created_at,
+        } : null}
+      />
     </div>
   );
 };
