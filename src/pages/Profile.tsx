@@ -6,11 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Settings, Trophy, Zap, Brain, Flame, Eye, Mic, Edit, FileText, Trash2, Plus, Target, Clock, TrendingUp } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Settings, Trophy, Zap, Brain, Flame, Eye, Mic, Edit, FileText, Trash2, Plus, Target, Clock, TrendingUp } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
+import { Header } from "@/components/Header";
+import { Leaderboard } from "@/components/profile/Leaderboard";
+import { GoalSetting } from "@/components/profile/GoalSetting";
 
 interface PracticeSession {
   id: string;
@@ -182,20 +185,21 @@ const Profile = () => {
     return "bg-red-500/20 text-red-400 border-red-500/30";
   };
 
+  // Calculate average WPM for goals
+  const avgWpm = useMemo(() => {
+    if (sessions.length === 0) return 0;
+    const recentSessions = sessions.slice(0, 5);
+    return Math.round(recentSessions.reduce((sum, s) => sum + (s.wpm || 0), 0) / recentSessions.length);
+  }, [sessions]);
+
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <Link to="/">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Your Profile</h1>
-            <p className="text-muted-foreground">Track your progress and manage your pitches</p>
-          </div>
+      <Header showNavigation onLogoClick={() => navigate("/")} />
+      <div className="container mx-auto px-4 pt-24 pb-8 max-w-7xl">
+        {/* Page Title */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold tracking-tight">Your Profile</h1>
+          <p className="text-muted-foreground">Track your progress and manage your pitches</p>
         </div>
 
         {/* Bento Grid Layout */}
@@ -351,11 +355,35 @@ const Profile = () => {
             </Card>
           </motion.div>
 
-          {/* Achievements */}
+          {/* Leaderboard */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.45 }}
+            className="lg:row-span-2"
+          >
+            <Leaderboard />
+          </motion.div>
+
+          {/* Goal Setting */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="md:col-span-2"
+          >
+            <GoalSetting 
+              currentScore={stats.bestScore} 
+              currentWpm={avgWpm} 
+              totalPitches={stats.totalPitches} 
+            />
+          </motion.div>
+
+          {/* Achievements */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.55 }}
             className="md:col-span-2 lg:col-span-3"
           >
             <Card className="bg-card shadow-sm">
@@ -397,7 +425,7 @@ const Profile = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
+            transition={{ delay: 0.6 }}
             className="md:col-span-2 lg:col-span-3"
           >
             <Card className="bg-card shadow-sm">
