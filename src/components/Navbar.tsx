@@ -67,6 +67,30 @@ export const Navbar = () => {
     return location.pathname === href;
   };
 
+  const handleHashClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (href.startsWith('/#')) {
+      e.preventDefault();
+      const hash = href.substring(1); // Get '#features' from '/#features'
+      
+      if (location.pathname === '/') {
+        // Already on home page, just scroll to section
+        const element = document.querySelector(hash);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      } else {
+        // Navigate to home page then scroll
+        navigate('/');
+        setTimeout(() => {
+          const element = document.querySelector(hash);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 100);
+      }
+    }
+  };
+
   const navLinks = isLoggedIn ? userLinks : guestLinks;
 
   return (
@@ -91,6 +115,7 @@ export const Navbar = () => {
             <NavLink
               key={link.href}
               to={link.href}
+              onClick={(e) => handleHashClick(e, link.href)}
               className={({ isActive: active }) =>
                 cn(
                   'px-4 py-2 rounded-md text-sm font-medium transition-colors',
@@ -255,7 +280,10 @@ export const Navbar = () => {
                     <Link
                       key={link.href}
                       to={link.href}
-                      onClick={() => setMobileOpen(false)}
+                      onClick={(e) => {
+                        handleHashClick(e, link.href);
+                        setMobileOpen(false);
+                      }}
                       className={cn(
                         'px-4 py-3 rounded-lg text-sm font-medium transition-colors',
                         isActive(link.href)
