@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
-import { Header } from "@/components/Header";
+// Header is now global via Navbar in App.tsx
 import { WizardLayout } from "@/components/WizardLayout";
 import { BriefData } from "@/components/ProjectBrief";
 import { Step1Hook, EntryMode } from "@/components/steps/Step1Hook";
@@ -419,21 +419,18 @@ const Index = () => {
     // For custom scripts, pass the structured data
     if (data.entryMode === "custom_script" && data.structuredScript) {
       return (
-        <>
-          <Header onLogoClick={handleLogoClick} />
-          <Dashboard
-            data={{
-              idea: data.idea || "My Pitch",
-              duration: 3,
-              track: 'hackathon-no-demo', // Default track for custom scripts
-              trackData: {},
-              audienceLabel: "Custom Script",
-              entryMode: "custom_script",
-              structuredScript: data.structuredScript,
-              originalScriptText: data.customScript,
-            }}
-          />
-        </>
+        <Dashboard
+          data={{
+            idea: data.idea || "My Pitch",
+            duration: 3,
+            track: 'hackathon-no-demo', // Default track for custom scripts
+            trackData: {},
+            audienceLabel: "Custom Script",
+            entryMode: "custom_script",
+            structuredScript: data.structuredScript,
+            originalScriptText: data.customScript,
+          }}
+        />
       );
     }
 
@@ -446,20 +443,17 @@ const Index = () => {
     };
 
     return (
-      <>
-        <Header onLogoClick={handleLogoClick} />
-        <Dashboard
-          data={{
-            idea: data.idea || "",
-            duration: 3,
-            track: data.track || 'hackathon-no-demo',
-            trackData: td as Record<string, unknown>,
-            audienceLabel: data.audienceLabel,
-            entryMode: "generate",
-          }}
-          onEditInputs={handleEditInputs}
-        />
-      </>
+      <Dashboard
+        data={{
+          idea: data.idea || "",
+          duration: 3,
+          track: data.track || 'hackathon-no-demo',
+          trackData: td as Record<string, unknown>,
+          audienceLabel: data.audienceLabel,
+          entryMode: "generate",
+        }}
+        onEditInputs={handleEditInputs}
+      />
     );
   }
 
@@ -467,7 +461,6 @@ const Index = () => {
   if (step === 0) {
     return (
       <>
-        <Header showNavigation onLogoClick={handleLogoClick} />
         <Step1Hook 
           onNext={handleStep1}
           onAutoGenerate={handleAutoGenerate}
