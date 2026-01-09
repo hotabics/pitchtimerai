@@ -1,14 +1,30 @@
-# PitchDeck AI
+# PitchPerfect
 
 A mobile-first web app that gamifies the process of creating and practicing hackathon pitches. Built with React, TypeScript, and Tailwind CSS.
 
-🔗 **Live Demo**: [pitchdeckai.lovable.app](https://pitchdeckai.lovable.app)
+🔗 **Live Demo**: [pitchperfect.lovable.app](https://pitchperfect.lovable.app)
 
 > ⚠️ **Public Demo Notice**: This is a public demo. All practice sessions and data are visible to everyone.
 
 ---
 
 ## Features
+
+### 📝 Blog & Resources (NEW in v1.8)
+
+- **SEO-optimized content hub** - Educational articles to drive organic traffic
+- **Category filtering** - Filter by Hackathon, Startup, Public Speaking, Technology
+- **Editorial design** - Medium.com-style article reader with sticky TOC
+- **Social sharing** - Twitter, LinkedIn, and copy link buttons
+- **CTA integration** - Bottom banner linking to AI Coach
+
+### 🎨 Slide Deck Builder (NEW in v1.7)
+
+- **Full presentation editor** - Create, edit, reorder slides with drag-and-drop
+- **PowerPoint export** - Download as `.pptx` with themes and speaker notes
+- **AI image generation** - Auto-generate visuals with DALL-E
+- **Theme customization** - 6 preset themes + custom colors
+- **Transition effects** - Fade, Slide, Zoom animations
 
 ### 🎯 Smart Onboarding Wizard
 
@@ -41,7 +57,7 @@ A mobile-first web app that gamifies the process of creating and practicing hack
 
 - **48h Countdown Timer** - Real-time countdown in header for pass holders
 - **Expiration Warnings** - Toast notification when < 2 hours remaining
-- **PDF Watermark** - "Created with PitchDeck.ai" for free users only
+- **PDF Watermark** - "Created with PitchPerfect" for free users only
 - **Premium Badge** - Gold "PREMIUM ANALYSIS" badge on results page
 
 ### 🎬 Professional Teleprompter (NEW in v1.4)

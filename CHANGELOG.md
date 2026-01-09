@@ -5,6 +5,27 @@ All notable changes to PitchPal will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2026-01-09
+
+### Added
+- **Blog / Resources Page**: SEO-optimized content hub at `/blog`
+  - 4 demo articles with strategic titles for organic traffic
+  - Category filtering (Hackathon, Startup, Public Speaking, Technology)
+  - Featured hero article layout with full-width display
+  - Responsive grid (1 col mobile, 3 cols desktop)
+- **Article Reader View**: Full article pages at `/blog/:id`
+  - Large cover images with editorial typography
+  - Sticky table of contents sidebar
+  - Social sharing buttons (Twitter, LinkedIn, Copy Link)
+  - Bottom CTA banner linking to AI Coach
+- **Rebranding**: Renamed from "PitchDeck AI" to "PitchPerfect"
+  - Updated all pages, components, and edge functions
+  - New branding across headers, footers, and meta tags
+
+### Changed
+- Navigation "Features" link now properly scrolls to section from any page
+- Blog added to main navigation and footer links
+
 ## [1.7.0] - 2026-01-08
 
 ### Added
