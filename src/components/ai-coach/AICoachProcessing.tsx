@@ -21,6 +21,10 @@ import { aggregateMetrics } from '@/services/mediapipe';
 import { uploadRecording, generateThumbnail } from '@/services/videoStorage';
 import { trackEvent } from '@/utils/analytics';
 import { toast } from 'sonner';
+import { formatFileSize } from '@/services/videoCompression';
+
+// Helper to format bytes
+const formatBytes = (bytes: number): string => formatFileSize(bytes);
 
 interface AICoachProcessingProps {
   audioBlob: Blob;
@@ -40,6 +44,9 @@ const steps: { key: ProcessingStep; label: string; icon: React.ElementType }[] =
   { key: 'saving', label: 'Saving recording to cloud', icon: Upload },
 ];
 
+// Upload sub-stages for detailed progress
+type UploadStage = 'compressing' | 'uploading' | 'thumbnail' | 'complete';
+
 export const AICoachProcessing = ({
   audioBlob,
   videoBlob,
@@ -51,6 +58,9 @@ export const AICoachProcessing = ({
   const [currentStep, setCurrentStep] = useState<ProcessingStep>('transcribing');
   const [completedSteps, setCompletedSteps] = useState<ProcessingStep[]>([]);
   const [progress, setProgress] = useState(0);
+  const [uploadStage, setUploadStage] = useState<UploadStage | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [compressionStats, setCompressionStats] = useState<{ original: number; compressed: number } | null>(null);
 
   const { setResults, setError, promptMode, bulletPoints } = useAICoachStore();
 
@@ -129,12 +139,37 @@ export const AICoachProcessing = ({
 
       // Step 4: Save recording to cloud storage
       setCurrentStep('saving');
+      setUploadStage('compressing');
+      setUploadProgress(0);
       
       let videoUrl: string | null = null;
       let thumbnailUrl: string | null = null;
       
       try {
-        const uploadResult = await uploadRecording(videoBlob);
+        const uploadResult = await uploadRecording(videoBlob, undefined, (step, pct) => {
+          // Map upload stages to our UI states
+          if (step.includes('Compressing')) {
+            setUploadStage('compressing');
+            setUploadProgress(pct);
+          } else if (step.includes('Uploading video')) {
+            setUploadStage('uploading');
+            setUploadProgress(pct);
+          } else if (step.includes('thumbnail')) {
+            setUploadStage('thumbnail');
+            setUploadProgress(pct);
+          } else if (step.includes('Complete')) {
+            setUploadStage('complete');
+            setUploadProgress(100);
+          }
+        });
+        
+        if (uploadResult.originalSize && uploadResult.compressedSize) {
+          setCompressionStats({
+            original: uploadResult.originalSize,
+            compressed: uploadResult.compressedSize,
+          });
+        }
+        
         if (uploadResult.error) {
           console.warn('Video upload failed:', uploadResult.error);
           toast.warning('Recording saved locally only - cloud upload failed');
@@ -147,6 +182,8 @@ export const AICoachProcessing = ({
         console.warn('Video upload error:', uploadErr);
         // Non-blocking - continue without cloud save
       }
+      
+      setUploadStage(null);
 
       setCompletedSteps(prev => [...prev, 'saving']);
       setProgress(100);
@@ -280,8 +317,31 @@ We're looking to expand this to universities and accelerator programs. Thanks fo
                 }`}>
                   {step.label}
                 </p>
+                {/* Upload sub-progress for saving step */}
+                {step.key === 'saving' && isCurrent && uploadStage && (
+                  <div className="mt-2 space-y-1">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>
+                        {uploadStage === 'compressing' && '📦 Compressing video...'}
+                        {uploadStage === 'uploading' && '☁️ Uploading to cloud...'}
+                        {uploadStage === 'thumbnail' && '🖼️ Generating thumbnail...'}
+                        {uploadStage === 'complete' && '✅ Upload complete!'}
+                      </span>
+                      <span>{uploadProgress}%</span>
+                    </div>
+                    <Progress value={uploadProgress} className="h-1.5" />
+                    {compressionStats && uploadStage !== 'compressing' && (
+                      <p className="text-xs text-muted-foreground">
+                        Compressed: {formatBytes(compressionStats.original)} → {formatBytes(compressionStats.compressed)}
+                        <span className="text-success ml-1">
+                          ({Math.round((1 - compressionStats.compressed / compressionStats.original) * 100)}% smaller)
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
-              {isCurrent && (
+              {isCurrent && !uploadStage && (
                 <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
               )}
             </motion.div>
