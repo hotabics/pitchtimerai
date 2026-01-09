@@ -28,6 +28,7 @@ const navItems = [
   { label: "Features", href: "#features" },
   { label: "AI Coach", href: "#ai-coach" },
   { label: "Pricing", href: "/pricing", isRoute: true },
+  { label: "Profile", href: "/profile", isRoute: true },
 ];
 
 export const Header = ({ showProgress, currentStep = 0, totalSteps = 7, onLogoClick, showNavigation = false }: HeaderProps) => {
@@ -150,6 +151,12 @@ export const Header = ({ showProgress, currentStep = 0, totalSteps = 7, onLogoCl
                       <p className="text-xs text-muted-foreground">{user?.email}</p>
                     </div>
                     <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to="/profile" className="cursor-pointer">
+                        <User className="w-4 h-4 mr-2" />
+                        My Profile
+                      </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link to="/pricing" className="cursor-pointer">
                         <Crown className="w-4 h-4 mr-2" />
