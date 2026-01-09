@@ -18,6 +18,19 @@ export default defineConfig(({ mode }) => ({
   build: {
     target: "esnext",
     cssTarget: "esnext",
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Split heavy dependencies into separate chunks for better caching
+          'vendor-charts': ['recharts'],
+          'vendor-motion': ['framer-motion'],
+          'vendor-pptx': ['pptxgenjs'],
+          'vendor-pdf': ['jspdf'],
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-query': ['@tanstack/react-query'],
+        },
+      },
+    },
   },
   esbuild: {
     target: "esnext",
