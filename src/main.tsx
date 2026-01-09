@@ -18,3 +18,16 @@ if ('requestIdleCallback' in window) {
 } else {
   setTimeout(initAnalyticsDeferred, 2000);
 }
+
+// Register service worker for caching static assets (production only)
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then((registration) => {
+        console.log('[SW] Service worker registered:', registration.scope);
+      })
+      .catch((error) => {
+        console.error('[SW] Service worker registration failed:', error);
+      });
+  });
+}
