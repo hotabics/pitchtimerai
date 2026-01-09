@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Clock, Share2, Twitter, Linkedin, Link2, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { LazyImage } from '@/components/ui/lazy-image';
 import { Separator } from '@/components/ui/separator';
 import { getBlogPost, CATEGORY_COLORS, BLOG_POSTS } from '@/data/blogPosts';
 import { cn } from '@/lib/utils';
@@ -49,10 +50,12 @@ const BlogArticle = () => {
     <div className="min-h-screen bg-background">
       {/* Hero Image */}
       <div className="relative h-[40vh] md:h-[50vh] overflow-hidden">
-        <img
+        <LazyImage
           src={post.image}
           alt={post.title}
-          className="w-full h-full object-cover"
+          aspectRatio="auto"
+          containerClassName="h-full"
+          eager
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
         
@@ -241,10 +244,11 @@ const BlogArticle = () => {
                 >
                   <div className="bg-card border border-border rounded-xl overflow-hidden flex transition-all duration-300 hover:shadow-lg hover:border-primary/30">
                     <div className="w-32 h-32 flex-shrink-0">
-                      <img
+                      <LazyImage
                         src={relatedPost.image}
                         alt={relatedPost.title}
-                        className="w-full h-full object-cover"
+                        aspectRatio="1/1"
+                        containerClassName="h-full"
                       />
                     </div>
                     <div className="p-4 flex flex-col justify-center">
