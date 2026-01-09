@@ -1,11 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, TrendingUp, BarChart3, Calendar, ArrowLeft, Mic, Clock, Target, ThumbsUp, ThumbsDown, Zap, Users, MessageSquare } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RefreshCw, TrendingUp, BarChart3, Calendar, ArrowLeft, Mic, Clock, Target, ThumbsUp, ThumbsDown, Zap, Users, MessageSquare, Download, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
+import jsPDF from "jspdf";
 
 interface ContentStats {
   totalSessions: number;
@@ -36,7 +39,10 @@ interface AnalyticsData {
   totalSelections: number;
   contentStats?: ContentStats;
   feedbackStats?: FeedbackStats;
+  dateRange?: number;
 }
+
+type DateRangeOption = "7" | "30" | "0";
 
 const typeColors: Record<string, string> = {
   hackathon_hook: "bg-pink-500/20 text-pink-300 border-pink-500/30",
@@ -66,17 +72,26 @@ const formatTypeName = (type: string) => {
     .join(" ");
 };
 
+const dateRangeLabels: Record<DateRangeOption, string> = {
+  "7": "Last 7 days",
+  "30": "Last 30 days",
+  "0": "All time",
+};
+
 const AdminAnalytics = () => {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState<DateRangeOption>("7");
 
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async (range: number) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      const { data: result, error: fetchError } = await supabase.functions.invoke("get-analytics");
+      const { data: result, error: fetchError } = await supabase.functions.invoke("get-analytics", {
+        body: { dateRange: range }
+      });
       
       if (fetchError) throw fetchError;
       setData(result);
@@ -86,11 +101,205 @@ const AdminAnalytics = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchAnalytics();
-  }, []);
+    fetchAnalytics(parseInt(dateRange));
+  }, [dateRange, fetchAnalytics]);
+
+  const handleDateRangeChange = (value: DateRangeOption) => {
+    setDateRange(value);
+  };
+
+  // Export to CSV
+  const exportToCSV = () => {
+    if (!data) return;
+    
+    const lines: string[] = [];
+    const dateLabel = dateRangeLabels[dateRange];
+    
+    // Header
+    lines.push(`Analytics Report - ${dateLabel}`);
+    lines.push(`Generated: ${new Date().toLocaleString()}`);
+    lines.push('');
+    
+    // Content Generation Stats
+    if (data.contentStats) {
+      lines.push('CONTENT GENERATION STATS');
+      lines.push(`Total Sessions,${data.contentStats.totalSessions}`);
+      lines.push(`Average Score,${data.contentStats.avgScore}`);
+      lines.push(`Average WPM,${data.contentStats.avgWpm}`);
+      lines.push(`Average Fillers,${data.contentStats.avgFillers}`);
+      lines.push(`Average Duration (s),${data.contentStats.avgDuration}`);
+      lines.push('');
+      
+      lines.push('SCORE DISTRIBUTION');
+      lines.push(`Excellent (80+),${data.contentStats.scoreDistribution.excellent}`);
+      lines.push(`Good (60-79),${data.contentStats.scoreDistribution.good}`);
+      lines.push(`Needs Work (<60),${data.contentStats.scoreDistribution.needsWork}`);
+      lines.push('');
+      
+      lines.push('USAGE BY TRACK');
+      Object.entries(data.contentStats.byTrack).forEach(([track, count]) => {
+        lines.push(`${formatTypeName(track)},${count}`);
+      });
+      lines.push('');
+      
+      lines.push('SESSIONS BY DAY');
+      Object.entries(data.contentStats.sessionsByDay).sort(([a], [b]) => a.localeCompare(b)).forEach(([day, count]) => {
+        lines.push(`${day},${count}`);
+      });
+      lines.push('');
+    }
+    
+    // Feedback Stats
+    if (data.feedbackStats) {
+      lines.push('FEEDBACK STATS');
+      lines.push(`Total Feedback,${data.feedbackStats.total}`);
+      Object.entries(data.feedbackStats.byType).forEach(([type, count]) => {
+        lines.push(`${formatTypeName(type)},${count}`);
+      });
+      lines.push('');
+    }
+    
+    // Suggestion Stats
+    lines.push('AI SUGGESTION STATS');
+    lines.push(`Total Selections,${data.totalSelections}`);
+    lines.push('');
+    
+    lines.push('TOP SUGGESTIONS');
+    lines.push('Rank,Type,Text,Count');
+    data.topSuggestions.slice(0, 10).forEach((s, i) => {
+      lines.push(`${i + 1},"${formatTypeName(s.type)}","${s.text.replace(/"/g, '""')}",${s.count}`);
+    });
+    
+    const csvContent = lines.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `analytics-report-${dateRange}d-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    
+    toast.success('CSV exported successfully');
+  };
+
+  // Export to PDF
+  const exportToPDF = () => {
+    if (!data) return;
+    
+    const doc = new jsPDF();
+    const dateLabel = dateRangeLabels[dateRange];
+    let y = 20;
+    const lineHeight = 7;
+    const margin = 20;
+    
+    // Title
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Analytics Report', margin, y);
+    y += lineHeight * 1.5;
+    
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Period: ${dateLabel}`, margin, y);
+    y += lineHeight;
+    doc.text(`Generated: ${new Date().toLocaleString()}`, margin, y);
+    y += lineHeight * 2;
+    
+    // Content Generation Stats
+    if (data.contentStats) {
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Content Generation', margin, y);
+      y += lineHeight * 1.2;
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      const stats = [
+        `Total Sessions: ${data.contentStats.totalSessions}`,
+        `Average Score: ${data.contentStats.avgScore}/100`,
+        `Average WPM: ${data.contentStats.avgWpm}`,
+        `Average Duration: ${data.contentStats.avgDuration}s`,
+      ];
+      stats.forEach(stat => {
+        doc.text(stat, margin, y);
+        y += lineHeight;
+      });
+      y += lineHeight;
+      
+      // Score distribution
+      doc.setFont('helvetica', 'bold');
+      doc.text('Score Distribution:', margin, y);
+      y += lineHeight;
+      doc.setFont('helvetica', 'normal');
+      doc.text(`  Excellent (80+): ${data.contentStats.scoreDistribution.excellent}`, margin, y);
+      y += lineHeight;
+      doc.text(`  Good (60-79): ${data.contentStats.scoreDistribution.good}`, margin, y);
+      y += lineHeight;
+      doc.text(`  Needs Work (<60): ${data.contentStats.scoreDistribution.needsWork}`, margin, y);
+      y += lineHeight * 1.5;
+      
+      // Track usage
+      doc.setFont('helvetica', 'bold');
+      doc.text('Usage by Track:', margin, y);
+      y += lineHeight;
+      doc.setFont('helvetica', 'normal');
+      Object.entries(data.contentStats.byTrack)
+        .sort(([, a], [, b]) => b - a)
+        .forEach(([track, count]) => {
+          doc.text(`  ${formatTypeName(track)}: ${count}`, margin, y);
+          y += lineHeight;
+        });
+      y += lineHeight;
+    }
+    
+    // Feedback
+    if (data.feedbackStats && data.feedbackStats.total > 0) {
+      const thumbsUpCount = (data.feedbackStats.byType['script_thumbs_up'] || 0) + (data.feedbackStats.byType['verdict_helpful'] || 0);
+      const thumbsDownCount = (data.feedbackStats.byType['script_thumbs_down'] || 0) + (data.feedbackStats.byType['verdict_not_helpful'] || 0);
+      
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('User Feedback', margin, y);
+      y += lineHeight * 1.2;
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Positive: ${thumbsUpCount}  |  Negative: ${thumbsDownCount}`, margin, y);
+      y += lineHeight * 2;
+    }
+    
+    // AI Suggestions
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('AI Suggestions', margin, y);
+    y += lineHeight * 1.2;
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Total Selections: ${data.totalSelections}`, margin, y);
+    y += lineHeight;
+    doc.text(`Unique Suggestions: ${data.topSuggestions.length}`, margin, y);
+    y += lineHeight * 1.5;
+    
+    // Top suggestions (limited to fit page)
+    doc.setFont('helvetica', 'bold');
+    doc.text('Top 5 Suggestions:', margin, y);
+    y += lineHeight;
+    doc.setFont('helvetica', 'normal');
+    
+    data.topSuggestions.slice(0, 5).forEach((s, i) => {
+      if (y > 270) return; // Prevent overflow
+      const text = `${i + 1}. ${s.text.slice(0, 70)}${s.text.length > 70 ? '...' : ''} (${s.count})`;
+      doc.text(text, margin, y, { maxWidth: 170 });
+      y += lineHeight * 1.5;
+    });
+    
+    doc.save(`analytics-report-${dateRange}d-${new Date().toISOString().split('T')[0]}.pdf`);
+    toast.success('PDF exported successfully');
+  };
 
   const sortedDays = data?.byDay
     ? Object.entries(data.byDay).sort(([a], [b]) => a.localeCompare(b))
@@ -116,7 +325,7 @@ const AdminAnalytics = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
             <Link to="/">
               <Button variant="ghost" size="icon">
@@ -124,14 +333,40 @@ const AdminAnalytics = () => {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">AI Suggestion Analytics</h1>
-              <p className="text-muted-foreground">Track which suggestions resonate with users</p>
+              <h1 className="text-3xl font-bold tracking-tight">Analytics Dashboard</h1>
+              <p className="text-muted-foreground">Track usage patterns and content generation</p>
             </div>
           </div>
-          <Button onClick={fetchAnalytics} disabled={isLoading} variant="outline">
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
+          
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Date Range Filter */}
+            <Select value={dateRange} onValueChange={(v) => handleDateRangeChange(v as DateRangeOption)}>
+              <SelectTrigger className="w-[140px]">
+                <Calendar className="h-4 w-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7">Last 7 days</SelectItem>
+                <SelectItem value="30">Last 30 days</SelectItem>
+                <SelectItem value="0">All time</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            {/* Export Buttons */}
+            <Button onClick={exportToCSV} disabled={isLoading || !data} variant="outline" size="sm">
+              <Download className="h-4 w-4 mr-2" />
+              CSV
+            </Button>
+            <Button onClick={exportToPDF} disabled={isLoading || !data} variant="outline" size="sm">
+              <FileText className="h-4 w-4 mr-2" />
+              PDF
+            </Button>
+            
+            {/* Refresh */}
+            <Button onClick={() => fetchAnalytics(parseInt(dateRange))} disabled={isLoading} variant="outline" size="sm">
+              <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
         </div>
 
         {error && (

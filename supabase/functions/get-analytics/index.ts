@@ -23,25 +23,61 @@ serve(async (req) => {
       return createRateLimitResponse(rateLimitResult, corsHeaders);
     }
 
+    // Parse request body for date range
+    let dateRange = 7; // Default to 7 days
+    try {
+      const body = await req.json();
+      if (body.dateRange && typeof body.dateRange === 'number') {
+        dateRange = body.dateRange; // 7, 30, or 0 for all time
+      }
+    } catch {
+      // No body or invalid JSON, use default
+    }
+
     // Create Supabase client with service role to bypass RLS
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Calculate date filter
+    let dateFilter: Date | null = null;
+    if (dateRange > 0) {
+      dateFilter = new Date();
+      dateFilter.setDate(dateFilter.getDate() - dateRange);
+    }
+
     // Get suggestion analytics data
-    const { data: rawData, error } = await supabase
+    let suggestionQuery = supabase
       .from("suggestion_analytics")
       .select("suggestion_type, suggestion_text, selected_at");
+    
+    if (dateFilter) {
+      suggestionQuery = suggestionQuery.gte('selected_at', dateFilter.toISOString());
+    }
+    
+    const { data: rawData, error } = await suggestionQuery;
 
     // Get practice sessions data for content generation stats
-    const { data: sessionsData, error: sessionsError } = await supabase
+    let sessionsQuery = supabase
       .from("practice_sessions")
       .select("track, entry_mode, score, wpm, filler_count, recording_duration_seconds, created_at, tone");
+    
+    if (dateFilter) {
+      sessionsQuery = sessionsQuery.gte('created_at', dateFilter.toISOString());
+    }
+    
+    const { data: sessionsData, error: sessionsError } = await sessionsQuery;
 
     // Get feedback data
-    const { data: feedbackData, error: feedbackError } = await supabase
+    let feedbackQuery = supabase
       .from("feedback_logs")
       .select("feedback_type, created_at");
+    
+    if (dateFilter) {
+      feedbackQuery = feedbackQuery.gte('created_at', dateFilter.toISOString());
+    }
+    
+    const { data: feedbackData, error: feedbackError } = await feedbackQuery;
 
     if (error) {
       console.error("Database error:", error);
@@ -73,17 +109,9 @@ serve(async (req) => {
       byType[row.suggestion_type] = (byType[row.suggestion_type] || 0) + 1;
     }
 
-    // Get recent activity (last 7 days)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
-    const recentData = (rawData || []).filter(
-      (row) => new Date(row.selected_at) >= sevenDaysAgo
-    );
-
-    // Group by day
+    // Group suggestions by day (for chart)
     const byDay: Record<string, number> = {};
-    for (const row of recentData) {
+    for (const row of rawData || []) {
       const day = new Date(row.selected_at).toISOString().split("T")[0];
       byDay[day] = (byDay[day] || 0) + 1;
     }
@@ -129,13 +157,11 @@ serve(async (req) => {
       }
     }
 
-    // Sessions over last 7 days (reuse sevenDaysAgo from above)
+    // Sessions by day (for chart)
     const sessionsByDay: Record<string, number> = {};
     for (const session of sessions) {
-      if (new Date(session.created_at) >= sevenDaysAgo) {
-        const day = new Date(session.created_at).toISOString().split("T")[0];
-        sessionsByDay[day] = (sessionsByDay[day] || 0) + 1;
-      }
+      const day = new Date(session.created_at).toISOString().split("T")[0];
+      sessionsByDay[day] = (sessionsByDay[day] || 0) + 1;
     }
 
     // Feedback breakdown
@@ -152,6 +178,7 @@ serve(async (req) => {
     };
 
     console.log("Analytics fetched successfully:", {
+      dateRange,
       totalSuggestions: suggestions.length,
       totalSelections: rawData?.length || 0,
       totalSessions,
@@ -159,12 +186,14 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
+        // Date range info
+        dateRange,
         // Existing suggestion data
         topSuggestions: suggestions.slice(0, 20),
         byType,
         byDay,
         totalSelections: rawData?.length || 0,
-        // New content generation stats
+        // Content generation stats
         contentStats: {
           totalSessions,
           avgScore,
