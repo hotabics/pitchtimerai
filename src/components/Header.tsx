@@ -79,7 +79,7 @@ export const Header = ({ showProgress, currentStep = 0, totalSteps = 7, onLogoCl
                 <Sparkles className="w-4 h-4 text-primary" />
               </div>
               <span className="font-bold text-lg tracking-tight">
-                PitchDeck<span className="text-primary">AI</span>
+                Pitch<span className="text-primary">Perfect</span>
               </span>
             </button>
 

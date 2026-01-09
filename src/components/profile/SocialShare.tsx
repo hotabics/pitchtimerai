@@ -23,11 +23,11 @@ export const SocialShare = ({ achievement, score, totalPitches, streak }: Social
   const [isOpen, setIsOpen] = useState(false);
 
   const getShareText = () => {
-    let text = `🎉 I just earned the "${achievement.name}" badge on PitchDeck AI! ${achievement.icon}`;
+    let text = `🎉 I just earned the "${achievement.name}" badge on PitchPerfect! ${achievement.icon}`;
     if (score) text += `\n\n📊 Best Score: ${(score / 10).toFixed(1)}/10`;
     if (totalPitches) text += `\n🎤 Total Pitches: ${totalPitches}`;
     if (streak && streak > 0) text += `\n🔥 Current Streak: ${streak} days`;
-    text += `\n\n#PitchDeckAI #PublicSpeaking #PitchPractice`;
+    text += `\n\n#PitchPerfect #PublicSpeaking #PitchPractice`;
     return text;
   };
 
@@ -109,11 +109,11 @@ export const SocialShare = ({ achievement, score, totalPitches, streak }: Social
     // Branding
     ctx.fillStyle = "#6366f1";
     ctx.font = "bold 28px Inter, sans-serif";
-    ctx.fillText("PitchDeck AI", 600, 580);
+    ctx.fillText("PitchPerfect", 600, 580);
 
     // Download
     const link = document.createElement("a");
-    link.download = `pitchdeck-${achievement.name.toLowerCase().replace(/\s+/g, "-")}.png`;
+    link.download = `pitchperfect-${achievement.name.toLowerCase().replace(/\s+/g, "-")}.png`;
     link.href = canvas.toDataURL("image/png");
     link.click();
     

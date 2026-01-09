@@ -281,7 +281,7 @@ export const openPrintView = (props: PrintViewProps) => {
   }
 
   <div class="footer">
-    Generated with PitchDeck.ai • ${new Date().toLocaleDateString()}
+    Generated with PitchPerfect • ${new Date().toLocaleDateString()}
   </div>
 </body>
 </html>

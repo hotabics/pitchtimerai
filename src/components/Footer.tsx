@@ -43,7 +43,7 @@ export const Footer = () => {
                 <Sparkles className="w-5 h-5 text-primary-foreground" />
               </div>
               <span className="bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                PitchPlease
+                PitchPerfect
               </span>
             </Link>
             <p className="text-muted-foreground text-sm max-w-xs mb-6">
@@ -122,7 +122,7 @@ export const Footer = () => {
         {/* Bottom Bar */}
         <div className="mt-12 pt-8 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">
-            © {currentYear} PitchPlease. All rights reserved.
+            © {currentYear} PitchPerfect. All rights reserved.
           </p>
           <div className="flex items-center gap-6">
             <Link

@@ -194,7 +194,7 @@ export const useUserStore = create<UserState>()(
       canSaveHistory: () => true,
     }),
     {
-      name: 'pitchdeck-user',
+      name: 'pitchperfect-user',
       partialize: (state) => ({
         user: state.user,
         isLoggedIn: state.isLoggedIn,

@@ -25,7 +25,7 @@ interface GoalSettingProps {
   totalPitches: number;
 }
 
-const STORAGE_KEY = "pitchpal_goals";
+const STORAGE_KEY = "pitchperfect_goals";
 
 const defaultGoals: Omit<Goal, "current">[] = [
   { id: "score", label: "Target Score", target: 85, unit: "/100", icon: Target, color: "text-primary" },
