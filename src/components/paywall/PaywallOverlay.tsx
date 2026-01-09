@@ -23,20 +23,21 @@ export const PaywallOverlay = ({
 
   return (
     <>
+      {/* Full-screen fixed overlay */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="absolute inset-0 z-20 flex items-center justify-center"
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
       >
         {/* Glassmorphism backdrop */}
         <div className="absolute inset-0 backdrop-blur-md bg-background/60" />
         
-        {/* Content card */}
+        {/* Content card - centered on screen */}
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.1 }}
-          className="relative z-10 text-center p-8 rounded-2xl bg-background/80 border border-primary/20 shadow-2xl max-w-sm mx-4"
+          className="relative z-10 text-center p-8 rounded-2xl bg-background border border-primary/20 shadow-2xl max-w-sm w-full"
         >
           {/* Lock icon with glow */}
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center ring-4 ring-primary/20">
