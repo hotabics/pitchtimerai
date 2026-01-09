@@ -1,0 +1,232 @@
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { User, Camera, Save, Loader2, ArrowLeft, CheckCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useNavigate } from "react-router-dom";
+import { useUserStore } from "@/stores/userStore";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+const Settings = () => {
+  const navigate = useNavigate();
+  const { user, isLoggedIn, setUser } = useUserStore();
+  
+  const [name, setName] = useState(user?.name || "");
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatar || "");
+  const [isSaving, setIsSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  // Redirect if not logged in
+  useEffect(() => {
+    if (!isLoggedIn) {
+      navigate("/auth?returnTo=/settings");
+    }
+  }, [isLoggedIn, navigate]);
+
+  // Sync form with user data
+  useEffect(() => {
+    if (user) {
+      setName(user.name || "");
+      setAvatarUrl(user.avatar || "");
+    }
+  }, [user]);
+
+  const handleSave = async () => {
+    if (!user) return;
+    
+    setIsSaving(true);
+    setSaved(false);
+
+    try {
+      // Update profile in database
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .upsert({
+          id: user.id,
+          name: name.trim(),
+          avatar_url: avatarUrl.trim() || null,
+        });
+
+      if (profileError) throw profileError;
+
+      // Update auth user metadata
+      const { error: authError } = await supabase.auth.updateUser({
+        data: { name: name.trim(), avatar_url: avatarUrl.trim() || null },
+      });
+
+      if (authError) throw authError;
+
+      // Update local store
+      setUser({
+        ...user,
+        name: name.trim(),
+        avatar: avatarUrl.trim() || undefined,
+      });
+
+      setSaved(true);
+      toast.success("Profile updated successfully!");
+      
+      // Reset saved state after 3 seconds
+      setTimeout(() => setSaved(false), 3000);
+    } catch (error: any) {
+      console.error("Failed to update profile:", error);
+      toast.error(error.message || "Failed to update profile");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  if (!isLoggedIn) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <main className="container max-w-2xl mx-auto px-4 py-16">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-8"
+        >
+          {/* Back Button */}
+          <Button
+            variant="ghost"
+            onClick={() => navigate("/profile")}
+            className="gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Profile
+          </Button>
+
+          {/* Header */}
+          <div>
+            <h1 className="text-3xl font-bold">Account Settings</h1>
+            <p className="text-muted-foreground mt-1">
+              Update your profile information
+            </p>
+          </div>
+
+          {/* Profile Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="w-5 h-5" />
+                Profile Information
+              </CardTitle>
+              <CardDescription>
+                This information will be displayed on your profile and in the app.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Avatar Preview */}
+              <div className="flex items-center gap-6">
+                <Avatar className="h-20 w-20">
+                  <AvatarImage src={avatarUrl} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-2xl">
+                    {name ? getInitials(name) : "U"}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 space-y-2">
+                  <Label htmlFor="avatar">Avatar URL</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="avatar"
+                      type="url"
+                      placeholder="https://example.com/avatar.jpg"
+                      value={avatarUrl}
+                      onChange={(e) => setAvatarUrl(e.target.value)}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setAvatarUrl("")}
+                      title="Clear avatar"
+                    >
+                      <Camera className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Paste a URL to an image, or leave blank for initials
+                  </p>
+                </div>
+              </div>
+
+              {/* Name Field */}
+              <div className="space-y-2">
+                <Label htmlFor="name">Display Name</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Your name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  maxLength={100}
+                />
+                <p className="text-xs text-muted-foreground">
+                  This is how your name will appear in the app
+                </p>
+              </div>
+
+              {/* Email (Read-only) */}
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={user?.email || ""}
+                  disabled
+                  className="bg-muted"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Email cannot be changed
+                </p>
+              </div>
+
+              {/* Save Button */}
+              <div className="flex justify-end pt-4">
+                <Button
+                  onClick={handleSave}
+                  disabled={isSaving || !name.trim()}
+                  className="min-w-[120px]"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : saved ? (
+                    <>
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Saved!
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      Save Changes
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </main>
+    </div>
+  );
+};
+
+export default Settings;

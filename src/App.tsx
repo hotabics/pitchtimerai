@@ -18,6 +18,7 @@ import Privacy from "./pages/Privacy";
 import Contact from "./pages/Contact";
 import Cookies from "./pages/Cookies";
 import Careers from "./pages/Careers";
+import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import { AICoachPage } from "./components/ai-coach/AICoachPage";
@@ -57,6 +58,7 @@ const App = () => (
               <Route path="/contact" element={<Contact />} />
               <Route path="/cookies" element={<Cookies />} />
               <Route path="/careers" element={<Careers />} />
+              <Route path="/settings" element={<Settings />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
