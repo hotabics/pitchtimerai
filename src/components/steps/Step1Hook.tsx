@@ -12,11 +12,9 @@ const AICoachSpotlight = lazy(() => import("@/components/landing/AICoachSpotligh
 const TechStackBanner = lazy(() => import("@/components/landing/TechStackBanner").then(m => ({ default: m.TechStackBanner })));
 const BentoGrid = lazy(() => import("@/components/landing/BentoGrid").then(m => ({ default: m.BentoGrid })));
 
-// Minimal skeleton for lazy sections
+// Reserve space for lazy sections to prevent CLS
 const SectionSkeleton = () => (
-  <div className="py-16 flex items-center justify-center">
-    <div className="animate-pulse h-48 w-full max-w-4xl bg-muted/20 rounded-xl" />
-  </div>
+  <div className="min-h-[2400px] md:min-h-[1800px]" aria-hidden="true" />
 );
 
 export type EntryMode = "generate" | "custom_script";
