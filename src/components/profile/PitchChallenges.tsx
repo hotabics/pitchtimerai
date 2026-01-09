@@ -10,8 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Swords, Plus, Copy, Users, Trophy, Calendar, Target, ExternalLink, Check } from "lucide-react";
-import { motion } from "framer-motion";
+import { Swords, Plus, Copy, Users, Trophy, Calendar, Target, ExternalLink, Check, Wifi } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -20,6 +20,7 @@ interface Challenge {
   title: string;
   description: string | null;
   created_by: string;
+  creator_email: string | null;
   invite_code: string;
   track: string;
   target_score: number;
@@ -45,6 +46,7 @@ export const PitchChallenges = () => {
   const [participants, setParticipants] = useState<Record<string, Participant[]>>({});
   const [joinCode, setJoinCode] = useState("");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
   
   // Create challenge form
   const [newTitle, setNewTitle] = useState("");
@@ -53,13 +55,99 @@ export const PitchChallenges = () => {
   const [newTargetScore, setNewTargetScore] = useState("70");
   const [newDuration, setNewDuration] = useState("7");
   const [creatorName, setCreatorName] = useState("");
+  const [creatorEmail, setCreatorEmail] = useState("");
   
   // Join challenge form
   const [participantName, setParticipantName] = useState("");
 
   useEffect(() => {
     fetchChallenges();
+    
+    // Set up realtime subscriptions
+    const challengesChannel = supabase
+      .channel('challenges-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'challenge_participants'
+        },
+        (payload) => {
+          console.log('Realtime update:', payload);
+          handleRealtimeUpdate(payload);
+        }
+      )
+      .subscribe((status) => {
+        setRealtimeConnected(status === 'SUBSCRIBED');
+      });
+
+    return () => {
+      supabase.removeChannel(challengesChannel);
+    };
   }, []);
+
+  const handleRealtimeUpdate = (payload: any) => {
+    if (payload.eventType === 'INSERT') {
+      // New participant joined
+      const newParticipant = payload.new as Participant;
+      setParticipants(prev => {
+        const updated = { ...prev };
+        if (!updated[newParticipant.challenge_id]) {
+          updated[newParticipant.challenge_id] = [];
+        }
+        // Check if already exists
+        if (!updated[newParticipant.challenge_id].find(p => p.id === newParticipant.id)) {
+          updated[newParticipant.challenge_id] = [...updated[newParticipant.challenge_id], newParticipant];
+          toast.info(`${newParticipant.participant_name} joined the challenge! 🎉`);
+        }
+        return updated;
+      });
+    } else if (payload.eventType === 'UPDATE') {
+      // Score updated
+      const updatedParticipant = payload.new as Participant;
+      const oldParticipant = payload.old as Participant;
+      
+      setParticipants(prev => {
+        const updated = { ...prev };
+        if (updated[updatedParticipant.challenge_id]) {
+          updated[updatedParticipant.challenge_id] = updated[updatedParticipant.challenge_id].map(p =>
+            p.id === updatedParticipant.id ? updatedParticipant : p
+          );
+          
+          // Notify if score improved
+          if (updatedParticipant.best_score > oldParticipant.best_score) {
+            toast.success(`${updatedParticipant.participant_name} scored ${(updatedParticipant.best_score / 10).toFixed(1)}! 🔥`);
+          }
+        }
+        return updated;
+      });
+    }
+  };
+
+  const sendNotification = async (
+    type: "join" | "score_beaten",
+    challenge: Challenge,
+    participantName: string,
+    newScore?: number,
+    previousHighScore?: number
+  ) => {
+    try {
+      await supabase.functions.invoke('challenge-notification', {
+        body: {
+          type,
+          challengeId: challenge.id,
+          challengeTitle: challenge.title,
+          participantName,
+          newScore,
+          creatorEmail: challenge.creator_email,
+          previousHighScore,
+        },
+      });
+    } catch (err) {
+      console.error('Failed to send notification:', err);
+    }
+  };
 
   const fetchChallenges = async () => {
     setIsLoading(true);
@@ -111,6 +199,7 @@ export const PitchChallenges = () => {
           title: newTitle,
           description: newDescription || null,
           created_by: creatorName,
+          creator_email: creatorEmail || null,
           track: newTrack,
           target_score: parseInt(newTargetScore),
           end_date: endDate.toISOString(),
@@ -131,6 +220,7 @@ export const PitchChallenges = () => {
       setNewTitle("");
       setNewDescription("");
       setCreatorName("");
+      setCreatorEmail("");
     } catch (err) {
       console.error("Failed to create challenge:", err);
       toast.error("Failed to create challenge");
@@ -174,6 +264,9 @@ export const PitchChallenges = () => {
         }
         return;
       }
+
+      // Send notification to challenge creator
+      await sendNotification("join", challenge, participantName);
 
       toast.success(`Joined "${challenge.title}"! Start practicing to climb the leaderboard.`);
       setJoinCode("");
@@ -291,6 +384,12 @@ export const PitchChallenges = () => {
         <CardTitle className="flex items-center gap-2">
           <Swords className="h-5 w-5 text-primary" />
           Pitch Challenges
+          {realtimeConnected && (
+            <span className="flex items-center gap-1 text-xs font-normal text-green-500">
+              <Wifi className="h-3 w-3" />
+              Live
+            </span>
+          )}
         </CardTitle>
         <CardDescription>Compete with friends and colleagues</CardDescription>
       </CardHeader>
@@ -387,6 +486,19 @@ export const PitchChallenges = () => {
                     value={creatorName}
                     onChange={(e) => setCreatorName(e.target.value)}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="creator-email">Your Email (optional)</Label>
+                  <Input
+                    id="creator-email"
+                    type="email"
+                    placeholder="Get notified when someone joins"
+                    value={creatorEmail}
+                    onChange={(e) => setCreatorEmail(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    We'll notify you when someone joins or beats your score
+                  </p>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">

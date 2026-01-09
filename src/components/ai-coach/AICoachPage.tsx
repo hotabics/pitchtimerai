@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { StudioHub } from './StudioHub';
+import { VideoUpload } from './VideoUpload';
 import { AICoachSetup } from './AICoachSetup';
 import { AICoachRecording } from './AICoachRecording';
 import { AICoachProcessing } from './AICoachProcessing';
@@ -15,6 +17,8 @@ import type { FrameData } from '@/services/mediapipe';
 
 const FRAMING_SKIP_KEY = 'ai-coach-framing-skipped';
 
+export type InputMode = 'hub' | 'live' | 'upload';
+
 export interface AICoachPageProps {
   onBack?: () => void;
   onEditScript?: () => void;
@@ -23,8 +27,10 @@ export interface AICoachPageProps {
 
 export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachPageProps) => {
   const navigate = useNavigate();
+  const [inputMode, setInputMode] = useState<InputMode>('hub');
   const [view, setView] = useState<'setup' | 'framing' | 'recording' | 'processing' | 'results'>('setup');
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [uploadedVideoUrl, setUploadedVideoUrl] = useState<string | null>(null);
 
   // Use global store for recording data to persist across navigation
   const { recordingData, setRecordingData, reset } = useAICoachStore();
@@ -52,6 +58,37 @@ export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachP
       }
     };
   }, [cameraStream]);
+
+  // Handlers for Studio Hub
+  const handleSelectLive = () => {
+    setInputMode('live');
+  };
+
+  const handleSelectUpload = () => {
+    setInputMode('upload');
+  };
+
+  const handleUploadReady = (videoBlob: Blob, videoUrl: string) => {
+    setUploadedVideoUrl(videoUrl);
+    // Create mock frame data for uploaded video
+    const mockFrameData: FrameData[] = [];
+    
+    // Set recording data with uploaded video
+    setRecordingData({
+      audioBlob: videoBlob, // Video contains audio
+      videoBlob: videoBlob,
+      durationSeconds: 60, // Will be updated when video loads
+      frameData: mockFrameData,
+    });
+    
+    setView('processing');
+  };
+
+  const handleBackToHub = () => {
+    setInputMode('hub');
+    setView('setup');
+    setUploadedVideoUrl(null);
+  };
 
   const handleSetupReady = async () => {
     // Check if user has previously skipped framing check
@@ -104,11 +141,14 @@ export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachP
   const handleReRecord = () => {
     reset();
     setRecordingData(null);
+    setUploadedVideoUrl(null);
+    setInputMode('hub');
     setView('setup');
   };
 
   const handleResumeSession = () => {
     // Jump directly to results view
+    setInputMode('live');
     setView('results');
   };
 
@@ -133,13 +173,25 @@ export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachP
     return (
       <div className="space-y-6">
         <AnimatePresence mode="wait">
-          {view === 'setup' && (
+          {inputMode === 'hub' && (
+            <motion.div key="hub" exit={{ opacity: 0 }}>
+              <StudioHub onSelectLive={handleSelectLive} onSelectUpload={handleSelectUpload} />
+            </motion.div>
+          )}
+
+          {inputMode === 'upload' && view !== 'processing' && view !== 'results' && (
+            <motion.div key="upload" exit={{ opacity: 0 }}>
+              <VideoUpload onVideoReady={handleUploadReady} onBack={handleBackToHub} />
+            </motion.div>
+          )}
+
+          {inputMode === 'live' && view === 'setup' && (
             <motion.div key="setup" exit={{ opacity: 0, x: -20 }}>
               <AICoachSetup onReady={handleSetupReady} onResumeSession={handleResumeSession} />
             </motion.div>
           )}
 
-          {view === 'framing' && (
+          {inputMode === 'live' && view === 'framing' && (
             <motion.div key="framing" exit={{ opacity: 0 }}>
               <FramingCheck
                 stream={cameraStream}
@@ -149,7 +201,7 @@ export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachP
             </motion.div>
           )}
 
-          {view === 'recording' && (
+          {inputMode === 'live' && view === 'recording' && (
             <motion.div key="recording" exit={{ opacity: 0 }}>
               <AICoachRecording 
                 onStop={handleRecordingStop}
@@ -203,13 +255,25 @@ export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachP
       {/* Content */}
       <main className="container mx-auto px-4 py-8">
         <AnimatePresence mode="wait">
-          {view === 'setup' && (
+          {inputMode === 'hub' && (
+            <motion.div key="hub" exit={{ opacity: 0 }}>
+              <StudioHub onSelectLive={handleSelectLive} onSelectUpload={handleSelectUpload} />
+            </motion.div>
+          )}
+
+          {inputMode === 'upload' && view !== 'processing' && view !== 'results' && (
+            <motion.div key="upload" exit={{ opacity: 0 }}>
+              <VideoUpload onVideoReady={handleUploadReady} onBack={handleBackToHub} />
+            </motion.div>
+          )}
+
+          {inputMode === 'live' && view === 'setup' && (
             <motion.div key="setup" exit={{ opacity: 0, x: -20 }}>
               <AICoachSetup onReady={handleSetupReady} onResumeSession={handleResumeSession} />
             </motion.div>
           )}
 
-          {view === 'framing' && (
+          {inputMode === 'live' && view === 'framing' && (
             <motion.div key="framing" exit={{ opacity: 0 }}>
               <FramingCheck
                 stream={cameraStream}
@@ -219,7 +283,7 @@ export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachP
             </motion.div>
           )}
 
-          {view === 'recording' && (
+          {inputMode === 'live' && view === 'recording' && (
             <motion.div key="recording" exit={{ opacity: 0 }}>
               <AICoachRecording 
                 onStop={handleRecordingStop}
