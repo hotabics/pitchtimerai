@@ -6,7 +6,7 @@ import { Slide, useSlidesStore } from '@/stores/slidesStore';
 import { cn } from '@/lib/utils';
 import { 
   Lightbulb, Target, Zap, TrendingUp, Users, Rocket, CheckCircle2,
-  Plus, Trash2, Bold, Italic
+  Plus, Trash2, Bold, Italic, Undo2, Redo2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
@@ -38,14 +38,74 @@ export const SlideWYSIWYG = ({ slide, isEditing = true, onExitEdit }: SlideWYSIW
   const [localContent, setLocalContent] = useState<string[]>(slide.content);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   
+  // Undo/Redo history
+  const [history, setHistory] = useState<{ title: string; content: string[] }[]>([
+    { title: slide.title, content: [...slide.content] }
+  ]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+  const isUndoRedoRef = useRef(false);
+  
   const titleRef = useRef<HTMLDivElement>(null);
   
-  // Keyboard shortcuts for formatting
+  // Push to history on content change (debounced)
+  const pushToHistory = useCallback((title: string, content: string[]) => {
+    if (isUndoRedoRef.current) {
+      isUndoRedoRef.current = false;
+      return;
+    }
+    
+    setHistory(prev => {
+      // Remove any future history if we're not at the end
+      const newHistory = prev.slice(0, historyIndex + 1);
+      newHistory.push({ title, content: [...content] });
+      // Keep max 50 history items
+      if (newHistory.length > 50) newHistory.shift();
+      return newHistory;
+    });
+    setHistoryIndex(prev => Math.min(prev + 1, 49));
+  }, [historyIndex]);
+  
+  // Undo function
+  const undo = useCallback(() => {
+    if (historyIndex > 0) {
+      isUndoRedoRef.current = true;
+      const prevState = history[historyIndex - 1];
+      setLocalTitle(prevState.title);
+      setLocalContent([...prevState.content]);
+      setHistoryIndex(historyIndex - 1);
+      toast({ title: '↩ Undo', duration: 800 });
+    }
+  }, [history, historyIndex]);
+  
+  // Redo function
+  const redo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      isUndoRedoRef.current = true;
+      const nextState = history[historyIndex + 1];
+      setLocalTitle(nextState.title);
+      setLocalContent([...nextState.content]);
+      setHistoryIndex(historyIndex + 1);
+      toast({ title: '↪ Redo', duration: 800 });
+    }
+  }, [history, historyIndex]);
+  
+  // Keyboard shortcuts for formatting and undo/redo
   useEffect(() => {
     if (!isEditing) return;
     
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Check if we're in an editable element
+      // Undo/Redo work globally when in edit mode
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+        return;
+      }
+      
+      // Check if we're in an editable element for formatting
       const activeEl = document.activeElement;
       const isEditable = activeEl?.getAttribute('contenteditable') === 'true';
       if (!isEditable) return;
@@ -65,7 +125,7 @@ export const SlideWYSIWYG = ({ slide, isEditing = true, onExitEdit }: SlideWYSIW
     
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isEditing]);
+  }, [isEditing, undo, redo]);
   
   // Sync with slide changes
   useEffect(() => {
@@ -73,13 +133,15 @@ export const SlideWYSIWYG = ({ slide, isEditing = true, onExitEdit }: SlideWYSIW
     setLocalContent(slide.content);
   }, [slide.id, slide.title, slide.content]);
 
-  // Save changes - now captures innerHTML for rich text
+  // Save changes - now captures innerHTML for rich text and pushes to history
   const saveChanges = useCallback(() => {
     updateSlide(slide.id, {
       title: localTitle,
       content: localContent.filter(c => c.trim()),
     });
-  }, [slide.id, localTitle, localContent, updateSlide]);
+    // Push to history after save
+    pushToHistory(localTitle, localContent);
+  }, [slide.id, localTitle, localContent, updateSlide, pushToHistory]);
 
   // Auto-save on blur
   const handleTitleBlur = () => {
@@ -460,9 +522,16 @@ export const SlideWYSIWYG = ({ slide, isEditing = true, onExitEdit }: SlideWYSIW
     >
       {renderContent()}
       
-      {/* Edit mode indicator with formatting hint */}
+      {/* Edit mode indicator with formatting and undo/redo hints */}
       {isEditing && (
         <div className="absolute top-2 right-2 flex items-center gap-2">
+          <div className="flex items-center gap-1 px-2 py-1 rounded bg-black/40 text-white/50 text-[10px]">
+            <Undo2 className="w-3 h-3" />
+            <span>Ctrl+Z</span>
+            <span className="mx-1">|</span>
+            <Redo2 className="w-3 h-3" />
+            <span>Ctrl+Shift+Z</span>
+          </div>
           <div className="flex items-center gap-1 px-2 py-1 rounded bg-black/40 text-white/50 text-[10px]">
             <Bold className="w-3 h-3" />
             <span>Ctrl+B</span>

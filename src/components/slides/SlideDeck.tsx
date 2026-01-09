@@ -34,6 +34,10 @@ import { toast } from '@/hooks/use-toast';
 // Voice commands for slide navigation
 const NEXT_COMMANDS = ['next slide', 'next', 'go next', 'forward', 'advance'];
 const PREV_COMMANDS = ['previous slide', 'previous', 'go back', 'back'];
+const FIRST_COMMANDS = ['first slide', 'go to first', 'beginning', 'start'];
+const LAST_COMMANDS = ['last slide', 'go to last', 'end', 'final slide'];
+// Pattern: "go to slide X" or "slide X"
+const GO_TO_PATTERN = /(?:go to\s+)?slide\s+(\d+)/i;
 
 // TypeScript declarations for Web Speech API
 interface SpeechRecognitionEvent extends Event {
@@ -132,8 +136,11 @@ export const SlideDeck = ({
   // Voice control state
   const [voiceControlEnabled, setVoiceControlEnabled] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState<string | null>(null);
+  const [lastVoiceCommand, setLastVoiceCommand] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const lastCommandTimeRef = useRef(0);
+  const transcriptTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Drag and drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -338,6 +345,40 @@ export const SlideDeck = ({
     }
   }, [currentSlideIndex, setCurrentSlideIndex]);
 
+  const goToFirstSlide = useCallback(() => {
+    setCurrentSlideIndex(0);
+  }, [setCurrentSlideIndex]);
+
+  const goToLastSlide = useCallback(() => {
+    if (slides.length > 0) {
+      setCurrentSlideIndex(slides.length - 1);
+    }
+  }, [slides.length, setCurrentSlideIndex]);
+
+  const goToSlide = useCallback((slideNumber: number) => {
+    const index = slideNumber - 1; // Convert to 0-based
+    if (index >= 0 && index < slides.length) {
+      setCurrentSlideIndex(index);
+      return true;
+    }
+    return false;
+  }, [slides.length, setCurrentSlideIndex]);
+
+  // Show voice command feedback
+  const showVoiceFeedback = useCallback((command: string, transcript: string) => {
+    setLastVoiceCommand(command);
+    setVoiceTranscript(transcript);
+    
+    // Clear after 2 seconds
+    if (transcriptTimeoutRef.current) {
+      clearTimeout(transcriptTimeoutRef.current);
+    }
+    transcriptTimeoutRef.current = setTimeout(() => {
+      setVoiceTranscript(null);
+      setLastVoiceCommand(null);
+    }, 2000);
+  }, []);
+
   // Voice control for slide navigation
   useEffect(() => {
     if (!voiceControlEnabled) {
@@ -346,6 +387,8 @@ export const SlideDeck = ({
         recognitionRef.current = null;
       }
       setIsListening(false);
+      setVoiceTranscript(null);
+      setLastVoiceCommand(null);
       return;
     }
 
@@ -367,7 +410,7 @@ export const SlideDeck = ({
 
     recognition.onstart = () => {
       setIsListening(true);
-      toast({ title: 'Voice control active', description: 'Say "next slide" or "previous slide"', duration: 2000 });
+      toast({ title: 'Voice control active', description: 'Say "next", "previous", "first", "last", or "go to slide 3"', duration: 3000 });
     };
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
@@ -376,13 +419,47 @@ export const SlideDeck = ({
       if (now - lastCommandTimeRef.current < 1500) return;
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript.toLowerCase().trim();
+        const result = event.results[i];
+        const transcript = result[0].transcript.toLowerCase().trim();
+        
+        // Show interim transcript for feedback
+        if (!result.isFinal) {
+          setVoiceTranscript(transcript);
+          continue;
+        }
+        
+        // Check for "go to slide X" pattern first
+        const goToMatch = transcript.match(GO_TO_PATTERN);
+        if (goToMatch) {
+          const slideNum = parseInt(goToMatch[1], 10);
+          if (goToSlide(slideNum)) {
+            lastCommandTimeRef.current = now;
+            showVoiceFeedback(`→ Slide ${slideNum}`, transcript);
+            break;
+          }
+        }
+        
+        // Check for first slide commands
+        if (FIRST_COMMANDS.some(cmd => transcript.includes(cmd))) {
+          lastCommandTimeRef.current = now;
+          goToFirstSlide();
+          showVoiceFeedback('⇤ First slide', transcript);
+          break;
+        }
+        
+        // Check for last slide commands
+        if (LAST_COMMANDS.some(cmd => transcript.includes(cmd))) {
+          lastCommandTimeRef.current = now;
+          goToLastSlide();
+          showVoiceFeedback('⇥ Last slide', transcript);
+          break;
+        }
         
         // Check for next commands
         if (NEXT_COMMANDS.some(cmd => transcript.includes(cmd))) {
           lastCommandTimeRef.current = now;
           goToNextSlide();
-          toast({ title: '→ Next slide', duration: 1000 });
+          showVoiceFeedback('→ Next slide', transcript);
           break;
         }
         
@@ -390,7 +467,7 @@ export const SlideDeck = ({
         if (PREV_COMMANDS.some(cmd => transcript.includes(cmd))) {
           lastCommandTimeRef.current = now;
           goToPreviousSlide();
-          toast({ title: '← Previous slide', duration: 1000 });
+          showVoiceFeedback('← Previous slide', transcript);
           break;
         }
       }
@@ -427,8 +504,11 @@ export const SlideDeck = ({
     return () => {
       recognition.stop();
       recognitionRef.current = null;
+      if (transcriptTimeoutRef.current) {
+        clearTimeout(transcriptTimeoutRef.current);
+      }
     };
-  }, [voiceControlEnabled, goToNextSlide, goToPreviousSlide]);
+  }, [voiceControlEnabled, goToNextSlide, goToPreviousSlide, goToFirstSlide, goToLastSlide, goToSlide, showVoiceFeedback]);
 
   const handleAddSlide = () => {
     const newSlide: Slide = {
@@ -638,7 +718,34 @@ export const SlideDeck = ({
         {/* Main slide area */}
         <div className="flex-1 flex flex-col">
           {/* Slide viewer */}
-          <div className="flex-1 p-6 flex items-center justify-center bg-muted/20">
+          <div className="flex-1 p-6 flex items-center justify-center bg-muted/20 relative">
+            {/* Voice transcript overlay */}
+            <AnimatePresence>
+              {voiceControlEnabled && (voiceTranscript || lastVoiceCommand) && (
+                <motion.div
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-background/95 backdrop-blur-sm border border-primary/30 rounded-lg px-4 py-2 shadow-lg flex items-center gap-3"
+                >
+                  <div className={cn(
+                    "w-2 h-2 rounded-full",
+                    lastVoiceCommand ? "bg-green-500" : "bg-yellow-500 animate-pulse"
+                  )} />
+                  <div className="flex flex-col">
+                    {lastVoiceCommand && (
+                      <span className="text-sm font-semibold text-primary">{lastVoiceCommand}</span>
+                    )}
+                    {voiceTranscript && (
+                      <span className="text-xs text-muted-foreground truncate max-w-xs">
+                        "{voiceTranscript}"
+                      </span>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+            
             <AnimatePresence mode="wait">
               {currentSlide && (
                 <motion.div
