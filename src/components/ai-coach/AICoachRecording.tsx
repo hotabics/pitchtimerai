@@ -12,6 +12,7 @@ import {
   Mic,
   Pause,
   PersonStanding,
+  PictureInPicture2,
   Play,
   Smile,
   Square,
@@ -109,6 +110,10 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
   const [isRecording, setIsRecording] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
   const [duration, setDuration] = useState(0);
+  
+  // Countdown state (3-2-1 before recording)
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [isPiPActive, setIsPiPActive] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("Initializing AI Vision...");
 
   // Teleprompter state
@@ -282,9 +287,32 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
     return () => { mounted = false; };
   }, [isCameraReady]);
 
-  // 3) Start recording
+  // 3) Start countdown when camera and mediapipe are ready
   useEffect(() => {
-    if (!isCameraReady || !mediaPipeReady || isRecording) return;
+    if (!isCameraReady || !mediaPipeReady || isRecording || countdown !== null) return;
+    // Start 3-2-1 countdown
+    setCountdown(3);
+  }, [isCameraReady, mediaPipeReady, isRecording, countdown]);
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (countdown === null) return;
+    if (countdown === 0) {
+      // Countdown finished, start recording
+      setCountdown(null);
+      startRecordingRef.current();
+      return;
+    }
+    const timer = setTimeout(() => {
+      setCountdown(prev => (prev !== null ? prev - 1 : null));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [countdown]);
+
+  // Start recording function - defined as ref to avoid dependency issues
+  const startRecordingRef = useRef<() => void>(() => {});
+  
+  startRecordingRef.current = () => {
     const stream = streamRef.current;
     if (!stream) return;
 
@@ -313,13 +341,20 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
 
       startTimeRef.current = performance.now();
       setIsRecording(true);
-
-      if (!mediaPipeFailed) startFaceMeshLoop();
     } catch (err) {
       console.error("Recording setup error:", err);
       setInitError("Failed to start recording");
     }
-  }, [clearFrameData, isCameraReady, isRecording, mediaPipeFailed, mediaPipeReady]);
+  };
+
+  // Start face mesh loop when recording starts (using ref to avoid declaration order issues)
+  const startFaceMeshLoopRef = useRef<() => void>(() => {});
+
+  useEffect(() => {
+    if (isRecording && !mediaPipeFailed) {
+      startFaceMeshLoopRef.current();
+    }
+  }, [isRecording, mediaPipeFailed]);
 
   // Duration timer (fallback when no audio sync)
   useEffect(() => {
@@ -505,6 +540,9 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
     animationFrameRef.current = requestAnimationFrame(tick);
   }, [addFrameData]);
 
+  // Assign to ref for use before declaration
+  startFaceMeshLoopRef.current = startFaceMeshLoop;
+
   const cleanup = useCallback(() => {
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     if (scrollIntervalRef.current) clearInterval(scrollIntervalRef.current);
@@ -588,6 +626,34 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
       }).catch(console.error);
     }
   }, []);
+
+  // Picture-in-Picture toggle
+  const togglePiP = useCallback(async () => {
+    const video = videoRef.current;
+    if (!video) return;
+    
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+        setIsPiPActive(false);
+      } else if (document.pictureInPictureEnabled) {
+        await video.requestPictureInPicture();
+        setIsPiPActive(true);
+      }
+    } catch (err) {
+      console.error('PiP error:', err);
+    }
+  }, []);
+
+  // Listen for PiP changes
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    
+    const handleLeavePiP = () => setIsPiPActive(false);
+    video.addEventListener('leavepictureinpicture', handleLeavePiP);
+    return () => video.removeEventListener('leavepictureinpicture', handleLeavePiP);
+  }, [isCameraReady]);
 
   // Listen for fullscreen changes (e.g., Escape key)
   useEffect(() => {
@@ -677,6 +743,59 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
             )}
           </AnimatePresence>
 
+          {/* Countdown Overlay (3-2-1) */}
+          <AnimatePresence>
+            {countdown !== null && countdown > 0 && (
+              <motion.div
+                initial={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm pointer-events-auto"
+              >
+                <motion.div
+                  key={countdown}
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 1.5, opacity: 0 }}
+                  transition={{ duration: 0.5, ease: "easeOut" }}
+                  className="relative"
+                >
+                  <span className="text-[12rem] font-bold text-white drop-shadow-2xl">
+                    {countdown}
+                  </span>
+                  {/* Circular progress ring */}
+                  <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="45"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="text-cyan-400/30"
+                    />
+                    <motion.circle
+                      cx="50"
+                      cy="50"
+                      r="45"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                      className="text-cyan-400"
+                      strokeDasharray={283}
+                      initial={{ strokeDashoffset: 0 }}
+                      animate={{ strokeDashoffset: 283 }}
+                      transition={{ duration: 1, ease: "linear" }}
+                    />
+                  </svg>
+                </motion.div>
+                <p className="absolute bottom-1/4 text-lg text-white/70 font-medium">
+                  Get Ready...
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* HUD: Top-Left - Timer + Status */}
           <div className="absolute top-4 left-4 flex items-center gap-3 pointer-events-auto">
             {/* Recording Status */}
@@ -719,6 +838,22 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
                 </>
               )}
             </div>
+            
+            {/* Picture-in-Picture Toggle */}
+            {document.pictureInPictureEnabled && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "h-9 w-9 bg-black/60 backdrop-blur-sm hover:bg-black/80",
+                  isPiPActive ? "text-cyan-400" : "text-white"
+                )}
+                onClick={togglePiP}
+                title="Picture-in-Picture"
+              >
+                <PictureInPicture2 className="w-4 h-4" />
+              </Button>
+            )}
             
             {/* Fullscreen Toggle */}
             <Button
