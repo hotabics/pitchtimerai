@@ -15,4 +15,11 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    target: "esnext",
+    cssTarget: "esnext",
+  },
+  esbuild: {
+    target: "esnext",
+  },
 }));
