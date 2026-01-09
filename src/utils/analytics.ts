@@ -43,11 +43,18 @@ export const initializeAnalytics = (): void => {
       autocapture: true,
       // Capture performance metrics
       capture_performance: true,
+      // Disable session recording on initial load to reduce JS execution
+      // It will be enabled lazily when needed
+      disable_session_recording: true,
       // Loaded callback
       loaded: (posthog) => {
         if (import.meta.env.DEV) {
           console.log('[Analytics] PostHog loaded in development mode');
         }
+        // Enable session recording after a delay to not block initial render
+        setTimeout(() => {
+          posthog.startSessionRecording();
+        }, 5000);
       },
     });
 
