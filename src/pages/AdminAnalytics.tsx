@@ -4,7 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RefreshCw, TrendingUp, BarChart3, Calendar, ArrowLeft, Mic, Clock, Target, ThumbsUp, ThumbsDown, Zap, Users, MessageSquare, Download, FileText } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RefreshCw, TrendingUp, BarChart3, Calendar, ArrowLeft, Mic, Clock, Target, ThumbsUp, ThumbsDown, Zap, Users, MessageSquare, Download, FileText, Mail, Send } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -32,6 +35,20 @@ interface FeedbackStats {
   byType: Record<string, number>;
 }
 
+interface ComparisonData {
+  sessions: number | null;
+  avgScore: number | null;
+  avgWpm: number | null;
+  suggestions: number | null;
+  feedback: number | null;
+  previousPeriod: {
+    sessions: number;
+    avgScore: number;
+    suggestions: number;
+    feedback: number;
+  };
+}
+
 interface AnalyticsData {
   topSuggestions: Array<{ type: string; text: string; count: number }>;
   byType: Record<string, number>;
@@ -40,6 +57,7 @@ interface AnalyticsData {
   contentStats?: ContentStats;
   feedbackStats?: FeedbackStats;
   dateRange?: number;
+  comparison?: ComparisonData | null;
 }
 
 type DateRangeOption = "7" | "30" | "0";
@@ -78,11 +96,26 @@ const dateRangeLabels: Record<DateRangeOption, string> = {
   "0": "All time",
 };
 
+// Comparison change badge component
+const ChangeBadge = ({ value, suffix = "%" }: { value: number | null | undefined; suffix?: string }) => {
+  if (value === null || value === undefined) return null;
+  const isPositive = value >= 0;
+  return (
+    <span className={`text-xs font-medium ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+      {isPositive ? '↑' : '↓'} {Math.abs(value)}{suffix}
+    </span>
+  );
+};
+
 const AdminAnalytics = () => {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<DateRangeOption>("7");
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailRecipient, setEmailRecipient] = useState("");
+  const [emailPeriod, setEmailPeriod] = useState<"weekly" | "monthly">("weekly");
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   const fetchAnalytics = useCallback(async (range: number) => {
     setIsLoading(true);
@@ -109,6 +142,35 @@ const AdminAnalytics = () => {
 
   const handleDateRangeChange = (value: DateRangeOption) => {
     setDateRange(value);
+  };
+
+  // Send email report
+  const sendEmailReport = async () => {
+    if (!emailRecipient.trim()) {
+      toast.error("Please enter an email address");
+      return;
+    }
+
+    setIsSendingEmail(true);
+    try {
+      const { data: result, error } = await supabase.functions.invoke("send-analytics-report", {
+        body: {
+          recipients: emailRecipient.split(',').map(e => e.trim()).filter(Boolean),
+          period: emailPeriod,
+        }
+      });
+
+      if (error) throw error;
+      
+      toast.success(`Report sent to ${emailRecipient}`);
+      setEmailDialogOpen(false);
+      setEmailRecipient("");
+    } catch (err) {
+      console.error("Failed to send email:", err);
+      toast.error("Failed to send email report");
+    } finally {
+      setIsSendingEmail(false);
+    }
   };
 
   // Export to CSV
@@ -362,6 +424,61 @@ const AdminAnalytics = () => {
               PDF
             </Button>
             
+            {/* Email Report */}
+            <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" disabled={isLoading || !data}>
+                  <Mail className="h-4 w-4 mr-2" />
+                  Email
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Send Analytics Report</DialogTitle>
+                  <DialogDescription>
+                    Send a formatted analytics report via email. Enter recipient email addresses separated by commas.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Recipients</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="email@example.com, another@example.com"
+                      value={emailRecipient}
+                      onChange={(e) => setEmailRecipient(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Report Period</Label>
+                    <Select value={emailPeriod} onValueChange={(v) => setEmailPeriod(v as "weekly" | "monthly")}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="weekly">Weekly (Last 7 days)</SelectItem>
+                        <SelectItem value="monthly">Monthly (Last 30 days)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setEmailDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={sendEmailReport} disabled={isSendingEmail}>
+                    {isSendingEmail ? (
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4 mr-2" />
+                    )}
+                    Send Report
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            
             {/* Refresh */}
             <Button onClick={() => fetchAnalytics(parseInt(dateRange))} disabled={isLoading} variant="outline" size="sm">
               <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
@@ -412,8 +529,13 @@ const AdminAnalytics = () => {
                         <Zap className="h-4 w-4 text-primary" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-3xl font-bold text-primary">{data.contentStats.totalSessions}</div>
-                        <p className="text-xs text-muted-foreground mt-1">Total practice sessions</p>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-3xl font-bold text-primary">{data.contentStats.totalSessions}</span>
+                          {data.comparison && <ChangeBadge value={data.comparison.sessions} />}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {data.comparison ? `vs ${data.comparison.previousPeriod.sessions} prev` : 'Total practice sessions'}
+                        </p>
                       </CardContent>
                     </Card>
                   </motion.div>
@@ -425,8 +547,13 @@ const AdminAnalytics = () => {
                         <Target className="h-4 w-4 text-muted-foreground" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-3xl font-bold">{data.contentStats.avgScore}</div>
-                        <p className="text-xs text-muted-foreground mt-1">Out of 100</p>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-3xl font-bold">{data.contentStats.avgScore}</span>
+                          {data.comparison && <ChangeBadge value={data.comparison.avgScore} />}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {data.comparison ? `vs ${data.comparison.previousPeriod.avgScore} prev` : 'Out of 100'}
+                        </p>
                       </CardContent>
                     </Card>
                   </motion.div>
@@ -438,7 +565,10 @@ const AdminAnalytics = () => {
                         <MessageSquare className="h-4 w-4 text-muted-foreground" />
                       </CardHeader>
                       <CardContent>
-                        <div className="text-3xl font-bold">{data.contentStats.avgWpm}</div>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-3xl font-bold">{data.contentStats.avgWpm}</span>
+                          {data.comparison && <ChangeBadge value={data.comparison.avgWpm} />}
+                        </div>
                         <p className="text-xs text-muted-foreground mt-1">Words per minute</p>
                       </CardContent>
                     </Card>

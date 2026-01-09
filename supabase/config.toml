@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.regenerate-hook]
 verify_jwt = false
+
+[functions.send-analytics-report]
+verify_jwt = false
