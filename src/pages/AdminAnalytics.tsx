@@ -12,6 +12,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
+import { SubscriberManager } from "@/components/analytics/SubscriberManager";
 
 interface ContentStats {
   totalSessions: number;
@@ -943,6 +944,15 @@ const AdminAnalytics = () => {
                   </div>
                 </CardContent>
               </Card>
+            </motion.div>
+
+            {/* Subscriber Management */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
+            >
+              <SubscriberManager />
             </motion.div>
           </div>
         ) : null}

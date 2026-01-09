@@ -10,6 +10,7 @@ import FeedbackAnalytics from "./pages/FeedbackAnalytics";
 import Pricing from "./pages/Pricing";
 import SharedScript from "./pages/SharedScript";
 import ResetPassword from "./pages/ResetPassword";
+import Profile from "./pages/Profile";
 import { AICoachPage } from "./components/ai-coach/AICoachPage";
 import { AuthModal } from "./components/auth/AuthModal";
 import { WhatsNewModal } from "./components/WhatsNewModal";
@@ -27,6 +28,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/pricing" element={<Pricing />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/admin/analytics" element={<AdminAnalytics />} />
           <Route path="/admin/feedback" element={<FeedbackAnalytics />} />
           <Route path="/ai-coach" element={<AICoachPage />} />
