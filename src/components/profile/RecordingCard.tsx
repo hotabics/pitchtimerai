@@ -1,6 +1,6 @@
 // Recording Card Component - Grid card for video library
 
-import { Play, Video, Calendar, Trash2, ExternalLink } from 'lucide-react';
+import { Play, Video, Calendar, Trash2, ExternalLink, Download, FileText } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,9 +14,13 @@ interface RecordingCardProps {
   track: string;
   tone?: string | null;
   wpm: number;
+  filler_count: number;
+  videoUrl?: string | null;
+  thumbnailUrl?: string | null;
   onPlay: () => void;
   onAudit: () => void;
   onDelete: () => void;
+  onExportPDF: () => void;
 }
 
 const formatTypeName = (type: string) => {
@@ -53,9 +57,13 @@ export const RecordingCard = ({
   track,
   tone,
   wpm,
+  filler_count,
+  videoUrl,
+  thumbnailUrl,
   onPlay,
   onAudit,
   onDelete,
+  onExportPDF,
 }: RecordingCardProps) => {
   const formattedDate = new Date(date).toLocaleDateString('en-US', {
     month: 'short',
@@ -63,6 +71,8 @@ export const RecordingCard = ({
     hour: '2-digit',
     minute: '2-digit',
   });
+
+  const hasVideo = !!videoUrl;
 
   return (
     <motion.div
@@ -74,9 +84,18 @@ export const RecordingCard = ({
       <Card className="overflow-hidden group hover:shadow-lg hover:border-primary/30 transition-all duration-300">
         {/* Thumbnail Area */}
         <div 
-          className="relative aspect-video bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center cursor-pointer"
+          className="relative aspect-video bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center cursor-pointer overflow-hidden"
           onClick={onPlay}
         >
+          {/* Thumbnail image if available */}
+          {thumbnailUrl ? (
+            <img 
+              src={thumbnailUrl} 
+              alt={title}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : null}
+          
           {/* Play overlay */}
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-300 flex items-center justify-center">
             <div className="w-14 h-14 rounded-full bg-primary/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transform scale-75 group-hover:scale-100 transition-all duration-300 shadow-lg">
@@ -84,8 +103,18 @@ export const RecordingCard = ({
             </div>
           </div>
           
-          {/* Video icon placeholder */}
-          <Video className="w-12 h-12 text-muted-foreground/30" />
+          {/* Video icon placeholder (only show if no thumbnail) */}
+          {!thumbnailUrl && <Video className="w-12 h-12 text-muted-foreground/30" />}
+          
+          {/* Video indicator */}
+          {hasVideo && (
+            <div className="absolute bottom-2 left-2">
+              <Badge variant="secondary" className="text-xs bg-black/60 text-white border-0">
+                <Video className="w-3 h-3 mr-1" />
+                Video
+              </Badge>
+            </div>
+          )}
           
           {/* Score badge overlay */}
           <div className="absolute top-2 right-2">
@@ -123,7 +152,7 @@ export const RecordingCard = ({
           </Badge>
           
           {/* Actions */}
-          <div className="flex items-center gap-2 pt-2 border-t border-border">
+          <div className="flex items-center gap-1 pt-2 border-t border-border">
             <Button
               variant="ghost"
               size="sm"
@@ -145,8 +174,18 @@ export const RecordingCard = ({
             <Button
               variant="ghost"
               size="icon"
+              className="h-8 w-8"
+              onClick={onExportPDF}
+              title="Export PDF Report"
+            >
+              <FileText className="w-3 h-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               className="h-8 w-8 text-destructive hover:text-destructive"
               onClick={onDelete}
+              title="Delete"
             >
               <Trash2 className="w-3 h-3" />
             </Button>

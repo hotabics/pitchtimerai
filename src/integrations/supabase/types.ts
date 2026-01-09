@@ -192,10 +192,12 @@ export type Database = {
           score: number
           session_group_id: string | null
           structured_script_json: Json | null
+          thumbnail_url: string | null
           tone: string | null
           track: string
           transcription: string | null
           transcription_html: string | null
+          video_url: string | null
           wpm: number
         }
         Insert: {
@@ -220,10 +222,12 @@ export type Database = {
           score?: number
           session_group_id?: string | null
           structured_script_json?: Json | null
+          thumbnail_url?: string | null
           tone?: string | null
           track: string
           transcription?: string | null
           transcription_html?: string | null
+          video_url?: string | null
           wpm?: number
         }
         Update: {
@@ -248,10 +252,12 @@ export type Database = {
           score?: number
           session_group_id?: string | null
           structured_script_json?: Json | null
+          thumbnail_url?: string | null
           tone?: string | null
           track?: string
           transcription?: string | null
           transcription_html?: string | null
+          video_url?: string | null
           wpm?: number
         }
         Relationships: [

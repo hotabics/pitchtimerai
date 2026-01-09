@@ -19,6 +19,9 @@ import { ProgressCharts } from "@/components/profile/ProgressCharts";
 import { RecordingCard } from "@/components/profile/RecordingCard";
 import { MiniPlayerModal } from "@/components/profile/MiniPlayerModal";
 import { PerformanceStats } from "@/components/profile/PerformanceStats";
+import { RecordingFilters, FilterState, SortOption } from "@/components/profile/RecordingFilters";
+import { generateSessionPDF, generateSummaryPDF } from "@/services/pdfExport";
+import { Download } from "lucide-react";
 
 interface PracticeSession {
   id: string;
@@ -30,6 +33,11 @@ interface PracticeSession {
   created_at: string;
   entry_mode: string;
   tone: string | null;
+  transcription?: string | null;
+  feedback?: string[] | null;
+  missed_sections?: string[] | null;
+  video_url?: string | null;
+  thumbnail_url?: string | null;
 }
 
 interface SkillData {
@@ -74,6 +82,13 @@ const Profile = () => {
   const [isPro] = useState(false);
   const [selectedRecording, setSelectedRecording] = useState<PracticeSession | null>(null);
   const [isPlayerOpen, setIsPlayerOpen] = useState(false);
+  const [filters, setFilters] = useState<FilterState>({
+    search: '',
+    track: null,
+    minScore: 0,
+    maxScore: 100,
+    sortBy: 'date-desc',
+  });
 
   useEffect(() => {
     fetchSessions();
@@ -195,6 +210,79 @@ const Profile = () => {
     // Navigate to AI Coach with this session pre-loaded
     navigate(`/ai-coach?session=${sessionId}`);
   };
+
+  const handleExportPDF = (session: PracticeSession) => {
+    generateSessionPDF({
+      id: session.id,
+      idea: session.idea,
+      track: session.track,
+      score: session.score,
+      wpm: session.wpm,
+      filler_count: session.filler_count,
+      tone: session.tone,
+      created_at: session.created_at,
+      transcription: session.transcription,
+      feedback: session.feedback,
+      missed_sections: session.missed_sections,
+    });
+    toast.success('PDF report downloaded!');
+  };
+
+  const handleExportAllPDF = () => {
+    generateSummaryPDF(sessions);
+    toast.success('Summary report downloaded!');
+  };
+
+  // Get unique tracks for filter options
+  const availableTracks = useMemo(() => {
+    return [...new Set(sessions.map(s => s.track))];
+  }, [sessions]);
+
+  // Filter and sort sessions
+  const filteredSessions = useMemo(() => {
+    let result = [...sessions];
+
+    // Search filter
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      result = result.filter(s => 
+        s.idea.toLowerCase().includes(searchLower) ||
+        s.track.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Track filter
+    if (filters.track) {
+      result = result.filter(s => s.track === filters.track);
+    }
+
+    // Score filter
+    result = result.filter(s => 
+      s.score >= filters.minScore && s.score <= filters.maxScore
+    );
+
+    // Sorting
+    result.sort((a, b) => {
+      switch (filters.sortBy) {
+        case 'date-desc':
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        case 'date-asc':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case 'score-desc':
+          return b.score - a.score;
+        case 'score-asc':
+          return a.score - b.score;
+        case 'wpm-desc':
+          return b.wpm - a.wpm;
+        case 'wpm-asc':
+          return a.wpm - b.wpm;
+        default:
+          return 0;
+      }
+    });
+
+    return result;
+  }, [sessions, filters]);
 
   // Calculate average WPM for goals
   const avgWpm = useMemo(() => {
@@ -484,14 +572,33 @@ const Profile = () => {
                     <Video className="h-5 w-5 text-primary" />
                     My Recordings
                   </span>
-                  <Button onClick={() => navigate('/')} size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Pitch
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {sessions.length > 0 && (
+                      <Button variant="outline" size="sm" onClick={handleExportAllPDF}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Export All
+                      </Button>
+                    )}
+                    <Button onClick={() => navigate('/')} size="sm">
+                      <Plus className="h-4 w-4 mr-2" />
+                      New Pitch
+                    </Button>
+                  </div>
                 </CardTitle>
                 <CardDescription>All your practice sessions and recordings</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                {/* Filters */}
+                {sessions.length > 0 && (
+                  <RecordingFilters
+                    filters={filters}
+                    onFilterChange={setFilters}
+                    availableTracks={availableTracks}
+                    resultCount={filteredSessions.length}
+                    totalCount={sessions.length}
+                  />
+                )}
+
                 {isLoading ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                     {[1, 2, 3, 4].map((i) => (
@@ -512,9 +619,24 @@ const Profile = () => {
                       Create Your First Pitch
                     </Button>
                   </div>
+                ) : filteredSessions.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <div className="text-4xl mb-4">🔍</div>
+                    <h3 className="text-lg font-medium mb-2">No matching recordings</h3>
+                    <p className="text-muted-foreground mb-4">Try adjusting your filters</p>
+                    <Button variant="outline" onClick={() => setFilters({
+                      search: '',
+                      track: null,
+                      minScore: 0,
+                      maxScore: 100,
+                      sortBy: 'date-desc',
+                    })}>
+                      Clear Filters
+                    </Button>
+                  </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {sessions.map((session) => (
+                    {filteredSessions.map((session) => (
                       <RecordingCard
                         key={session.id}
                         id={session.id}
@@ -524,9 +646,13 @@ const Profile = () => {
                         track={session.track}
                         tone={session.tone}
                         wpm={session.wpm}
+                        filler_count={session.filler_count}
+                        videoUrl={session.video_url}
+                        thumbnailUrl={session.thumbnail_url}
                         onPlay={() => handlePlayRecording(session)}
                         onAudit={() => handleAuditRecording(session.id)}
                         onDelete={() => handleDelete(session.id)}
+                        onExportPDF={() => handleExportPDF(session)}
                       />
                     ))}
                   </div>
