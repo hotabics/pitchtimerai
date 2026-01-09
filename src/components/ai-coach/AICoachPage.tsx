@@ -68,6 +68,30 @@ export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachP
     setInputMode('upload');
   };
 
+  const handleMobileVideoReceived = async (videoUrl: string) => {
+    // Fetch the video blob from the URL for processing
+    try {
+      const response = await fetch(videoUrl);
+      const videoBlob = await response.blob();
+      
+      // Create mock frame data for mobile video
+      const mockFrameData: FrameData[] = [];
+      
+      // Set recording data with mobile video
+      setRecordingData({
+        audioBlob: videoBlob,
+        videoBlob: videoBlob,
+        durationSeconds: 60, // Will be updated when video loads
+        frameData: mockFrameData,
+      });
+      
+      setInputMode('live');
+      setView('processing');
+    } catch (error) {
+      console.error('Failed to fetch mobile video:', error);
+    }
+  };
+
   const handleUploadReady = (videoBlob: Blob, videoUrl: string) => {
     setUploadedVideoUrl(videoUrl);
     // Create mock frame data for uploaded video
@@ -175,7 +199,11 @@ export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachP
         <AnimatePresence mode="wait">
           {inputMode === 'hub' && (
             <motion.div key="hub" exit={{ opacity: 0 }}>
-              <StudioHub onSelectLive={handleSelectLive} onSelectUpload={handleSelectUpload} />
+              <StudioHub 
+                onSelectLive={handleSelectLive} 
+                onSelectUpload={handleSelectUpload}
+                onMobileVideoReceived={handleMobileVideoReceived}
+              />
             </motion.div>
           )}
 
@@ -257,7 +285,11 @@ export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachP
         <AnimatePresence mode="wait">
           {inputMode === 'hub' && (
             <motion.div key="hub" exit={{ opacity: 0 }}>
-              <StudioHub onSelectLive={handleSelectLive} onSelectUpload={handleSelectUpload} />
+              <StudioHub 
+                onSelectLive={handleSelectLive} 
+                onSelectUpload={handleSelectUpload}
+                onMobileVideoReceived={handleMobileVideoReceived}
+              />
             </motion.div>
           )}
 
