@@ -44,6 +44,47 @@ export type Database = {
         }
         Relationships: []
       }
+      challenge_participants: {
+        Row: {
+          best_score: number | null
+          challenge_id: string
+          id: string
+          joined_at: string
+          last_pitch_at: string | null
+          participant_email: string | null
+          participant_name: string
+          total_pitches: number | null
+        }
+        Insert: {
+          best_score?: number | null
+          challenge_id: string
+          id?: string
+          joined_at?: string
+          last_pitch_at?: string | null
+          participant_email?: string | null
+          participant_name: string
+          total_pitches?: number | null
+        }
+        Update: {
+          best_score?: number | null
+          challenge_id?: string
+          id?: string
+          joined_at?: string
+          last_pitch_at?: string | null
+          participant_email?: string | null
+          participant_name?: string
+          total_pitches?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_participants_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "pitch_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feedback_logs: {
         Row: {
           additional_context: Json | null
@@ -80,6 +121,51 @@ export type Database = {
           script_id?: string | null
           session_id?: string | null
           undone?: boolean | null
+        }
+        Relationships: []
+      }
+      pitch_challenges: {
+        Row: {
+          created_at: string
+          created_by: string
+          creator_email: string | null
+          description: string | null
+          end_date: string
+          id: string
+          invite_code: string
+          start_date: string
+          status: string
+          target_score: number | null
+          title: string
+          track: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          creator_email?: string | null
+          description?: string | null
+          end_date?: string
+          id?: string
+          invite_code?: string
+          start_date?: string
+          status?: string
+          target_score?: number | null
+          title: string
+          track?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          creator_email?: string | null
+          description?: string | null
+          end_date?: string
+          id?: string
+          invite_code?: string
+          start_date?: string
+          status?: string
+          target_score?: number | null
+          title?: string
+          track?: string
         }
         Relationships: []
       }
