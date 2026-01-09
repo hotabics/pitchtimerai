@@ -405,15 +405,30 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
 
     const baseInterval = 50; // ms
     const pixelsPerTick = scrollSpeed;
+    let lastTime = 0;
+    let animationId: number | null = null;
 
-    scrollIntervalRef.current = window.setInterval(() => {
-      if (teleprompterRef.current) {
-        teleprompterRef.current.scrollTop += pixelsPerTick;
+    const scrollTick = (timestamp: number) => {
+      if (!teleprompterRef.current) {
+        animationId = requestAnimationFrame(scrollTick);
+        return;
+      }
+      
+      if (timestamp - lastTime >= baseInterval) {
+        lastTime = timestamp;
         
-        // Update current block based on scroll position
-        const scrollTop = teleprompterRef.current.scrollTop;
-        const scrollHeight = teleprompterRef.current.scrollHeight - teleprompterRef.current.clientHeight;
-        const progress = scrollHeight > 0 ? scrollTop / scrollHeight : 0;
+        // Batch read operations first
+        const el = teleprompterRef.current;
+        const scrollTop = el.scrollTop;
+        const scrollHeight = el.scrollHeight;
+        const clientHeight = el.clientHeight;
+        
+        // Then perform write
+        el.scrollTop = scrollTop + pixelsPerTick;
+        
+        // Calculate progress from cached values
+        const maxScroll = scrollHeight - clientHeight;
+        const progress = maxScroll > 0 ? scrollTop / maxScroll : 0;
         const newBlockIndex = Math.min(
           Math.floor(progress * scriptBlocks.length),
           scriptBlocks.length - 1
@@ -422,10 +437,14 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
           setCurrentBlockIndex(newBlockIndex);
         }
       }
-    }, baseInterval);
+      
+      animationId = requestAnimationFrame(scrollTick);
+    };
+
+    animationId = requestAnimationFrame(scrollTick);
 
     return () => {
-      if (scrollIntervalRef.current) clearInterval(scrollIntervalRef.current);
+      if (animationId) cancelAnimationFrame(animationId);
     };
   }, [hasScript, isRecording, teleprompterPaused, scrollSpeed, promptMode, scriptBlocks.length, currentBlockIndex]);
 
@@ -474,9 +493,15 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
     return () => { try { recognition.stop(); } catch {} speechRecognitionRef.current = null; };
   }, [shouldEnableTranscription, isRecording, transcriptionSettings.enabled, transcriptionSettings.language]);
 
-  // Scroll transcript to bottom
+  // Scroll transcript to bottom - use rAF to avoid forced reflow
   useEffect(() => {
-    if (liveTranscriptRef.current) liveTranscriptRef.current.scrollTop = liveTranscriptRef.current.scrollHeight;
+    if (liveTranscriptRef.current) {
+      requestAnimationFrame(() => {
+        if (liveTranscriptRef.current) {
+          liveTranscriptRef.current.scrollTop = liveTranscriptRef.current.scrollHeight;
+        }
+      });
+    }
   }, [liveTranscript]);
 
   // Face mesh loop

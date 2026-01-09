@@ -528,15 +528,26 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
     };
   }, [state]);
 
-  // Auto-scroll teleprompter
+  // Auto-scroll teleprompter - use rAF to avoid forced reflow
   useEffect(() => {
     if (state === "recording" && teleprompterRef.current) {
-      const scrollInterval = setInterval(() => {
-        if (teleprompterRef.current) {
-          teleprompterRef.current.scrollTop += 1;
+      let lastTime = 0;
+      let animationId: number | null = null;
+      
+      const scrollTick = (timestamp: number) => {
+        if (timestamp - lastTime >= 100) {
+          lastTime = timestamp;
+          if (teleprompterRef.current) {
+            teleprompterRef.current.scrollTop += 1;
+          }
         }
-      }, 100);
-      return () => clearInterval(scrollInterval);
+        animationId = requestAnimationFrame(scrollTick);
+      };
+      
+      animationId = requestAnimationFrame(scrollTick);
+      return () => {
+        if (animationId) cancelAnimationFrame(animationId);
+      };
     }
   }, [state]);
 
