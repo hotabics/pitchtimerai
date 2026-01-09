@@ -11,6 +11,7 @@ import Pricing from "./pages/Pricing";
 import SharedScript from "./pages/SharedScript";
 import ResetPassword from "./pages/ResetPassword";
 import Profile from "./pages/Profile";
+import Auth from "./pages/Auth";
 import { AICoachPage } from "./components/ai-coach/AICoachPage";
 import { AuthModal } from "./components/auth/AuthModal";
 import { WhatsNewModal } from "./components/WhatsNewModal";
@@ -27,6 +28,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/auth" element={<Auth />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/admin/analytics" element={<AdminAnalytics />} />
