@@ -1,13 +1,23 @@
 import { motion } from "framer-motion";
+import { lazy, Suspense } from "react";
 import { AlertCircle } from "lucide-react";
 import { ScrapedData } from "@/services/mockScraper";
 import { ScrapedProjectData } from "@/lib/api/firecrawl";
 import { HeroSection } from "@/components/landing/HeroSection";
-import { PathComparisonDemo } from "@/components/landing/PathComparisonDemo";
-import { ComparisonSection } from "@/components/landing/ComparisonSection";
-import { AICoachSpotlight } from "@/components/landing/AICoachSpotlight";
-import { TechStackBanner } from "@/components/landing/TechStackBanner";
-import { BentoGrid } from "@/components/landing/BentoGrid";
+
+// Lazy load below-the-fold sections to reduce initial bundle
+const PathComparisonDemo = lazy(() => import("@/components/landing/PathComparisonDemo").then(m => ({ default: m.PathComparisonDemo })));
+const ComparisonSection = lazy(() => import("@/components/landing/ComparisonSection").then(m => ({ default: m.ComparisonSection })));
+const AICoachSpotlight = lazy(() => import("@/components/landing/AICoachSpotlight").then(m => ({ default: m.AICoachSpotlight })));
+const TechStackBanner = lazy(() => import("@/components/landing/TechStackBanner").then(m => ({ default: m.TechStackBanner })));
+const BentoGrid = lazy(() => import("@/components/landing/BentoGrid").then(m => ({ default: m.BentoGrid })));
+
+// Minimal skeleton for lazy sections
+const SectionSkeleton = () => (
+  <div className="py-16 flex items-center justify-center">
+    <div className="animate-pulse h-48 w-full max-w-4xl bg-muted/20 rounded-xl" />
+  </div>
+);
 
 export type EntryMode = "generate" | "custom_script";
 
@@ -37,22 +47,25 @@ export const Step1Hook = ({ onNext, onAutoGenerate, onPracticeOwn, onOpenAICoach
         onOpenAICoach={onOpenAICoach}
       />
 
-      {/* Path Comparison Demo - Visual explainer */}
-      <PathComparisonDemo />
+      {/* Lazy-loaded below-the-fold sections */}
+      <Suspense fallback={<SectionSkeleton />}>
+        {/* Path Comparison Demo - Visual explainer */}
+        <PathComparisonDemo />
 
-      {/* Comparison Section - "Why not just ChatGPT?" */}
-      <ComparisonSection />
+        {/* Comparison Section - "Why not just ChatGPT?" */}
+        <ComparisonSection />
 
-      {/* AI Coach Spotlight - The "Iron Man" HUD */}
-      <AICoachSpotlight />
+        {/* AI Coach Spotlight - The "Iron Man" HUD */}
+        <AICoachSpotlight />
 
-      {/* Tech Stack Banner - Social Proof */}
-      <TechStackBanner />
+        {/* Tech Stack Banner - Social Proof */}
+        <TechStackBanner />
 
-      {/* Bento Grid - Original features (refined) */}
-      <section id="how-it-works" className="py-16 md:py-24 px-4 bg-gradient-to-b from-transparent to-muted/30 scroll-mt-16">
-        <BentoGrid />
-      </section>
+        {/* Bento Grid - Original features (refined) */}
+        <section id="how-it-works" className="py-16 md:py-24 px-4 bg-gradient-to-b from-transparent to-muted/30 scroll-mt-16">
+          <BentoGrid />
+        </section>
+      </Suspense>
 
       {/* Public Demo Disclaimer */}
       <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50">
