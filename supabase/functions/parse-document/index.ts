@@ -16,6 +16,41 @@ interface ParsedDocumentData {
   summary?: string;
 }
 
+/**
+ * Extract image URLs and base64 images from document content
+ */
+function extractImages(content: string): string[] {
+  const images: string[] = [];
+  
+  // Match URLs that look like images
+  const urlPattern = /https?:\/\/[^\s"'<>]+\.(png|jpg|jpeg|gif|webp|svg)(\?[^\s"'<>]*)?/gi;
+  let match;
+  while ((match = urlPattern.exec(content)) !== null) {
+    if (!images.includes(match[0])) {
+      images.push(match[0]);
+    }
+  }
+  
+  // Match markdown images
+  const mdPattern = /!\[.*?\]\((https?:\/\/[^)]+)\)/g;
+  while ((match = mdPattern.exec(content)) !== null) {
+    if (!images.includes(match[1])) {
+      images.push(match[1]);
+    }
+  }
+  
+  // Match HTML img src
+  const htmlPattern = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi;
+  while ((match = htmlPattern.exec(content)) !== null) {
+    const src = match[1];
+    if (src.startsWith('http') && !images.includes(src)) {
+      images.push(src);
+    }
+  }
+  
+  return images.slice(0, 6); // Limit to 6 images
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -40,6 +75,10 @@ serve(async (req) => {
     const truncatedContent = fileContent.slice(0, 15000); // Limit to ~15k chars for API
 
     console.log(`File content length: ${fileContent.length}, truncated to: ${truncatedContent.length}`);
+
+    // Extract images from content
+    const extractedImages = extractImages(fileContent);
+    console.log(`Extracted ${extractedImages.length} images from document`);
 
     // Use Lovable AI to analyze and summarize the document
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -149,7 +188,8 @@ Be concise and focus on pitch-relevant information. If information is not availa
         success: true,
         data: extractedData,
         filename: file.name,
-        fileSize: file.size
+        fileSize: file.size,
+        extractedImages
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
