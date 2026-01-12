@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mic, MicOff, HelpCircle, ArrowLeft, Volume2, VolumeX, Loader2, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { type JurorType, JURORS } from './JurorSelection';
-import { type VerdictData } from './InterrogationVerdict';
+import { type VerdictData, type ResponseRecord } from './InterrogationVerdict';
 import { RecoveryLinesDrawer } from './RecoveryLinesDrawer';
 import { AudioWaveform } from './AudioWaveform';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,6 +38,12 @@ interface ResponseAnalysis {
   feedback: string;
   fillerCount: number;
   wordCount: number;
+}
+
+interface RecordedResponse {
+  question: GeneratedQuestion;
+  transcript: string;
+  analysis: ResponseAnalysis;
 }
 
 // Voice IDs for each juror type (using ElevenLabs voices)
@@ -74,6 +80,7 @@ export const InterrogationSimulation = ({
   const [isMuted, setIsMuted] = useState(false);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [responseAnalyses, setResponseAnalyses] = useState<ResponseAnalysis[]>([]);
+  const [recordedResponses, setRecordedResponses] = useState<RecordedResponse[]>([]);
   const [currentTranscript, setCurrentTranscript] = useState('');
   const [recordingDuration, setRecordingDuration] = useState(0);
   
@@ -426,6 +433,15 @@ export const InterrogationSimulation = ({
         
         if (analysis) {
           setResponseAnalyses(prev => [...prev, analysis]);
+          
+          // Store the recorded response with question and analysis
+          const recordedResponse: RecordedResponse = {
+            question: currentQ,
+            transcript,
+            analysis,
+          };
+          setRecordedResponses(prev => [...prev, recordedResponse]);
+          
           toast.success(`Response recorded (${analysis.wordCount} words)`);
         }
         
@@ -435,8 +451,12 @@ export const InterrogationSimulation = ({
           setPhase('thinking');
           setDisplayedText('');
         } else {
-          // Calculate final verdict from all analyses
-          calculateVerdict();
+          // Calculate final verdict from all analyses - pass recorded responses
+          calculateVerdict(recordedResponses.concat(analysis ? [{
+            question: currentQ,
+            transcript,
+            analysis,
+          }] : []));
         }
         
         resolve();
@@ -444,10 +464,10 @@ export const InterrogationSimulation = ({
       
       mediaRecorderRef.current!.stop();
     });
-  }, [currentQuestionIndex, totalQuestions, questions, transcribeAudio, analyzeResponseWithAI]);
+  }, [currentQuestionIndex, totalQuestions, questions, transcribeAudio, analyzeResponseWithAI, recordedResponses]);
 
-  const calculateVerdict = useCallback(() => {
-    const analyses = responseAnalyses;
+  const calculateVerdict = useCallback(async (allResponses: RecordedResponse[]) => {
+    const analyses = allResponses.map(r => r.analysis);
     
     // Calculate averages from response analyses
     const avgRelevance = analyses.length > 0 
@@ -492,6 +512,15 @@ export const InterrogationSimulation = ({
       { title: 'Mirror Their Energy', description: `Match the ${jurorConfig.name}'s intensity. Aggression meets confidence, not retreat.` },
     ];
 
+    // Build responses for Review section
+    const responseRecords: ResponseRecord[] = allResponses.map(r => ({
+      question: r.question.question,
+      category: r.question.category,
+      intensity: r.question.intensity,
+      response: r.transcript,
+      analysis: r.analysis,
+    }));
+
     const verdictData: VerdictData = {
       choreography: { 
         score: choreographyScore, 
@@ -520,10 +549,35 @@ export const InterrogationSimulation = ({
       overallScore,
       status,
       tips: feedbackTips.length > 0 ? feedbackTips : defaultTips,
+      responses: responseRecords,
     };
+
+    // Save to database
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Use type assertion since the table was just created
+      await (supabase.from('interrogation_sessions') as any).insert({
+        user_id: user?.id || null,
+        juror_type: juror,
+        dossier_data: dossierData || null,
+        questions: questions,
+        responses: responseRecords,
+        verdict_data: verdictData as any,
+        overall_score: overallScore,
+        status: status,
+        choreography_score: choreographyScore,
+        ammunition_score: ammunitionScore,
+        cold_bloodedness_score: coldBloodednessScore,
+      });
+      
+      console.log('Interrogation session saved to database');
+    } catch (error) {
+      console.error('Failed to save interrogation session:', error);
+    }
     
     onComplete(verdictData);
-  }, [responseAnalyses, jurorConfig.name, onComplete]);
+  }, [jurorConfig.name, onComplete, juror, dossierData, questions]);
 
   const handleRecoveryLineSelect = useCallback((phrase: string) => {
     setShowRecoveryLines(false);

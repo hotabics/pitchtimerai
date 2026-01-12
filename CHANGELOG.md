@@ -5,6 +5,35 @@ All notable changes to PitchPal will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2026-01-12
+
+### Added
+- **AI Juror Text-to-Speech**: ElevenLabs TTS integration for the Interrogation Room
+  - Unique voice personalities for each juror type (Mentor, Reviewer, Shark)
+  - Juror-specific opening lines spoken aloud
+  - "Replay Question" button to hear questions again
+- **Real Speech-to-Text Responses**: ElevenLabs STT for user answer transcription
+  - Real-time recording with waveform visualization
+  - AI-powered response analysis for relevance, clarity, confidence, and depth
+- **Review My Answers Section**: New expandable section in the Verdict
+  - Shows each question-response pair with individual scores
+  - Detailed breakdowns (relevance, clarity, confidence, depth)
+  - Per-question AI feedback
+  - Word count and filler word tracking
+- **Interrogation Session Storage**: Database persistence for progress tracking
+  - New `interrogation_sessions` table stores all session data
+  - Questions, responses, analyses, and verdict saved
+  - User progress history for trend tracking
+- **Dynamic AI Questions**: Real AI-generated questions via edge function
+  - Context-aware questions based on pitch dossier data
+  - Escalating intensity (low → medium → high)
+  - Category-based questioning (Problem, Solution, Market, Risk, Traction)
+- New edge functions: `generate-interrogation-questions`, `analyze-interrogation-response`
+
+### Changed
+- Interrogation Room now connected to real pitch data from Dashboard
+- Verdict now includes full response history for review
+
 ## [1.8.0] - 2026-01-09
 
 ### Added
@@ -78,7 +107,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Glassmorphism paywall overlay on AI Coach results (Columns 2 & 3)
   - "PREMIUM ANALYSIS" gold badge for paid users
   - Deep analysis access checks throughout the app
-- **Conditional PDF Watermark**: "Created with PitchDeck.ai" watermark for free users only
+- **Conditional PDF Watermark**: "Created with PitchPerfect" watermark for free users only
 - **Stripe Integration Ready**: Edge functions for checkout, subscription check, and customer portal
 - New `/pricing` page with animated pricing cards
 - New `src/stores/userStore.ts` for global user state management

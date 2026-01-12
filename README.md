@@ -10,7 +10,21 @@ A mobile-first web app that gamifies the process of creating and practicing hack
 
 ## Features
 
-### 📝 Blog & Resources (NEW in v1.8)
+### 🎭 Interrogation Room (NEW in v1.9)
+
+**Neo-Noir AI juror simulation for pitch defense practice:**
+
+- **Choose Your Juror**: Three AI personalities with unique voices
+  - The Mentor (supportive but challenging)
+  - The Reviewer (analytical and technical)
+  - The Shark (aggressive investor-style grilling)
+- **ElevenLabs TTS**: AI juror speaks questions aloud
+- **Speech-to-Text Responses**: Record your answers with real transcription
+- **AI Response Analysis**: Scores for relevance, clarity, confidence, and depth
+- **Review My Answers**: Expandable verdict section with question-by-question breakdown
+- **Session Persistence**: Track your progress over time with saved sessions
+
+### 📝 Blog & Resources (v1.8)
 
 - **SEO-optimized content hub** - Educational articles to drive organic traffic
 - **Category filtering** - Filter by Hackathon, Startup, Public Speaking, Technology
@@ -18,7 +32,7 @@ A mobile-first web app that gamifies the process of creating and practicing hack
 - **Social sharing** - Twitter, LinkedIn, and copy link buttons
 - **CTA integration** - Bottom banner linking to AI Coach
 
-### 🎨 Slide Deck Builder (NEW in v1.7)
+### 🎨 Slide Deck Builder (v1.7)
 
 - **Full presentation editor** - Create, edit, reorder slides with drag-and-drop
 - **PowerPoint export** - Download as `.pptx` with themes and speaker notes
@@ -38,14 +52,14 @@ A mobile-first web app that gamifies the process of creating and practicing hack
 | **Academic Defense** | Thesis committees | Methodology, literature, contributions |
 | **Grandma Test** | Non-technical audience | Simple analogies, everyday benefits |
 
-### ✍️ Practice Your Own Pitch (NEW in v1.2)
+### ✍️ Practice Your Own Pitch (v1.2)
 
 - **Custom script input** - Paste your own pitch script instead of generating one
 - **Word count validation** - Max 450 words (~3 minutes at 130 WPM)
 - **AI-powered script structuring** - Automatically parses your script into logical sections (Opening, Problem, Solution, etc.)
 - **Seamless integration** - Works with all practice and coaching features
 
-### 💰 Pricing & Monetization (NEW in v1.6)
+### 💰 Pricing & Monetization (v1.6)
 
 **Tiered access system with premium features:**
 
@@ -60,7 +74,7 @@ A mobile-first web app that gamifies the process of creating and practicing hack
 - **PDF Watermark** - "Created with PitchPerfect" for free users only
 - **Premium Badge** - Gold "PREMIUM ANALYSIS" badge on results page
 
-### 🎬 Professional Teleprompter (NEW in v1.4)
+### 🎬 Professional Teleprompter (v1.4)
 
 **Full-screen teleprompter overlay during AI Coach recording:**
 
@@ -69,7 +83,7 @@ A mobile-first web app that gamifies the process of creating and practicing hack
 - "Reading Zone" indicator with gradient highlights
 - Keyboard shortcuts: **Space** = toggle, **Escape** = cancel
 
-### 📊 Real-Time Feedback HUD (NEW in v1.4)
+### 📊 Real-Time Feedback HUD (v1.4)
 
 **Heads-up display showing live analysis:**
 
@@ -162,7 +176,12 @@ src/
 │   │   ├── AICoachSetup.tsx     # Camera/mic permissions
 │   │   ├── AICoachRecording.tsx # Recording with face mesh
 │   │   ├── AICoachProcessing.tsx # Analysis pipeline
-│   │   └── AICoachResults.tsx   # Results display
+│   │   ├── AICoachResults.tsx   # Results display
+│   │   └── interrogation/       # Interrogation Room components
+│   │       ├── InterrogationRoom.tsx    # Main container
+│   │       ├── JurorSelection.tsx       # Choose AI juror
+│   │       ├── InterrogationSimulation.tsx # Q&A simulation
+│   │       └── InterrogationVerdict.tsx # Results with Review
 │   ├── steps/               # Wizard step components
 │   │   ├── Step1Hook.tsx    # Landing page
 │   │   ├── Step2Audience.tsx # Audience selection
@@ -190,6 +209,8 @@ supabase/functions/
 ├── structure-script/        # Script parsing
 ├── evaluate-hackathon-jury-pitch/ # Pitch evaluation
 ├── generate-hackathon-jury-questions/ # Jury Q&A
+├── generate-interrogation-questions/  # AI juror questions
+├── analyze-interrogation-response/    # Response analysis
 ├── elevenlabs-tts/          # Text-to-speech
 ├── elevenlabs-stt/          # Speech-to-text
 └── get-analytics/           # Usage analytics
@@ -220,6 +241,14 @@ Stores AI coach practice recordings with:
 - **Pitch events JSON** (v1.3) - detected structure elements
 - **Primary issue analysis** (v1.3) - improvement recommendations
 - **Structured script JSON** (v1.2) - parsed script sections
+
+### `interrogation_sessions` (NEW in v1.9)
+Stores Interrogation Room sessions with:
+- Juror type and dossier data
+- Questions array with categories and intensity
+- Responses array with transcripts and analyses
+- Verdict data with scores and status
+- Category breakdowns (choreography, ammunition, cold-bloodedness)
 
 ### `suggestion_analytics`
 Tracks user interactions with AI suggestions for optimization.
