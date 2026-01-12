@@ -2,12 +2,12 @@ import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FileUp, File, X, Loader2, Check, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { parseDocument, isFileSupported, MAX_FILE_SIZE, SUPPORTED_FILE_TYPES } from "@/lib/api/documentParser";
+import { parseDocument, isFileSupported, MAX_FILE_SIZE, SUPPORTED_FILE_TYPES, DocumentParseResponse } from "@/lib/api/documentParser";
 import { ScrapedProjectData } from "@/lib/api/firecrawl";
 import { cn } from "@/lib/utils";
 
 interface FileUploadZoneProps {
-  onFileProcessed: (data: ScrapedProjectData, filename: string) => void;
+  onFileProcessed: (data: ScrapedProjectData, filename: string, extractedImages?: string[]) => void;
   onError: (error: string) => void;
   className?: string;
 }
@@ -57,7 +57,7 @@ export const FileUploadZone = ({ onFileProcessed, onError, className }: FileUplo
       if (result.success && result.data) {
         setProcessingStatus("complete");
         await new Promise(resolve => setTimeout(resolve, 300));
-        onFileProcessed(result.data, file.name);
+        onFileProcessed(result.data, file.name, result.extractedImages);
       } else {
         setProcessingStatus("error");
         onError(result.error || 'Failed to analyze document');

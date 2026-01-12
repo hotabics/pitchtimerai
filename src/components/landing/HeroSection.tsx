@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Link2, Loader2, Zap, Video, Check, ArrowRight, Settings, Clock, FileUp, ChevronDown } from "lucide-react";
+import { Sparkles, Link2, Loader2, Zap, Video, Check, ArrowRight, Settings, Clock, FileUp, ChevronDown, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isUrl, scrapeUrl, ScrapedProjectData } from "@/lib/api/firecrawl";
 import { toast } from "@/hooks/use-toast";
 import { trackEvent } from "@/utils/analytics";
 import { FileUploadZone } from "./FileUploadZone";
+import { DocumentPreviewModal } from "./DocumentPreviewModal";
 
 const RECENT_IDEAS_KEY = "pitchperfect_recent_ideas";
 const MAX_RECENT_IDEAS = 3;
@@ -42,10 +43,12 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
   const [recentIdeas, setRecentIdeas] = useState<string[]>([]);
   const [showFileUpload, setShowFileUpload] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
-  
+  const [extractedImages, setExtractedImages] = useState<string[]>([]);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [pendingFileData, setPendingFileData] = useState<ScrapedProjectData | null>(null);
+
   const inputIsUrl = isUrl(projectInput);
   
-  // Handle URL scraping
   const handleUrlScrape = async (url: string) => {
     setIsScrapingUrl(true);
     try {
@@ -92,17 +95,26 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
     }
   }, [projectInput, inputIsUrl, isScrapingUrl, scrapedData, uploadedFileName]);
 
-  // Handle file processed
-  const handleFileProcessed = (data: ScrapedProjectData, filename: string) => {
-    setScrapedData(data);
+  // Handle file processed - show preview modal first
+  const handleFileProcessed = (data: ScrapedProjectData, filename: string, images?: string[]) => {
+    setPendingFileData(data);
     setUploadedFileName(filename);
-    setProjectInput(data.name); // Pre-fill with extracted name
+    setExtractedImages(images || []);
     setShowFileUpload(false);
+    setShowPreviewModal(true);
+    trackEvent('Onboarding: File Uploaded', { filename, hasData: !!data, imageCount: images?.length || 0 });
+  };
+
+  // Confirm data from preview modal
+  const handleConfirmFileData = (confirmedData: ScrapedProjectData) => {
+    setScrapedData(confirmedData);
+    setProjectInput(confirmedData.name);
+    setPendingFileData(null);
+    setShowPreviewModal(false);
     toast({
-      title: "📄 Document Analyzed!",
-      description: `Extracted pitch info from ${filename}`,
+      title: "📄 Document Ready!",
+      description: `Using data from ${uploadedFileName}`,
     });
-    trackEvent('Onboarding: File Uploaded', { filename, hasData: !!data });
   };
 
   const handleFileError = (error: string) => {
@@ -116,6 +128,8 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
   const handleClearFileData = () => {
     setScrapedData(null);
     setUploadedFileName(null);
+    setExtractedImages([]);
+    setPendingFileData(null);
     setProjectInput("");
   };
   
@@ -508,6 +522,23 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
           </div>
         </motion.div>
       </motion.div>
+
+      {/* Document Preview Modal */}
+      {pendingFileData && uploadedFileName && (
+        <DocumentPreviewModal
+          open={showPreviewModal}
+          onOpenChange={(open) => {
+            setShowPreviewModal(open);
+            if (!open) {
+              setPendingFileData(null);
+            }
+          }}
+          data={pendingFileData}
+          filename={uploadedFileName}
+          extractedImages={extractedImages}
+          onConfirm={handleConfirmFileData}
+        />
+      )}
     </section>
   );
 };
