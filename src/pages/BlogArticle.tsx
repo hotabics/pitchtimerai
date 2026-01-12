@@ -120,18 +120,20 @@ const BlogArticle = () => {
               </div>
             </header>
 
-            {/* Article Body - Prose styling */}
+            {/* Article Body - Enhanced prose styling */}
             <div 
               className="prose prose-lg dark:prose-invert max-w-none
-                prose-headings:font-bold prose-headings:tracking-tight
-                prose-h2:text-2xl prose-h2:mt-10 prose-h2:mb-4
-                prose-p:text-muted-foreground prose-p:leading-relaxed
-                prose-a:text-primary prose-a:no-underline hover:prose-a:underline
-                prose-blockquote:border-l-primary prose-blockquote:bg-muted/50 prose-blockquote:py-1 prose-blockquote:px-4 prose-blockquote:rounded-r-lg
-                prose-strong:text-foreground
-                prose-ul:text-muted-foreground prose-ol:text-muted-foreground
-                prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm
-                prose-pre:bg-muted prose-pre:border prose-pre:border-border"
+                prose-headings:font-bold prose-headings:tracking-tight prose-headings:text-foreground
+                prose-h2:text-2xl prose-h2:mt-12 prose-h2:mb-6 prose-h2:pb-3 prose-h2:border-b prose-h2:border-border
+                prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-4
+                prose-p:text-muted-foreground prose-p:leading-[1.8] prose-p:mb-6
+                prose-a:text-primary prose-a:font-medium prose-a:underline prose-a:underline-offset-4 hover:prose-a:text-primary/80
+                prose-blockquote:border-l-4 prose-blockquote:border-primary prose-blockquote:bg-primary/5 prose-blockquote:py-4 prose-blockquote:px-6 prose-blockquote:rounded-r-xl prose-blockquote:not-italic prose-blockquote:text-foreground prose-blockquote:my-8
+                prose-strong:text-foreground prose-strong:font-semibold
+                prose-ul:text-muted-foreground prose-ol:text-muted-foreground prose-li:my-2 prose-li:marker:text-primary
+                prose-code:bg-muted prose-code:px-2 prose-code:py-1 prose-code:rounded-md prose-code:text-sm prose-code:font-mono prose-code:text-primary
+                prose-pre:bg-muted prose-pre:border prose-pre:border-border prose-pre:rounded-xl prose-pre:my-8
+                prose-hr:border-border prose-hr:my-10"
               dangerouslySetInnerHTML={{ __html: formatContent(post.content) }}
             />
           </motion.article>
@@ -270,29 +272,53 @@ const BlogArticle = () => {
   );
 };
 
-// Helper function to convert markdown-style content to HTML
+// Helper function to convert markdown-style content to HTML with enhanced formatting
 function formatContent(content: string): string {
-  return content
-    // Headers with IDs
-    .replace(/## (.+?) \{#(.+?)\}/g, '<h2 id="$2">$1</h2>')
-    // Bold text
+  let html = content
+    // Headers with IDs - add visual anchor icon
+    .replace(/## (.+?) \{#(.+?)\}/g, '<h2 id="$2" class="group scroll-mt-24"><span class="relative">$1<a href="#$2" class="absolute -left-6 opacity-0 group-hover:opacity-50 transition-opacity text-primary">#</a></span></h2>')
+    // Subheaders
+    .replace(/### (.+)/g, '<h3>$1</h3>')
+    // Bold text with emphasis
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    // Blockquotes
-    .replace(/> (.+)/g, '<blockquote>$1</blockquote>')
-    // Code blocks
-    .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+    // Italic text
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    // Blockquotes with attribution styling
+    .replace(/> "(.+?)" — (.+)/g, '<blockquote><p class="text-lg italic mb-3">"$1"</p><footer class="text-sm text-muted-foreground font-medium">— $2</footer></blockquote>')
+    .replace(/> (.+)/g, '<blockquote><p class="text-lg">$1</p></blockquote>')
+    // Code blocks with syntax highlighting style
+    .replace(/```([\s\S]*?)```/g, '<pre class="relative"><div class="absolute top-3 right-3 text-xs text-muted-foreground uppercase tracking-wider">Code</div><code>$1</code></pre>')
     // Inline code
     .replace(/`(.+?)`/g, '<code>$1</code>')
-    // List items with checkmarks
-    .replace(/✅ \*\*(.+?):\*\* (.+)/g, '<p>✅ <strong>$1:</strong> $2</p>')
-    .replace(/❌ \*\*(.+?):\*\* (.+)/g, '<p>❌ <strong>$1:</strong> $2</p>')
-    // Numbered lists
-    .replace(/^\d+\. \*\*(.+?):\*\* (.+)$/gm, '<p><strong>$1:</strong> $2</p>')
+    // Horizontal rules / section dividers
+    .replace(/---/g, '<hr class="my-10 border-t border-border" />')
+    // Checkmark lists with styled cards
+    .replace(/✅ \*\*(.+?):\*\* (.+)/g, '<div class="flex items-start gap-3 p-4 bg-success/5 border border-success/20 rounded-lg my-3"><span class="text-success text-lg flex-shrink-0">✅</span><div><strong class="text-foreground">$1:</strong> <span class="text-muted-foreground">$2</span></div></div>')
+    .replace(/❌ \*\*(.+?):\*\* (.+)/g, '<div class="flex items-start gap-3 p-4 bg-destructive/5 border border-destructive/20 rounded-lg my-3"><span class="text-destructive text-lg flex-shrink-0">❌</span><div><strong class="text-foreground">$1:</strong> <span class="text-muted-foreground">$2</span></div></div>')
+    // Bullet lists with proper structure
+    .replace(/^- \*\*(.+?):\*\* (.+)$/gm, '<li class="my-2"><strong class="text-foreground">$1:</strong> <span class="text-muted-foreground">$2</span></li>')
+    .replace(/^- (.+)$/gm, '<li class="my-2">$1</li>')
+    // Numbered lists with visual styling
+    .replace(/^(\d+)\. \*\*(.+?):\*\* (.+)$/gm, '<div class="flex items-start gap-4 my-4"><span class="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-sm">$1</span><div><strong class="text-foreground">$2:</strong> <span class="text-muted-foreground">$3</span></div></div>')
+    .replace(/^(\d+)\. (.+)$/gm, '<div class="flex items-start gap-4 my-4"><span class="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-sm">$1</span><span class="text-muted-foreground pt-1">$2</span></div>');
+
+  // Wrap consecutive list items in ul tags
+  html = html.replace(/(<li[^>]*>.*?<\/li>\n?)+/g, '<ul class="my-6 space-y-1 list-none pl-0">$&</ul>');
+  
+  // Handle paragraphs
+  html = html
     // Paragraphs (double newlines)
     .replace(/\n\n/g, '</p><p>')
     // Wrap in paragraph tags
     .replace(/^/, '<p>')
-    .replace(/$/, '</p>');
+    .replace(/$/, '</p>')
+    // Clean up empty paragraphs
+    .replace(/<p>\s*<\/p>/g, '')
+    // Clean up paragraphs around block elements
+    .replace(/<p>(\s*<(?:h2|h3|blockquote|pre|div|ul|hr)[^>]*>)/g, '$1')
+    .replace(/(<\/(?:h2|h3|blockquote|pre|div|ul|hr)>\s*)<\/p>/g, '$1');
+
+  return html;
 }
 
 export default BlogArticle;
