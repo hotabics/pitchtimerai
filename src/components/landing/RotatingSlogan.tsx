@@ -13,7 +13,9 @@ const SLOGANS = [
 const ROTATION_INTERVAL = 15000; // 15 seconds
 
 export const RotatingSlogan = () => {
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(() => 
+    Math.floor(Math.random() * SLOGANS.length)
+  );
 
   useEffect(() => {
     const timer = setInterval(() => {
