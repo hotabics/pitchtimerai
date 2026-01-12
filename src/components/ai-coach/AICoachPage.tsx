@@ -69,6 +69,10 @@ export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachP
     setInputMode('upload');
   };
 
+  const handleSelectInterrogation = () => {
+    setInputMode('interrogation');
+  };
+
   const handleMobileVideoReceived = async (videoUrl: string) => {
     // Fetch the video blob from the URL for processing
     try {
