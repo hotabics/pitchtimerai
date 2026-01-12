@@ -34,7 +34,15 @@ export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachP
   const [uploadedVideoUrl, setUploadedVideoUrl] = useState<string | null>(null);
 
   // Use global store for recording data to persist across navigation
-  const { recordingData, setRecordingData, reset } = useAICoachStore();
+  const { recordingData, setRecordingData, reset, scriptBlocks } = useAICoachStore();
+
+  // Extract dossier data from script blocks for interrogation
+  const dossierData = {
+    projectName: scriptBlocks.find(b => b.title.toLowerCase().includes('hook') || b.title.toLowerCase().includes('intro'))?.content.slice(0, 100) || undefined,
+    problem: scriptBlocks.find(b => b.title.toLowerCase().includes('problem'))?.content || undefined,
+    solution: scriptBlocks.find(b => b.title.toLowerCase().includes('solution'))?.content || undefined,
+    audience: scriptBlocks.find(b => b.title.toLowerCase().includes('audience') || b.title.toLowerCase().includes('market'))?.content || undefined,
+  };
 
   // Start camera when entering framing check
   const startCamera = async () => {
@@ -269,7 +277,7 @@ export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachP
 
           {inputMode === 'interrogation' && (
             <motion.div key="interrogation" exit={{ opacity: 0 }}>
-              <InterrogationRoom onBack={handleBackToHub} />
+              <InterrogationRoom onBack={handleBackToHub} dossierData={dossierData} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -308,7 +316,7 @@ export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachP
 
           {inputMode === 'interrogation' && (
             <motion.div key="interrogation" exit={{ opacity: 0 }}>
-              <InterrogationRoom onBack={handleBackToHub} />
+              <InterrogationRoom onBack={handleBackToHub} dossierData={dossierData} />
             </motion.div>
           )}
 
