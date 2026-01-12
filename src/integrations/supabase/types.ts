@@ -396,6 +396,51 @@ export type Database = {
         }
         Relationships: []
       }
+      survey_events: {
+        Row: {
+          answers: Json | null
+          created_at: string
+          device_type: string | null
+          distinct_id: string | null
+          event_timestamp: string
+          event_type: string
+          friction_tags: string[] | null
+          goal_type: string | null
+          id: string
+          nps_score: number | null
+          survey_id: string
+          trigger: string | null
+        }
+        Insert: {
+          answers?: Json | null
+          created_at?: string
+          device_type?: string | null
+          distinct_id?: string | null
+          event_timestamp?: string
+          event_type: string
+          friction_tags?: string[] | null
+          goal_type?: string | null
+          id?: string
+          nps_score?: number | null
+          survey_id: string
+          trigger?: string | null
+        }
+        Update: {
+          answers?: Json | null
+          created_at?: string
+          device_type?: string | null
+          distinct_id?: string | null
+          event_timestamp?: string
+          event_type?: string
+          friction_tags?: string[] | null
+          goal_type?: string | null
+          id?: string
+          nps_score?: number | null
+          survey_id?: string
+          trigger?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

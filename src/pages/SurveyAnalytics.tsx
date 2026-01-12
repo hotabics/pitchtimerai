@@ -2,7 +2,7 @@
  * Survey Analytics Dashboard
  * 
  * Shows NPS trends, friction point breakdowns, and completion rates over time.
- * Connects to PostHog for real analytics data.
+ * Fetches data from Supabase (synced via PostHog webhook).
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -17,7 +17,7 @@ import {
   PieChart,
   RefreshCw,
   Loader2,
-  ExternalLink,
+  Database,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,8 +40,7 @@ import {
 } from 'recharts';
 import { cn } from '@/lib/utils';
 import { getSurveyHistory } from '@/hooks/useSurvey';
-import { PULSE_SURVEY_V1, EXPERIENCE_SURVEY_V1 } from '@/data/surveyDefinitions';
-import { posthog } from '@/utils/analytics';
+import { supabase } from '@/integrations/supabase/client';
 
 // Analytics data structure
 interface SurveyAnalytics {
@@ -93,33 +92,59 @@ const COLORS = {
   chart: ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#6366f1'],
 };
 
-// Fetch analytics from PostHog
-const fetchPostHogAnalytics = async (): Promise<SurveyAnalytics | null> => {
+// Fetch analytics from Supabase (synced via PostHog webhook)
+const fetchSurveyAnalytics = async (): Promise<SurveyAnalytics | null> => {
   try {
-    // Note: In production, you'd use PostHog's Query API
-    // For now, we'll use client-side event capture data
-    // This would typically be done via PostHog's API: https://posthog.com/docs/api
+    // Fetch survey events from Supabase
+    const { data: surveyEvents, error } = await supabase
+      .from('survey_events')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(500);
+    
+    if (error) {
+      console.error('Failed to fetch survey events from Supabase:', error);
+    }
+    
+    // Combine Supabase data with localStorage fallback
+    const dbEvents = surveyEvents || [];
+    
+    // Also check localStorage for any local-only events
+    const storedEvents = localStorage.getItem('posthog_survey_events');
+    let localEvents: any[] = [];
+    try {
+      if (storedEvents) {
+        localEvents = JSON.parse(storedEvents);
+      }
+    } catch (e) {
+      console.warn('Failed to parse stored survey events');
+    }
+    
+    // Merge database and local events
+    const allEvents = [
+      ...dbEvents.map(e => ({
+        event: e.event_type,
+        properties: {
+          survey_id: e.survey_id,
+          answers: e.answers,
+          nps_score: e.nps_score,
+          friction_tags: e.friction_tags,
+          goal_type: e.goal_type,
+          device_type: e.device_type,
+          trigger: e.trigger,
+          timestamp: e.event_timestamp,
+        },
+      })),
+      ...localEvents,
+    ];
     
     // Get local survey history as baseline
     const history = getSurveyHistory();
     const pulseCompleted = history['pitchperfect_pulse_v1'] ? 1 : 0;
     const experienceCompleted = history['pitchperfect_experience_v1'] ? 1 : 0;
     
-    // Try to get events from PostHog (if available in memory)
-    // Note: This is a simplified approach - real implementation would use PostHog API
-    const storedEvents = localStorage.getItem('posthog_survey_events');
-    let surveyEvents: any[] = [];
-    
-    try {
-      if (storedEvents) {
-        surveyEvents = JSON.parse(storedEvents);
-      }
-    } catch (e) {
-      console.warn('Failed to parse stored survey events');
-    }
-    
     // Calculate metrics from events
-    const surveyAnsweredEvents = surveyEvents.filter(e => e.event === 'survey_answered');
+    const surveyAnsweredEvents = allEvents.filter(e => e.event === 'survey_answered');
     const pulseEvents = surveyAnsweredEvents.filter(e => e.properties?.survey_id?.includes('pulse'));
     const experienceEvents = surveyAnsweredEvents.filter(e => e.properties?.survey_id?.includes('experience'));
     
@@ -291,7 +316,7 @@ const SurveyAnalytics = () => {
     setError(null);
     
     try {
-      const data = await fetchPostHogAnalytics();
+      const data = await fetchSurveyAnalytics();
       if (data) {
         setAnalytics(data);
       } else {
@@ -360,11 +385,9 @@ const SurveyAnalytics = () => {
               <RefreshCw className="w-4 h-4" />
               Refresh
             </Button>
-            <Button variant="outline" asChild className="gap-2">
-              <a href="https://us.posthog.com" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="w-4 h-4" />
-                PostHog
-              </a>
+            <Button variant="outline" className="gap-2">
+              <Database className="w-4 h-4" />
+              Supabase
             </Button>
           </div>
         </div>
@@ -690,23 +713,23 @@ const SurveyAnalytics = () => {
               <div className="p-4 border border-border rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
                   <BarChart3 className="w-5 h-5 text-primary" />
-                  <h3 className="font-semibold">{PULSE_SURVEY_V1.id}</h3>
+                  <h3 className="font-semibold">pitchperfect_pulse_v1</h3>
                 </div>
-                <p className="text-sm text-muted-foreground mb-2">{PULSE_SURVEY_V1.description}</p>
+                <p className="text-sm text-muted-foreground mb-2">Quick 4-question feedback after each session</p>
                 <div className="flex gap-2 text-xs">
-                  <span className="px-2 py-1 bg-muted rounded">{PULSE_SURVEY_V1.questions.length} questions</span>
-                  <span className="px-2 py-1 bg-muted rounded">~{PULSE_SURVEY_V1.estimatedTime}</span>
+                  <span className="px-2 py-1 bg-muted rounded">4 questions</span>
+                  <span className="px-2 py-1 bg-muted rounded">~30-45 sec</span>
                 </div>
               </div>
               <div className="p-4 border border-border rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
                   <PieChart className="w-5 h-5 text-primary" />
-                  <h3 className="font-semibold">{EXPERIENCE_SURVEY_V1.id}</h3>
+                  <h3 className="font-semibold">pitchperfect_experience_v1</h3>
                 </div>
-                <p className="text-sm text-muted-foreground mb-2">{EXPERIENCE_SURVEY_V1.description}</p>
+                <p className="text-sm text-muted-foreground mb-2">Comprehensive feedback covering all product areas</p>
                 <div className="flex gap-2 text-xs">
-                  <span className="px-2 py-1 bg-muted rounded">{EXPERIENCE_SURVEY_V1.questions.length} questions</span>
-                  <span className="px-2 py-1 bg-muted rounded">~{EXPERIENCE_SURVEY_V1.estimatedTime}</span>
+                  <span className="px-2 py-1 bg-muted rounded">14 questions</span>
+                  <span className="px-2 py-1 bg-muted rounded">~2-4 min</span>
                 </div>
               </div>
             </div>
