@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { User, Camera, Save, Loader2, ArrowLeft, CheckCircle, Volume2, VolumeX, RotateCcw, ClipboardList } from "lucide-react";
+import { User, Camera, Save, Loader2, ArrowLeft, CheckCircle, Volume2, VolumeX, RotateCcw, ClipboardList, Mail, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,6 +41,86 @@ const Settings = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [soundEnabled, setLocalSoundEnabled] = useState(getSoundEnabled());
+  
+  // Email digest subscription state
+  const [digestEmail, setDigestEmail] = useState("");
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isSubscribing, setIsSubscribing] = useState(false);
+  const [isSendingTest, setIsSendingTest] = useState(false);
+
+  // Check if already subscribed
+  useEffect(() => {
+    const checkSubscription = async () => {
+      if (user?.email) {
+        setDigestEmail(user.email);
+        const { data } = await supabase
+          .from('analytics_subscribers')
+          .select('is_active')
+          .eq('email', user.email)
+          .single();
+        
+        if (data?.is_active) {
+          setIsSubscribed(true);
+        }
+      }
+    };
+    checkSubscription();
+  }, [user?.email]);
+
+  const handleDigestSubscribe = async () => {
+    if (!digestEmail.trim() || !digestEmail.includes('@')) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+    
+    setIsSubscribing(true);
+    try {
+      const { error } = await supabase
+        .from('analytics_subscribers')
+        .upsert({
+          email: digestEmail.trim(),
+          report_type: 'survey_digest',
+          frequency: 'weekly',
+          is_active: !isSubscribed,
+        }, { onConflict: 'email' });
+      
+      if (error) throw error;
+      
+      setIsSubscribed(!isSubscribed);
+      toast.success(isSubscribed 
+        ? "Unsubscribed from weekly survey digest" 
+        : "Subscribed to weekly survey digest!"
+      );
+    } catch (error) {
+      console.error('Subscription error:', error);
+      toast.error("Failed to update subscription");
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
+
+  const handleSendTestDigest = async () => {
+    if (!digestEmail.trim()) {
+      toast.error("Please enter an email address first");
+      return;
+    }
+    
+    setIsSendingTest(true);
+    try {
+      const { error } = await supabase.functions.invoke('send-survey-digest', {
+        body: { recipients: [digestEmail.trim()], testMode: true },
+      });
+      
+      if (error) throw error;
+      
+      toast.success("Test digest sent! Check your inbox.");
+    } catch (error) {
+      console.error('Test digest error:', error);
+      toast.error("Failed to send test digest");
+    } finally {
+      setIsSendingTest(false);
+    }
+  };
 
   const handleSoundToggle = (enabled: boolean) => {
     setLocalSoundEnabled(enabled);
@@ -314,6 +394,64 @@ const Settings = () => {
                   Reset
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Email Digest Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="w-5 h-5" />
+                Weekly Survey Digest
+              </CardTitle>
+              <CardDescription>
+                Get NPS trends and friction points delivered to your inbox every Monday
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <Input
+                  type="email"
+                  placeholder="your@email.com"
+                  value={digestEmail}
+                  onChange={(e) => setDigestEmail(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  variant={isSubscribed ? "outline" : "default"}
+                  onClick={handleDigestSubscribe}
+                  disabled={isSubscribing}
+                  className="min-w-[100px]"
+                >
+                  {isSubscribing ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : isSubscribed ? (
+                    "Unsubscribe"
+                  ) : (
+                    "Subscribe"
+                  )}
+                </Button>
+              </div>
+              {isSubscribed && (
+                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                  You're subscribed! Next digest: Monday 9 AM UTC
+                </p>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleSendTestDigest}
+                disabled={isSendingTest || !digestEmail.trim()}
+                className="gap-2"
+              >
+                {isSendingTest ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+                Send Test Digest
+              </Button>
             </CardContent>
           </Card>
         </motion.div>
