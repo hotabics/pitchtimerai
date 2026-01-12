@@ -3,6 +3,7 @@
  * 
  * Manages survey state, autosave, and submission logic.
  * Integrates with PostHog for event tracking.
+ * Sends real-time alerts for NPS detractor scores.
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -16,7 +17,8 @@ import {
   SessionStats
 } from '@/types/survey';
 import { SURVEYS, getSurveyById } from '@/data/surveyDefinitions';
-import { trackEvent } from '@/utils/analytics';
+import { trackEvent, posthog } from '@/utils/analytics';
+import { supabase } from '@/integrations/supabase/client';
 
 const STORAGE_KEY_PREFIX = 'pitchperfect_survey_';
 const HISTORY_KEY = 'pitchperfect_survey_history';
@@ -253,6 +255,36 @@ export const useSurvey = ({
       };
       
       trackEvent('survey_answered', eventData.properties);
+      
+      // Send real-time alert for NPS detractor scores (0-6)
+      if (typeof npsScore === 'number' && npsScore <= 6) {
+        console.log('[Survey] Detractor score detected, sending alert:', npsScore);
+        
+        // Get feedback text from open-ended questions
+        const feedbackText = (state.answers['q4_improvement'] || state.answers['q13_nps_improvement']) as string | undefined;
+        
+        // Send detractor alert (non-blocking)
+        supabase.functions.invoke('nps-detractor-alert', {
+          body: {
+            npsScore,
+            surveyId: survey.id,
+            goalType,
+            frictionTags,
+            feedbackText,
+            deviceType: getDeviceType(),
+            distinctId: posthog.get_distinct_id?.() || null,
+            timestamp: new Date().toISOString(),
+          },
+        }).then(({ error }) => {
+          if (error) {
+            console.warn('[Survey] Failed to send detractor alert:', error);
+          } else {
+            console.log('[Survey] Detractor alert sent successfully');
+          }
+        }).catch(err => {
+          console.warn('[Survey] Detractor alert error:', err);
+        });
+      }
       
       // Store event locally for analytics dashboard
       try {
