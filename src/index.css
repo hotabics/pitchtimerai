@@ -70,6 +70,10 @@
     --glow-success: 160 84% 39%;
     --surface: 220 14% 96%;
     --surface-elevated: 0 0% 100%;
+
+    /* Rotating slogan colors */
+    --slogan-primary: 51 100% 50%; /* Mustard Yellow #FFD700 */
+    --slogan-emphasis: 0 100% 27%; /* Blood Red #8B0000 */
   }
 
   .dark {
@@ -116,6 +120,10 @@
     --glow-success: 160 84% 50%;
     --surface: 222 47% 10%;
     --surface-elevated: 222 47% 12%;
+
+    /* Rotating slogan colors - White for dark mode */
+    --slogan-primary: 0 0% 98%; /* White */
+    --slogan-emphasis: 0 100% 27%; /* Blood Red #8B0000 */
   }
 }
 
@@ -288,5 +296,95 @@
 
   .number-roll {
     animation: number-roll 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Slogan text colors */
+  .text-slogan-primary {
+    color: hsl(var(--slogan-primary));
+  }
+
+  .text-slogan-emphasis {
+    color: hsl(var(--slogan-emphasis));
+  }
+
+  /* CRT Scanlines effect */
+  .crt-scanlines {
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.15) 2px,
+      rgba(0, 0, 0, 0.15) 4px
+    );
+    pointer-events: none;
+  }
+
+  /* Glitch animation keyframes */
+  @keyframes glitch-anim {
+    0% {
+      clip-path: inset(40% 0 61% 0);
+      transform: translate(-2px, 2px);
+    }
+    20% {
+      clip-path: inset(92% 0 1% 0);
+      transform: translate(2px, -2px);
+    }
+    40% {
+      clip-path: inset(43% 0 1% 0);
+      transform: translate(-2px, 0);
+    }
+    60% {
+      clip-path: inset(25% 0 58% 0);
+      transform: translate(0, 2px);
+    }
+    80% {
+      clip-path: inset(54% 0 7% 0);
+      transform: translate(2px, -2px);
+    }
+    100% {
+      clip-path: inset(58% 0 43% 0);
+      transform: translate(-2px, 2px);
+    }
+  }
+
+  @keyframes glitch-text {
+    0%, 100% {
+      text-shadow: 
+        -2px 0 hsl(var(--slogan-emphasis)),
+        2px 0 hsl(180 100% 50%);
+      transform: translate(0);
+    }
+    20% {
+      text-shadow: 
+        2px 0 hsl(var(--slogan-emphasis)),
+        -2px 0 hsl(180 100% 50%);
+      transform: translate(-2px, 2px);
+    }
+    40% {
+      text-shadow: 
+        -2px 0 hsl(var(--slogan-emphasis)),
+        2px 0 hsl(180 100% 50%);
+      transform: translate(2px, -2px);
+    }
+    60% {
+      text-shadow: 
+        2px 0 hsl(var(--slogan-emphasis)),
+        -2px 0 hsl(180 100% 50%);
+      transform: translate(-2px, 2px);
+    }
+    80% {
+      text-shadow: 
+        -2px 0 hsl(var(--slogan-emphasis)),
+        2px 0 hsl(180 100% 50%);
+      transform: translate(2px, 0);
+    }
+  }
+
+  .animate-glitch {
+    animation: glitch-anim 0.3s ease infinite;
+  }
+
+  .animate-glitch-text {
+    animation: glitch-text 0.5s ease;
   }
 }

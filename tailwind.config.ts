@@ -71,6 +71,10 @@ export default {
           DEFAULT: "hsl(var(--surface))",
           elevated: "hsl(var(--surface-elevated))",
         },
+        slogan: {
+          primary: "hsl(var(--slogan-primary))",
+          emphasis: "hsl(var(--slogan-emphasis))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
