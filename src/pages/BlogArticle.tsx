@@ -2,7 +2,7 @@
 
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowUp, Clock, Share2, Twitter, Linkedin, Link2, Sparkles, Headphones, Pause, Play, Loader2, Volume2, VolumeX, X } from 'lucide-react';
+import { ArrowLeft, ArrowUp, Clock, Share2, Twitter, Linkedin, Link2, Sparkles, Headphones, Pause, Play, Loader2, Volume2, VolumeX, Bookmark, BookmarkCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LazyImage } from '@/components/ui/lazy-image';
@@ -11,6 +11,8 @@ import { Slider } from '@/components/ui/slider';
 import { getBlogPost, CATEGORY_COLORS, BLOG_POSTS } from '@/data/blogPosts';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+import { useBookmarks } from '@/hooks/useBookmarks';
+import AudioWaveform from '@/components/blog/AudioWaveform';
 import { useState, useEffect, useRef, useMemo } from 'react';
 
 // Calculate reading time based on word count (avg 200 words per minute)
@@ -47,6 +49,7 @@ const BlogArticle = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const post = id ? getBlogPost(id) : undefined;
+  const { isBookmarked, toggleBookmark } = useBookmarks();
   
   // Reading progress state
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -239,6 +242,8 @@ const BlogArticle = () => {
       setAudioUrl(url);
 
       const audio = new Audio(url);
+      audio.volume = volume;
+      audio.playbackRate = playbackSpeed;
       audioRef.current = audio;
 
       audio.addEventListener('loadedmetadata', () => {
@@ -439,17 +444,29 @@ const BlogArticle = () => {
                     {audioUrl && (
                       <div className="flex-1 flex items-center gap-3">
                         <span className="text-xs text-muted-foreground w-10">{formatTime(audioCurrentTime)}</span>
-                        <Slider
-                          value={[audioCurrentTime]}
-                          max={audioDuration || 100}
-                          step={0.1}
-                          onValueChange={handleSeek}
-                          className="flex-1"
-                        />
+                        
+                        {/* Audio Waveform Visualization */}
+                        <div className="flex-1 relative">
+                          <AudioWaveform 
+                            audioElement={audioRef.current} 
+                            isPlaying={isPlaying}
+                            className="w-full h-10 cursor-pointer"
+                            barCount={48}
+                          />
+                          {/* Overlay seek slider */}
+                          <Slider
+                            value={[audioCurrentTime]}
+                            max={audioDuration || 100}
+                            step={0.1}
+                            onValueChange={handleSeek}
+                            className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity"
+                          />
+                        </div>
+                        
                         <span className="text-xs text-muted-foreground w-10">{formatTime(audioDuration)}</span>
                         
                         {/* Speed Control */}
-                        <div className="flex items-center gap-1">
+                        <div className="hidden sm:flex items-center gap-1">
                           {SPEED_OPTIONS.map((speed) => (
                             <button
                               key={speed}
@@ -467,7 +484,7 @@ const BlogArticle = () => {
                         </div>
                         
                         {/* Volume Control */}
-                        <div className="flex items-center gap-2 ml-2">
+                        <div className="hidden sm:flex items-center gap-2 ml-2">
                           <button onClick={toggleMute} className="text-muted-foreground hover:text-foreground transition-colors">
                             {isMuted || volume === 0 ? (
                               <VolumeX className="w-4 h-4" />
@@ -569,17 +586,43 @@ const BlogArticle = () => {
               >
                 <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                   <Share2 className="w-4 h-4" />
-                  Share
+                  Share & Save
                 </h3>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="icon" onClick={handleShareTwitter}>
+                  <Button variant="outline" size="icon" onClick={handleShareTwitter} title="Share on Twitter">
                     <Twitter className="w-4 h-4" />
                   </Button>
-                  <Button variant="outline" size="icon" onClick={handleShareLinkedIn}>
+                  <Button variant="outline" size="icon" onClick={handleShareLinkedIn} title="Share on LinkedIn">
                     <Linkedin className="w-4 h-4" />
                   </Button>
-                  <Button variant="outline" size="icon" onClick={handleCopyLink}>
+                  <Button variant="outline" size="icon" onClick={handleCopyLink} title="Copy link">
                     <Link2 className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    variant={isBookmarked(post.id) ? "default" : "outline"} 
+                    size="icon" 
+                    onClick={() => {
+                      const wasBookmarked = toggleBookmark({
+                        id: post.id,
+                        title: post.title,
+                        excerpt: post.excerpt,
+                        category: post.category,
+                        image: post.image,
+                      });
+                      toast({
+                        title: wasBookmarked ? '🔖 Article saved' : 'Bookmark removed',
+                        description: wasBookmarked 
+                          ? 'Added to your reading list' 
+                          : 'Removed from your reading list',
+                      });
+                    }}
+                    title={isBookmarked(post.id) ? "Remove bookmark" : "Save for later"}
+                  >
+                    {isBookmarked(post.id) ? (
+                      <BookmarkCheck className="w-4 h-4" />
+                    ) : (
+                      <Bookmark className="w-4 h-4" />
+                    )}
                   </Button>
                 </div>
               </motion.div>
@@ -717,14 +760,20 @@ const BlogArticle = () => {
                   </p>
                 </div>
                 
-                {/* Seek slider (hidden on mobile) */}
-                <div className="hidden sm:flex items-center gap-2 flex-1 max-w-md">
+                {/* Waveform & Seek slider (hidden on mobile) */}
+                <div className="hidden sm:flex items-center gap-2 flex-1 max-w-md relative">
+                  <AudioWaveform 
+                    audioElement={audioRef.current} 
+                    isPlaying={isPlaying}
+                    className="w-full h-8"
+                    barCount={32}
+                  />
                   <Slider
                     value={[audioCurrentTime]}
                     max={audioDuration || 100}
                     step={0.1}
                     onValueChange={handleSeek}
-                    className="flex-1"
+                    className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity"
                   />
                 </div>
                 
