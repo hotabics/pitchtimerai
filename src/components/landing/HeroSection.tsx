@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Link2, Loader2, Zap, Video, Check, ArrowRight, Settings, Clock } from "lucide-react";
+import { Sparkles, Link2, Loader2, Zap, Video, Check, ArrowRight, Settings, Clock, FileUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isUrl, scrapeUrl, ScrapedProjectData } from "@/lib/api/firecrawl";
 import { toast } from "@/hooks/use-toast";
 import { trackEvent } from "@/utils/analytics";
+import { FileUploadZone } from "./FileUploadZone";
 
 const RECENT_IDEAS_KEY = "pitchperfect_recent_ideas";
 const MAX_RECENT_IDEAS = 3;
@@ -39,6 +40,8 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
   const [isScrapingUrl, setIsScrapingUrl] = useState(false);
   const [scrapedData, setScrapedData] = useState<ScrapedProjectData | null>(null);
   const [recentIdeas, setRecentIdeas] = useState<string[]>([]);
+  const [showFileUpload, setShowFileUpload] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   
   const inputIsUrl = isUrl(projectInput);
   
@@ -84,10 +87,37 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
       }, 800);
       return () => clearTimeout(debounce);
     }
-    if (!inputIsUrl && scrapedData) {
+    if (!inputIsUrl && scrapedData && !uploadedFileName) {
       setScrapedData(null);
     }
-  }, [projectInput, inputIsUrl, isScrapingUrl, scrapedData]);
+  }, [projectInput, inputIsUrl, isScrapingUrl, scrapedData, uploadedFileName]);
+
+  // Handle file processed
+  const handleFileProcessed = (data: ScrapedProjectData, filename: string) => {
+    setScrapedData(data);
+    setUploadedFileName(filename);
+    setProjectInput(data.name); // Pre-fill with extracted name
+    setShowFileUpload(false);
+    toast({
+      title: "📄 Document Analyzed!",
+      description: `Extracted pitch info from ${filename}`,
+    });
+    trackEvent('Onboarding: File Uploaded', { filename, hasData: !!data });
+  };
+
+  const handleFileError = (error: string) => {
+    toast({
+      title: "Analysis Failed",
+      description: error,
+      variant: "destructive",
+    });
+  };
+
+  const handleClearFileData = () => {
+    setScrapedData(null);
+    setUploadedFileName(null);
+    setProjectInput("");
+  };
   
   const handleGenerateScript = () => {
     const idea = scrapedData?.name || projectInput.trim();
@@ -165,7 +195,7 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
         </h1>
         <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
           Don't let a bad pitch kill a great product.{" "}
-          <span className="text-foreground font-medium">Turn your URL or idea</span> into a winning script in seconds.
+          <span className="text-foreground font-medium">Turn your URL, document, or idea</span> into a winning script in seconds.
         </p>
       </motion.div>
 
@@ -195,7 +225,9 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1">
                 {/* Icon based on input type */}
-                {inputIsUrl ? (
+                {uploadedFileName ? (
+                  <FileUp className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-500" />
+                ) : inputIsUrl ? (
                   <Link2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary" />
                 ) : (
                   <Sparkles className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/60" />
@@ -210,7 +242,7 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
                 
                 {/* URL detected badge */}
                 <AnimatePresence>
-                  {inputIsUrl && !isScrapingUrl && (
+                  {inputIsUrl && !isScrapingUrl && !uploadedFileName && (
                     <motion.div
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -223,16 +255,38 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
                       </span>
                     </motion.div>
                   )}
+                  {uploadedFileName && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      className="absolute right-4 top-1/2 -translate-y-1/2"
+                    >
+                      <button 
+                        onClick={handleClearFileData}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/20 text-emerald-500 text-xs font-medium hover:bg-emerald-500/30 transition-colors"
+                      >
+                        <Check className="w-3 h-3" />
+                        From File
+                      </button>
+                    </motion.div>
+                  )}
                 </AnimatePresence>
                 
                 <input 
                   type="text" 
                   value={projectInput} 
-                  onChange={e => setProjectInput(e.target.value)} 
+                  onChange={e => {
+                    setProjectInput(e.target.value);
+                    // Clear file data if user starts typing something else
+                    if (uploadedFileName && e.target.value !== scrapedData?.name) {
+                      setUploadedFileName(null);
+                    }
+                  }} 
                   onFocus={() => setIsFocused(true)} 
                   onBlur={() => setIsFocused(false)} 
                   onKeyDown={handleKeyDown} 
-                  placeholder="Paste your Devpost URL or describe your idea..."
+                  placeholder="Paste URL, describe your idea, or upload a file..."
                   className="
                     w-full h-16 pl-12 pr-32
                     bg-muted/80 text-foreground text-base md:text-lg font-medium
@@ -245,9 +299,43 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
                   " 
                 />
               </div>
-
           </div>
         </div>
+
+        {/* File Upload Toggle */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="mt-3 flex justify-center"
+        >
+          <button
+            onClick={() => setShowFileUpload(!showFileUpload)}
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
+          >
+            <FileUp className="w-4 h-4" />
+            <span>Have a README or pitch deck?</span>
+            <ChevronDown className={`w-4 h-4 transition-transform ${showFileUpload ? 'rotate-180' : ''}`} />
+          </button>
+        </motion.div>
+
+        {/* File Upload Zone */}
+        <AnimatePresence>
+          {showFileUpload && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <FileUploadZone
+                onFileProcessed={handleFileProcessed}
+                onError={handleFileError}
+                className="mt-3"
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Example chips */}
         <motion.div
@@ -291,22 +379,38 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
         </motion.div>
         </div>
         
-        {/* Scraped data preview */}
+        {/* Scraped/Parsed data preview */}
         <AnimatePresence>
           {scrapedData && (
             <motion.div
               initial={{ opacity: 0, y: -10, height: 0 }}
               animate={{ opacity: 1, y: 0, height: "auto" }}
               exit={{ opacity: 0, y: -10, height: 0 }}
-              className="mt-3 p-4 rounded-xl bg-primary/5 border border-primary/20"
+              className={`mt-3 p-4 rounded-xl border ${uploadedFileName ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-primary/5 border-primary/20'}`}
             >
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
-                  <Check className="w-4 h-4 text-primary" />
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${uploadedFileName ? 'bg-emerald-500/20' : 'bg-primary/20'}`}>
+                  {uploadedFileName ? (
+                    <FileUp className="w-4 h-4 text-emerald-500" />
+                  ) : (
+                    <Check className="w-4 h-4 text-primary" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-foreground truncate">{scrapedData.name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-foreground truncate">{scrapedData.name}</p>
+                    {uploadedFileName && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-500 font-medium">
+                        from {uploadedFileName}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">{scrapedData.problem}</p>
+                  {scrapedData.solution && (
+                    <p className="text-xs text-primary/80 mt-1 line-clamp-1">
+                      💡 {scrapedData.solution}
+                    </p>
+                  )}
                 </div>
               </div>
             </motion.div>

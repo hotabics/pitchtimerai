@@ -53,3 +53,9 @@ verify_jwt = false
 
 [functions.challenge-notification]
 verify_jwt = false
+
+[functions.analyze-pitch-content]
+verify_jwt = false
+
+[functions.parse-document]
+verify_jwt = false
