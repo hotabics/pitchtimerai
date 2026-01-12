@@ -346,6 +346,271 @@ It can generate feedback like:
 The goal isn't to create robotic, AI-optimized speakers. It's to surface blind spots and give speakers the awareness they need to develop their own authentic, compelling style.
     `,
   },
+  {
+    id: 'storytelling-framework-for-pitches',
+    title: "The Hero's Journey: A Storytelling Framework for Pitches",
+    category: 'Startup',
+    image: 'https://images.unsplash.com/photo-1456324504439-367cee3b3c32?w=1200&h=600&fit=crop',
+    readTime: '6 min read',
+    excerpt: 'Every great pitch tells a story. Learn how to structure your narrative using the same framework that powers Hollywood blockbusters.',
+    author: { name: 'Elena Rodriguez', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop' },
+    publishedAt: '2024-01-20',
+    tableOfContents: [
+      { id: 'why-stories-work', title: 'Why Stories Work' },
+      { id: 'the-heros-journey', title: "The Hero's Journey Structure" },
+      { id: 'your-customer-is-the-hero', title: 'Your Customer Is the Hero' },
+      { id: 'crafting-your-pitch-narrative', title: 'Crafting Your Pitch Narrative' },
+    ],
+    content: `## Why Stories Work {#why-stories-work}
+
+Humans are wired for stories. Our brains release oxytocin when we hear compelling narratives, creating emotional connection and trust. **The best pitches lead with story.**
+
+## The Hero's Journey Structure {#the-heros-journey}
+
+Joseph Campbell identified a universal story structure: 1) The Ordinary World, 2) The Call to Adventure, 3) Crossing the Threshold, 4) The Transformation, 5) The Return. Apply this to your pitch.
+
+## Your Customer Is the Hero {#your-customer-is-the-hero}
+
+**Your company is not the hero. Your customer is.** You're the guide—think Gandalf, not Frodo.
+
+## Crafting Your Pitch Narrative {#crafting-your-pitch-narrative}
+
+Template: "Every day, [customer] struggles with [problem]. That's why we built [product]. Now, [customer] can [transformation]."`,
+  },
+  {
+    id: 'handling-tough-questions-qa',
+    title: 'Handling Tough Questions: Mastering the Q&A',
+    category: 'Public Speaking',
+    image: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=1200&h=600&fit=crop',
+    readTime: '7 min read',
+    excerpt: "The Q&A can make or break your pitch. Learn techniques to handle hostile questions and turn challenges into opportunities.",
+    author: { name: 'Michael Foster', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop' },
+    publishedAt: '2024-01-25',
+    tableOfContents: [
+      { id: 'why-qa-matters', title: 'Why Q&A Matters' },
+      { id: 'preparation-strategies', title: 'Preparation Strategies' },
+      { id: 'handling-hostile-questions', title: 'Handling Hostile Questions' },
+    ],
+    content: `## Why Q&A Matters {#why-qa-matters}
+
+**The Q&A is where investors see the real you.** They're testing how you think on your feet and handle pressure.
+
+## Preparation Strategies {#preparation-strategies}
+
+1. **The Murder Board:** Gather friends to ask tough questions. 2. **The FAQ Document:** Write down every question you've been asked. 3. **The Data Bank:** Memorize key statistics.
+
+## Handling Hostile Questions {#handling-hostile-questions}
+
+Pause before answering. Acknowledge the concern. Answer directly. Stay calm and professional.`,
+  },
+  {
+    id: 'voice-modulation-techniques',
+    title: 'Voice Modulation: The Secret Weapon of Great Speakers',
+    category: 'Public Speaking',
+    image: 'https://images.unsplash.com/photo-1478737270239-2f02b77fc618?w=1200&h=600&fit=crop',
+    readTime: '5 min read',
+    excerpt: 'Your voice is an instrument. Learn how to use pace, pitch, and power to captivate any audience.',
+    author: { name: 'Sarah Mitchell', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop' },
+    publishedAt: '2024-02-01',
+    tableOfContents: [
+      { id: 'the-monotone-trap', title: 'The Monotone Trap' },
+      { id: 'pace-the-rhythm', title: 'Pace: The Rhythm' },
+      { id: 'pitch-emotional-range', title: 'Pitch: Emotional Range' },
+    ],
+    content: `## The Monotone Trap {#the-monotone-trap}
+
+Nothing kills a pitch faster than a flat, monotone delivery. **Recording yourself is the first step.**
+
+## Pace: The Rhythm {#pace-the-rhythm}
+
+Slow down for important points. Speed up for transitions. Pause after major revelations. Optimal: 130-150 WPM.
+
+## Pitch: Emotional Range {#pitch-emotional-range}
+
+Falling pitch signals confidence. Rising pitch sounds uncertain. Practice variation for impact.`,
+  },
+  {
+    id: 'demo-day-survival-guide',
+    title: 'Demo Day Survival Guide: From Prep to Podium',
+    category: 'Hackathon',
+    image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&h=600&fit=crop',
+    readTime: '8 min read',
+    excerpt: "Demo day is coming. Here's your complete playbook for preparation and execution.",
+    author: { name: 'David Park', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&h=100&fit=crop' },
+    publishedAt: '2024-02-05',
+    tableOfContents: [
+      { id: 'the-48-hour-countdown', title: 'The 48-Hour Countdown' },
+      { id: 'day-of-checklist', title: 'Day-Of Checklist' },
+      { id: 'the-3-minute-structure', title: 'The 3-Minute Structure' },
+    ],
+    content: `## The 48-Hour Countdown {#the-48-hour-countdown}
+
+Feature freeze. Record your pitch. Test your demo on actual equipment. Get sleep.
+
+## Day-Of Checklist {#day-of-checklist}
+
+Arrive 30+ minutes early. Test AV. Have backup demo ready. Water at podium. Phone on airplane mode.
+
+## The 3-Minute Structure {#the-3-minute-structure}
+
+Hook (15s), Problem (30s), Solution (30s), Demo (60s), Traction (30s), Ask (15s).`,
+  },
+  {
+    id: 'overcoming-stage-fright',
+    title: 'Conquering Stage Fright: A Neuroscience Approach',
+    category: 'Public Speaking',
+    image: 'https://images.unsplash.com/photo-1523580494863-6f3031224c94?w=1200&h=600&fit=crop',
+    readTime: '6 min read',
+    excerpt: "Stage fright is universal, but conquerable. Transform anxiety into energy.",
+    author: { name: 'Dr. Rachel Green', avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&h=100&fit=crop' },
+    publishedAt: '2024-02-10',
+    tableOfContents: [
+      { id: 'understanding-the-fear-response', title: 'Understanding Fear' },
+      { id: 'reframing-anxiety', title: 'Reframing Anxiety' },
+      { id: 'physical-techniques', title: 'Physical Techniques' },
+    ],
+    content: `## Understanding Fear {#understanding-the-fear-response}
+
+Your body can't distinguish between fear and excitement. This insight changes everything.
+
+## Reframing Anxiety {#reframing-anxiety}
+
+Say "I am excited" instead of "I am nervous." Both are high-arousal states—redirect the energy.
+
+## Physical Techniques {#physical-techniques}
+
+The Physiological Sigh: Two quick inhales through nose, one long exhale. This calms your nervous system in seconds.`,
+  },
+  {
+    id: 'remote-pitch-mastery',
+    title: 'Remote Pitch Mastery: Winning on Video Calls',
+    category: 'Startup',
+    image: 'https://images.unsplash.com/photo-1609619385002-f40f1df9b7eb?w=1200&h=600&fit=crop',
+    readTime: '7 min read',
+    excerpt: 'Virtual pitches are here to stay. Master the unique challenges of Zoom presentations.',
+    author: { name: 'Jennifer Walsh', avatar: 'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=100&h=100&fit=crop' },
+    publishedAt: '2024-02-15',
+    tableOfContents: [
+      { id: 'the-zoom-disadvantage', title: 'The Zoom Challenge' },
+      { id: 'technical-setup', title: 'Technical Setup' },
+      { id: 'on-camera-presence', title: 'On-Camera Presence' },
+    ],
+    content: `## The Zoom Challenge {#the-zoom-disadvantage}
+
+Video strips away 90% of communication cues. But if you master the medium, you stand out dramatically.
+
+## Technical Setup {#technical-setup}
+
+Face a window for lighting. Camera at eye level. External microphone. Hardwire internet if possible.
+
+## On-Camera Presence {#on-camera-presence}
+
+Look at the camera lens, not the screen. Energy needs to be 20% higher than feels natural.`,
+  },
+  {
+    id: 'the-one-thing-framework',
+    title: 'The One Thing Framework: Simplify to Amplify',
+    category: 'Startup',
+    image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=1200&h=600&fit=crop',
+    readTime: '5 min read',
+    excerpt: 'The best pitches communicate one thing brilliantly. Find your core message.',
+    author: { name: 'Chris Anderson', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop' },
+    publishedAt: '2024-02-20',
+    tableOfContents: [
+      { id: 'the-curse-of-knowledge', title: 'The Curse of Knowledge' },
+      { id: 'finding-your-one-thing', title: 'Finding Your One Thing' },
+      { id: 'ruthless-editing', title: 'Ruthless Editing' },
+    ],
+    content: `## The Curse of Knowledge {#the-curse-of-knowledge}
+
+When you know too much, you struggle to see your product through fresh eyes. **The investor remembers at most one thing.**
+
+## Finding Your One Thing {#finding-your-one-thing}
+
+If they forget everything except one sentence, what should it be? Make it surprising, concrete, and memorable.
+
+## Ruthless Editing {#ruthless-editing}
+
+Every sentence that doesn't support your "one thing" weakens your pitch. Less is more.`,
+  },
+  {
+    id: 'reading-the-room',
+    title: 'Reading the Room: Adaptive Presentation Skills',
+    category: 'Public Speaking',
+    image: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=1200&h=600&fit=crop',
+    readTime: '6 min read',
+    excerpt: 'The best presenters adjust in real-time. Learn to read audience signals.',
+    author: { name: 'Lisa Thompson', avatar: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=100&h=100&fit=crop' },
+    publishedAt: '2024-02-25',
+    tableOfContents: [
+      { id: 'audience-signals', title: 'Decoding Signals' },
+      { id: 'the-adjustment-toolkit', title: 'Adjustment Toolkit' },
+      { id: 'handling-different-audiences', title: 'Different Audiences' },
+    ],
+    content: `## Decoding Signals {#audience-signals}
+
+Positive: leaning forward, nodding, taking notes. Danger: checking phones, crossed arms, blank stares.
+
+## Adjustment Toolkit {#the-adjustment-toolkit}
+
+If confused: pause and summarize. If bored: increase energy, move to demo. If skeptical: pivot to proof and data.
+
+## Different Audiences {#handling-different-audiences}
+
+Technical: more how, less why. Business: more why, less how. Mixed: layer your content.`,
+  },
+  {
+    id: 'building-presentation-confidence',
+    title: 'Building Unshakeable Presentation Confidence',
+    category: 'Public Speaking',
+    image: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=1200&h=600&fit=crop',
+    readTime: '7 min read',
+    excerpt: "Confidence isn't innate—it's built. Here's the systematic approach.",
+    author: { name: 'Marcus Johnson', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop' },
+    publishedAt: '2024-03-01',
+    tableOfContents: [
+      { id: 'confidence-myth', title: 'The Confidence Myth' },
+      { id: 'competence-confidence-loop', title: 'The Competence Loop' },
+      { id: 'systematic-exposure', title: 'Systematic Exposure' },
+    ],
+    content: `## The Confidence Myth {#confidence-myth}
+
+Every great speaker has a history of terrible presentations. Confidence is the result of practice, not personality.
+
+## The Competence Loop {#competence-confidence-loop}
+
+Learn skill → practice → succeed → evidence accumulates → confidence emerges. You don't wait for confidence to act.
+
+## Systematic Exposure {#systematic-exposure}
+
+Start with small presentations. Build up. Collect evidence. Don't skip levels.`,
+  },
+  {
+    id: 'data-storytelling-pitches',
+    title: 'Data Storytelling: Making Numbers Compelling',
+    category: 'Technology',
+    image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1200&h=600&fit=crop',
+    readTime: '6 min read',
+    excerpt: 'Data convinces, but stories connect. Transform statistics into memorable narratives.',
+    author: { name: 'Dr. Amanda Chen', avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&h=100&fit=crop' },
+    publishedAt: '2024-03-05',
+    tableOfContents: [
+      { id: 'data-overload-problem', title: 'Data Overload' },
+      { id: 'humanizing-numbers', title: 'Humanizing Numbers' },
+      { id: 'visualization-principles', title: 'Visualization Principles' },
+    ],
+    content: `## Data Overload {#data-overload-problem}
+
+When you show 20 charts, your audience remembers none. **Choose fewer numbers and make them unforgettable.**
+
+## Humanizing Numbers {#humanizing-numbers}
+
+Instead of "1.2 million transactions per day" → "Every second, 14 people trust our platform." Make it concrete and personal.
+
+## Visualization Principles {#visualization-principles}
+
+One idea per chart. Annotate the insight. Remove clutter. The best chart is often no chart—just a bold number.`,
+  },
 ];
 
 export const getBlogPost = (id: string): BlogPost | undefined => {
