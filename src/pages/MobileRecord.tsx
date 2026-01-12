@@ -7,11 +7,12 @@ import { CheckCircle, Loader2, Camera, StopCircle, RotateCcw, Monitor, AlertCirc
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadRecording } from '@/services/videoStorage';
+import { MAX_RECORDING_DURATION } from '@/components/ai-coach/AICoachRecording';
 
 type RecordingState = 'connecting' | 'ready' | 'countdown' | 'recording' | 'paused' | 'uploading' | 'success' | 'error';
 type FacingMode = 'user' | 'environment';
 
-const MAX_RECORDING_SECONDS = 300; // 5 minutes
+const MAX_RECORDING_SECONDS = MAX_RECORDING_DURATION; // 3 minutes (from AI Coach)
 const WARNING_THRESHOLD_SECONDS = 30; // Show warning when 30 seconds remaining
 
 // Haptic feedback helper

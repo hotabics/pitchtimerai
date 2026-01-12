@@ -6,15 +6,13 @@ import { Mic, Brain, BarChart3, Check, Loader2, Upload } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { useAICoachStore } from '@/stores/aiCoachStore';
 import type { FrameData } from '@/services/mediapipe';
+import { transcribeWithElevenLabs } from '@/services/transcription';
+import { analyzePitchWithAI, getMockAnalysis } from '@/services/pitchAnalysis';
 import {
-  transcribeAudio,
-  analyzePitchContent,
   detectContentCoverage,
   detectBulletPointCoverage,
   countFillerWords,
   calculateWPM,
-  getMockAnalysis,
-  hasApiKey,
   type GPTAnalysisResponse,
 } from '@/services/openai';
 import { aggregateMetrics } from '@/services/mediapipe';
@@ -69,32 +67,29 @@ export const AICoachProcessing = ({
   }, []);
 
   const processRecording = async () => {
-    const useRealAPI = hasApiKey();
     let transcript = '';
     let contentAnalysis: GPTAnalysisResponse | null = null;
 
     // Track AI coach session start
     trackEvent('ai_coach_processing_started', { 
       duration_seconds: duration,
-      using_real_api: useRealAPI,
+      using_real_api: true,
     });
 
     try {
-      // Step 1: Transcribe audio
+      // Step 1: Transcribe audio using ElevenLabs (via edge function)
       setCurrentStep('transcribing');
       setProgress(10);
 
-      if (useRealAPI) {
-        try {
-          const whisperResult = await transcribeAudio(audioBlob);
-          transcript = whisperResult.text;
-        } catch (err) {
-          console.error('Transcription error:', err);
-          // Fallback to mock
-          transcript = getMockTranscript();
-        }
-      } else {
-        // Mock transcription delay
+      try {
+        console.log('Transcribing audio with ElevenLabs...');
+        const result = await transcribeWithElevenLabs(audioBlob);
+        transcript = result.text;
+        console.log('Transcription complete:', transcript.substring(0, 100) + '...');
+      } catch (err) {
+        console.error('ElevenLabs transcription error:', err);
+        // Fallback to mock if edge function fails
+        toast.warning('Using demo transcription - check ElevenLabs API key');
         await new Promise(resolve => setTimeout(resolve, 1500));
         transcript = getMockTranscript();
       }
@@ -102,19 +97,18 @@ export const AICoachProcessing = ({
       setCompletedSteps(prev => [...prev, 'transcribing']);
       setProgress(40);
 
-      // Step 2: Analyze with GPT-4
+      // Step 2: Analyze with GPT-4 (via edge function)
       setCurrentStep('analyzing');
 
-      if (useRealAPI && transcript) {
-        try {
-          contentAnalysis = await analyzePitchContent(transcript);
-        } catch (err) {
-          console.error('Analysis error:', err);
-          contentAnalysis = getMockAnalysis();
-        }
-      } else {
+      try {
+        console.log('Analyzing pitch content with GPT-4...');
+        contentAnalysis = await analyzePitchWithAI(transcript) as GPTAnalysisResponse;
+        console.log('Analysis complete, score:', contentAnalysis.score);
+      } catch (err) {
+        console.error('GPT analysis error:', err);
+        toast.warning('Using demo analysis - check OpenAI API key');
         await new Promise(resolve => setTimeout(resolve, 2000));
-        contentAnalysis = getMockAnalysis();
+        contentAnalysis = getMockAnalysis() as GPTAnalysisResponse;
       }
 
       setCompletedSteps(prev => [...prev, 'analyzing']);
@@ -220,7 +214,7 @@ export const AICoachProcessing = ({
         filler_count: fillerData.total,
         eye_contact_percent: videoMetrics.averageEyeContact,
         score: contentAnalysis?.score,
-        using_real_api: useRealAPI,
+        using_real_api: true,
         video_saved: !!videoUrl,
       });
 

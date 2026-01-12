@@ -58,6 +58,9 @@ const getSpeechRecognitionCtor = (): SpeechRecognitionCtor | null => {
   return w.SpeechRecognition || w.webkitSpeechRecognition || null;
 };
 
+// Maximum recording duration in seconds (3 minutes)
+export const MAX_RECORDING_DURATION = 180;
+
 const LANGUAGES = [
   { code: "en-US", label: "English (US)" },
   { code: "en-GB", label: "English (UK)" },
@@ -384,11 +387,21 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
     }
   }, [isRecording, mediaPipeFailed]);
 
-  // Duration timer (fallback when no audio sync)
+  // Ref for handleStop to avoid stale closure in useEffect
+  const handleStopRef = useRef<() => void>(() => {});
+  
+  // Duration timer with auto-stop at max duration
   useEffect(() => {
     if (!isRecording) return;
     const interval = setInterval(() => {
-      setDuration(Math.floor((performance.now() - startTimeRef.current) / 1000));
+      const elapsed = Math.floor((performance.now() - startTimeRef.current) / 1000);
+      setDuration(elapsed);
+      
+      // Auto-stop at max duration (3 minutes)
+      if (elapsed >= MAX_RECORDING_DURATION) {
+        console.log('Max recording duration reached, auto-stopping...');
+        handleStopRef.current();
+      }
     }, 1000);
     return () => clearInterval(interval);
   }, [isRecording]);
@@ -612,7 +625,7 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
 
   useEffect(() => cleanup, [cleanup]);
 
-  const handleStop = () => {
+  const handleStop = useCallback(() => {
     const recorder = mediaRecorderRef.current;
     const audioRecorder = (recorder as any)?.audioRecorder as MediaRecorder | undefined;
     if (!recorder || !audioRecorder) return;
@@ -621,7 +634,7 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
     audioRecorder.stop();
     
     const finalDuration = Math.floor((performance.now() - startTimeRef.current) / 1000);
-    trackEvent('Recording: Completed', { duration: finalDuration });
+    trackEvent('Recording: Completed', { duration: finalDuration, auto_stopped: finalDuration >= MAX_RECORDING_DURATION });
     trackEvent('Analysis: Triggered');
 
     setTimeout(() => {
@@ -630,7 +643,12 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
       cleanup();
       onStop(audioBlob, videoBlob, finalDuration, frameDataRef.current);
     }, 500);
-  };
+  }, [cleanup, onStop]);
+
+  // Update ref whenever handleStop changes
+  useEffect(() => {
+    handleStopRef.current = handleStop;
+  }, [handleStop]);
 
   const handleCancel = useCallback(() => { cleanup(); onCancel(); }, [cleanup, onCancel]);
 
@@ -901,14 +919,25 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
           {/* HUD: Top-Left - Timer + Status */}
           <div className="absolute top-4 left-4 flex items-center gap-3 pointer-events-auto">
             {/* Recording Status */}
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/60 backdrop-blur-sm">
+            <div className={cn(
+              "flex items-center gap-2 px-3 py-2 rounded-lg bg-black/60 backdrop-blur-sm",
+              duration >= MAX_RECORDING_DURATION - 30 && isRecording && "border border-amber-500/50"
+            )}>
               <div className={`w-3 h-3 rounded-full ${isRecording ? (teleprompterPaused ? "bg-amber-400" : "bg-destructive animate-pulse") : "bg-muted"}`} />
               <span className="text-sm font-medium text-white">
                 {isRecording ? (teleprompterPaused ? "Paused" : "REC") : "Ready"}
               </span>
-              <span className="text-lg font-mono font-bold text-white">
-                {formatTime(duration)}
+              <span className={cn(
+                "text-lg font-mono font-bold",
+                duration >= MAX_RECORDING_DURATION - 30 && isRecording ? "text-amber-400" : "text-white"
+              )}>
+                {formatTime(duration)} / {formatTime(MAX_RECORDING_DURATION)}
               </span>
+              {duration >= MAX_RECORDING_DURATION - 30 && isRecording && (
+                <span className="text-xs text-amber-400 animate-pulse">
+                  {MAX_RECORDING_DURATION - duration}s left
+                </span>
+              )}
             </div>
             
             {/* Mic Level */}
