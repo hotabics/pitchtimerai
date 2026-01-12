@@ -1,20 +1,201 @@
 // Blog Article Reader Page - Editorial article view with sidebar
 
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Clock, Share2, Twitter, Linkedin, Link2, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, ArrowUp, Clock, Share2, Twitter, Linkedin, Link2, Sparkles, Headphones, Pause, Play, Loader2, Volume2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LazyImage } from '@/components/ui/lazy-image';
 import { Separator } from '@/components/ui/separator';
+import { Slider } from '@/components/ui/slider';
 import { getBlogPost, CATEGORY_COLORS, BLOG_POSTS } from '@/data/blogPosts';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+import { useState, useEffect, useRef, useMemo } from 'react';
+
+// Calculate reading time based on word count (avg 200 words per minute)
+const calculateReadingTime = (content: string): { minutes: number; words: number } => {
+  const text = content.replace(/<[^>]*>/g, '').replace(/[#*`>\[\]]/g, '');
+  const words = text.trim().split(/\s+/).filter(word => word.length > 0).length;
+  const minutes = Math.ceil(words / 200);
+  return { minutes, words };
+};
+
+// Strip markdown/HTML for TTS
+const stripForTTS = (content: string): string => {
+  return content
+    .replace(/## (.+?) \{#.+?\}/g, '$1. ')
+    .replace(/### (.+)/g, '$1. ')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/> "(.+?)" — (.+)/g, 'Quote: $1. Said by $2.')
+    .replace(/> (.+)/g, '$1')
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/`(.+?)`/g, '$1')
+    .replace(/✅ \*\*(.+?):\*\* (.+)/g, '$1: $2.')
+    .replace(/❌ \*\*(.+?):\*\* (.+)/g, '$1: $2.')
+    .replace(/^- \*\*(.+?):\*\* (.+)$/gm, '$1: $2.')
+    .replace(/^- (.+)$/gm, '$1.')
+    .replace(/^\d+\. \*\*(.+?):\*\* (.+)$/gm, '$1: $2.')
+    .replace(/^\d+\. (.+)$/gm, '$1.')
+    .replace(/\n+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
 
 const BlogArticle = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const post = id ? getBlogPost(id) : undefined;
+  
+  // Reading progress state
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [showBackToTop, setShowBackToTop] = useState(false);
+  
+  // Audio player state
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioDuration, setAudioDuration] = useState(0);
+  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Calculate reading stats
+  const readingStats = useMemo(() => {
+    if (!post) return { minutes: 0, words: 0 };
+    return calculateReadingTime(post.content);
+  }, [post]);
+
+  // Scroll progress tracking
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+      setScrollProgress(Math.min(100, Math.max(0, progress)));
+      setShowBackToTop(scrollTop > 400);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Clean up audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+      }
+    };
+  }, [audioUrl]);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleGenerateAudio = async () => {
+    if (!post) return;
+    
+    if (audioUrl) {
+      // Audio already generated, just toggle play
+      if (isPlaying) {
+        audioRef.current?.pause();
+      } else {
+        audioRef.current?.play();
+      }
+      return;
+    }
+
+    setIsLoadingAudio(true);
+    
+    try {
+      const textForTTS = `${post.title}. ${post.excerpt}. ${stripForTTS(post.content)}`;
+      
+      // Limit to ~4500 chars for API
+      const truncatedText = textForTTS.slice(0, 4500);
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            text: truncatedText,
+            voiceId: 'JBFqnCBsd6RMkjVDRZzb', // George - professional narrator voice
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to generate audio');
+      }
+
+      const audioBlob = await response.blob();
+      const url = URL.createObjectURL(audioBlob);
+      setAudioUrl(url);
+
+      const audio = new Audio(url);
+      audioRef.current = audio;
+
+      audio.addEventListener('loadedmetadata', () => {
+        setAudioDuration(audio.duration);
+      });
+
+      audio.addEventListener('timeupdate', () => {
+        setAudioCurrentTime(audio.currentTime);
+      });
+
+      audio.addEventListener('ended', () => {
+        setIsPlaying(false);
+        setAudioCurrentTime(0);
+      });
+
+      audio.addEventListener('play', () => setIsPlaying(true));
+      audio.addEventListener('pause', () => setIsPlaying(false));
+
+      await audio.play();
+      toast({ title: '🎧 Now playing', description: 'Listen to this article as an audiobook' });
+    } catch (error) {
+      console.error('TTS error:', error);
+      toast({ 
+        title: 'Audio generation failed', 
+        description: 'Could not generate audio for this article.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoadingAudio(false);
+    }
+  };
+
+  const togglePlayPause = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+  };
+
+  const handleSeek = (value: number[]) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = value[0];
+      setAudioCurrentTime(value[0]);
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   if (!post) {
     return (
@@ -48,6 +229,15 @@ const BlogArticle = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Reading Progress Bar */}
+      <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-muted">
+        <motion.div 
+          className="h-full bg-primary"
+          style={{ width: `${scrollProgress}%` }}
+          transition={{ duration: 0.1 }}
+        />
+      </div>
+
       {/* Hero Image */}
       <div className="relative h-[40vh] md:h-[50vh] overflow-hidden">
         <LazyImage
@@ -102,7 +292,7 @@ const BlogArticle = () => {
                   alt={post.author.name}
                   className="w-12 h-12 rounded-full"
                 />
-                <div>
+                <div className="flex-1">
                   <p className="font-medium">{post.author.name}</p>
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <span>{new Date(post.publishedAt).toLocaleDateString('en-US', { 
@@ -113,9 +303,62 @@ const BlogArticle = () => {
                     <span>•</span>
                     <div className="flex items-center gap-1">
                       <Clock className="w-4 h-4" />
-                      {post.readTime}
+                      {readingStats.minutes} min read
                     </div>
+                    <span className="hidden sm:inline">•</span>
+                    <span className="hidden sm:inline text-xs">{readingStats.words.toLocaleString()} words</span>
                   </div>
+                </div>
+              </div>
+
+              {/* Audio Player Section */}
+              <div className="mt-6 p-4 bg-muted/50 rounded-xl border border-border">
+                <div className="flex items-center gap-4">
+                  <Button
+                    variant={audioUrl ? "default" : "secondary"}
+                    size="sm"
+                    onClick={audioUrl ? togglePlayPause : handleGenerateAudio}
+                    disabled={isLoadingAudio}
+                    className="gap-2 min-w-[140px]"
+                  >
+                    {isLoadingAudio ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : audioUrl ? (
+                      <>
+                        {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                        {isPlaying ? 'Pause' : 'Play'}
+                      </>
+                    ) : (
+                      <>
+                        <Headphones className="w-4 h-4" />
+                        Listen to Article
+                      </>
+                    )}
+                  </Button>
+                  
+                  {audioUrl && (
+                    <div className="flex-1 flex items-center gap-3">
+                      <span className="text-xs text-muted-foreground w-10">{formatTime(audioCurrentTime)}</span>
+                      <Slider
+                        value={[audioCurrentTime]}
+                        max={audioDuration || 100}
+                        step={0.1}
+                        onValueChange={handleSeek}
+                        className="flex-1"
+                      />
+                      <span className="text-xs text-muted-foreground w-10">{formatTime(audioDuration)}</span>
+                      <Volume2 className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                  )}
+                  
+                  {!audioUrl && !isLoadingAudio && (
+                    <span className="text-sm text-muted-foreground">
+                      🎧 AI-powered narration by ElevenLabs
+                    </span>
+                  )}
                 </div>
               </div>
             </header>
@@ -268,6 +511,22 @@ const BlogArticle = () => {
           </section>
         )}
       </div>
+
+      {/* Back to Top Button */}
+      <AnimatePresence>
+        {showBackToTop && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            onClick={scrollToTop}
+            className="fixed bottom-8 right-8 z-50 p-3 bg-primary text-primary-foreground rounded-full shadow-lg hover:shadow-xl transition-shadow"
+            aria-label="Back to top"
+          >
+            <ArrowUp className="w-5 h-5" />
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
