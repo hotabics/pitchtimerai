@@ -19,6 +19,7 @@ import { aggregateMetrics } from '@/services/mediapipe';
 import { uploadRecording, generateThumbnail } from '@/services/videoStorage';
 import { trackEvent } from '@/utils/analytics';
 import { toast } from 'sonner';
+import { useSurveyTriggerContext } from '@/components/survey';
 import { formatFileSize } from '@/services/videoCompression';
 import { LiveTranscriptionDisplay } from './LiveTranscriptionDisplay';
 
@@ -214,7 +215,7 @@ export const AICoachProcessing = ({
         thumbnailUrl,
       });
 
-      // Track AI coach session complete
+      // Track AI coach session complete (also fires pitch_session_completed for survey triggers)
       trackEvent('ai_coach_session_completed', {
         duration_seconds: duration,
         wpm,
@@ -223,6 +224,13 @@ export const AICoachProcessing = ({
         score: contentAnalysis?.score,
         using_real_api: true,
         video_saved: !!videoUrl,
+      });
+      
+      // Also track with standard event name for survey system
+      trackEvent('pitch_session_completed', {
+        duration_sec: duration,
+        completion_reason: 'finished',
+        ai_feedback_shown: true,
       });
 
       // Small delay before transitioning

@@ -8,6 +8,7 @@ import { AuthModal } from "./components/auth/AuthModal";
 import { WhatsNewModal } from "./components/WhatsNewModal";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
+import { SurveyTriggerProvider } from "./components/survey";
 
 // Lazy load pages for code splitting - reduces initial CSS bundle
 const Index = lazy(() => import("./pages/Index"));
@@ -31,6 +32,7 @@ const Auth = lazy(() => import("./pages/Auth"));
 const MobileRecord = lazy(() => import("./pages/MobileRecord"));
 const AICoachPage = lazy(() => import("./components/ai-coach/AICoachPage").then(m => ({ default: m.AICoachPage })));
 const InterrogationHistory = lazy(() => import("./pages/InterrogationHistory"));
+const Survey = lazy(() => import("./pages/Survey"));
 
 const queryClient = new QueryClient();
 
@@ -49,38 +51,41 @@ const App = () => (
       <AuthModal />
       <WhatsNewModal />
       <BrowserRouter>
-        <div className="min-h-screen flex flex-col">
-          <Navbar />
-          <main className="flex-1 pt-16">
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/pricing" element={<Pricing />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/admin/analytics" element={<AdminAnalytics />} />
-                <Route path="/admin/feedback" element={<FeedbackAnalytics />} />
-                <Route path="/ai-coach" element={<AICoachPage />} />
-                <Route path="/mobile-record/:sessionId" element={<MobileRecord />} />
-                <Route path="/interrogation-history" element={<InterrogationHistory />} />
-                <Route path="/shared/:id" element={<SharedScript />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path="/blog" element={<Blog />} />
-                <Route path="/blog/:id" element={<BlogArticle />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/terms" element={<Terms />} />
-                <Route path="/privacy" element={<Privacy />} />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/cookies" element={<Cookies />} />
-                <Route path="/careers" element={<Careers />} />
-                <Route path="/settings" element={<Settings />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </main>
-          <Footer />
-        </div>
+        <SurveyTriggerProvider>
+          <div className="min-h-screen flex flex-col">
+            <Navbar />
+            <main className="flex-1 pt-16">
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/admin/analytics" element={<AdminAnalytics />} />
+                  <Route path="/admin/feedback" element={<FeedbackAnalytics />} />
+                  <Route path="/ai-coach" element={<AICoachPage />} />
+                  <Route path="/mobile-record/:sessionId" element={<MobileRecord />} />
+                  <Route path="/interrogation-history" element={<InterrogationHistory />} />
+                  <Route path="/shared/:id" element={<SharedScript />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/blog" element={<Blog />} />
+                  <Route path="/blog/:id" element={<BlogArticle />} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/terms" element={<Terms />} />
+                  <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/contact" element={<Contact />} />
+                  <Route path="/cookies" element={<Cookies />} />
+                  <Route path="/careers" element={<Careers />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/survey" element={<Survey />} />
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </main>
+            <Footer />
+          </div>
+        </SurveyTriggerProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
