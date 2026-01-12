@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Video, Upload, Camera, FileVideo, Sparkles, ArrowRight, Smartphone, QrCode } from "lucide-react";
+import { Video, Upload, Camera, FileVideo, Sparkles, ArrowRight, Smartphone, QrCode, Swords } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MobileCompanionModal } from "./MobileCompanionModal";
@@ -11,10 +11,11 @@ interface StudioHubProps {
   onSelectLive: () => void;
   onSelectUpload: () => void;
   onMobileVideoReceived?: (videoUrl: string) => void;
+  onSelectInterrogation?: () => void;
 }
 
-export const StudioHub = ({ onSelectLive, onSelectUpload, onMobileVideoReceived }: StudioHubProps) => {
-  const [hoveredCard, setHoveredCard] = useState<"live" | "upload" | "phone" | null>(null);
+export const StudioHub = ({ onSelectLive, onSelectUpload, onMobileVideoReceived, onSelectInterrogation }: StudioHubProps) => {
+  const [hoveredCard, setHoveredCard] = useState<"live" | "upload" | "phone" | "interrogation" | null>(null);
   const [showMobileModal, setShowMobileModal] = useState(false);
   const [mobileSessionId, setMobileSessionId] = useState<string>("");
 
@@ -241,16 +242,67 @@ export const StudioHub = ({ onSelectLive, onSelectUpload, onMobileVideoReceived 
             </CardContent>
           </Card>
         </motion.div>
+
+        {/* Interrogation Room Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          onHoverStart={() => setHoveredCard("interrogation")}
+          onHoverEnd={() => setHoveredCard(null)}
+          className="md:col-span-2"
+        >
+          <Card
+            className={`relative cursor-pointer overflow-hidden transition-all duration-300 bg-gradient-to-r from-[#121212] to-[#1a1a1a] border-2 ${
+              hoveredCard === "interrogation"
+                ? "border-[#FFD700] shadow-[0_0_30px_rgba(255,215,0,0.3)] scale-[1.01]"
+                : "border-[#FFD700]/30 hover:border-[#FFD700]/60"
+            }`}
+            onClick={onSelectInterrogation}
+          >
+            {/* CRT Scanline Effect */}
+            <div className="absolute inset-0 opacity-[0.02] pointer-events-none"
+              style={{ background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,215,0,0.1) 2px, rgba(255,215,0,0.1) 4px)' }}
+            />
+            <CardContent className="p-6 flex items-center gap-6 relative">
+              <motion.div
+                animate={{ scale: hoveredCard === "interrogation" ? 1.1 : 1 }}
+                className="relative shrink-0"
+              >
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#8B0000] to-[#FFD700]/80 flex items-center justify-center shadow-lg">
+                  <Swords className="w-8 h-8 text-white" />
+                </div>
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#8B0000] border-2 border-[#121212]"
+                />
+              </motion.div>
+              <div className="flex-1 space-y-1">
+                <h3 className="text-lg font-bold text-[#FFD700] uppercase tracking-wider">
+                  🎬 The Interrogation Room
+                </h3>
+                <p className="text-gray-400 text-sm">
+                  Face AI jurors in a Neo-Noir simulation. Practice your pitch defense under fire.
+                </p>
+              </div>
+              <Button className="shrink-0 gap-2 bg-[#FFD700] text-black hover:bg-[#FFD700]/90">
+                <Swords className="w-4 h-4" />
+                Enter Room
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
       {/* Bottom tip */}
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.6 }}
+        transition={{ delay: 0.7 }}
         className="text-center text-sm text-muted-foreground"
       >
-        💡 Tip: Use your phone for mobility, or upload a pre-recorded video for detailed AI analysis
+        💡 Tip: Use your phone for mobility, or try the Interrogation Room to test your pitch under pressure
       </motion.p>
 
       {/* Mobile Companion Modal */}
