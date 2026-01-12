@@ -7,7 +7,6 @@ import { toast } from "@/hooks/use-toast";
 import { trackEvent } from "@/utils/analytics";
 import { FileUploadZone } from "./FileUploadZone";
 import { DocumentPreviewModal } from "./DocumentPreviewModal";
-import { RotatingSlogan } from "./RotatingSlogan";
 
 const RECENT_IDEAS_KEY = "pitchperfect_recent_ideas";
 const MAX_RECENT_IDEAS = 3;
@@ -210,16 +209,20 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
         </div>
       </motion.div>
 
-      {/* Dynamic Rotating Slogan */}
-      <RotatingSlogan />
-
-      {/* Sub-headline */}
+      {/* Main headline */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.1 }}
         className="text-center max-w-4xl mx-auto mb-8"
       >
+        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tighter text-foreground mb-4">
+          Hackathons are won with{" "}
+          <span className="bg-gradient-to-r from-primary via-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+            stories
+          </span>
+          , not just code.
+        </h1>
         <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
           Don't let a bad pitch kill a great product.{" "}
           <span className="text-foreground font-medium">Turn your URL, document, or idea</span> into a winning script in seconds.
