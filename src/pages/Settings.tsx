@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { User, Camera, Save, Loader2, ArrowLeft, CheckCircle, Volume2, VolumeX } from "lucide-react";
+import { User, Camera, Save, Loader2, ArrowLeft, CheckCircle, Volume2, VolumeX, RotateCcw, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,25 @@ import { useUserStore } from "@/stores/userStore";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getSoundEnabled, setSoundEnabled } from "@/utils/soundSettings";
+
+// Survey history reset helper
+const resetSurveyHistory = () => {
+  const keysToRemove = [
+    'pitchperfect_survey_history',
+    'pitchperfect_session_stats',
+    'posthog_survey_events',
+  ];
+  
+  // Remove survey state keys
+  for (let i = localStorage.length - 1; i >= 0; i--) {
+    const key = localStorage.key(i);
+    if (key?.startsWith('pitchperfect_survey_')) {
+      localStorage.removeItem(key);
+    }
+  }
+  
+  keysToRemove.forEach(key => localStorage.removeItem(key));
+};
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -258,6 +277,42 @@ const Settings = () => {
                   checked={soundEnabled}
                   onCheckedChange={handleSoundToggle}
                 />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Developer/Testing Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ClipboardList className="w-5 h-5" />
+                Survey & Testing
+              </CardTitle>
+              <CardDescription>
+                Tools for testing survey functionality
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Reset Survey History */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-base">Reset Survey History</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Clear all survey responses to retake surveys for testing
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    resetSurveyHistory();
+                    toast.success("Survey history cleared! You can now retake surveys.");
+                  }}
+                  className="gap-2"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Reset
+                </Button>
               </div>
             </CardContent>
           </Card>
