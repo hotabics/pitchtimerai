@@ -12,12 +12,13 @@ import { AICoachRecording } from './AICoachRecording';
 import { AICoachProcessing } from './AICoachProcessing';
 import { AICoachResults } from './AICoachResults';
 import { FramingCheck } from './FramingCheck';
+import { InterrogationRoom } from './interrogation/InterrogationRoom';
 import { useAICoachStore } from '@/stores/aiCoachStore';
 import type { FrameData } from '@/services/mediapipe';
 
 const FRAMING_SKIP_KEY = 'ai-coach-framing-skipped';
 
-export type InputMode = 'hub' | 'live' | 'upload';
+export type InputMode = 'hub' | 'live' | 'upload' | 'interrogation';
 
 export interface AICoachPageProps {
   onBack?: () => void;
@@ -203,6 +204,7 @@ export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachP
                 onSelectLive={handleSelectLive} 
                 onSelectUpload={handleSelectUpload}
                 onMobileVideoReceived={handleMobileVideoReceived}
+                onSelectInterrogation={handleSelectInterrogation}
               />
             </motion.div>
           )}
@@ -260,6 +262,12 @@ export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachP
               />
             </motion.div>
           )}
+
+          {inputMode === 'interrogation' && (
+            <motion.div key="interrogation" exit={{ opacity: 0 }}>
+              <InterrogationRoom onBack={handleBackToHub} />
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
     );
@@ -289,7 +297,14 @@ export const AICoachPage = ({ onBack, onEditScript, embedded = false }: AICoachP
                 onSelectLive={handleSelectLive} 
                 onSelectUpload={handleSelectUpload}
                 onMobileVideoReceived={handleMobileVideoReceived}
+                onSelectInterrogation={handleSelectInterrogation}
               />
+            </motion.div>
+          )}
+
+          {inputMode === 'interrogation' && (
+            <motion.div key="interrogation" exit={{ opacity: 0 }}>
+              <InterrogationRoom onBack={handleBackToHub} />
             </motion.div>
           )}
 
