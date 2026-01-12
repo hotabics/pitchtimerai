@@ -33,6 +33,7 @@ const MobileRecord = lazy(() => import("./pages/MobileRecord"));
 const AICoachPage = lazy(() => import("./components/ai-coach/AICoachPage").then(m => ({ default: m.AICoachPage })));
 const InterrogationHistory = lazy(() => import("./pages/InterrogationHistory"));
 const Survey = lazy(() => import("./pages/Survey"));
+const SurveyAnalytics = lazy(() => import("./pages/SurveyAnalytics"));
 
 const queryClient = new QueryClient();
 
@@ -78,6 +79,7 @@ const App = () => (
                   <Route path="/careers" element={<Careers />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/survey" element={<Survey />} />
+                  <Route path="/admin/surveys" element={<SurveyAnalytics />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>

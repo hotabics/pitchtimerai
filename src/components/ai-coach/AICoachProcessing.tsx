@@ -108,15 +108,33 @@ export const AICoachProcessing = ({
       // Step 2: Analyze with GPT-4 (via edge function)
       setCurrentStep('analyzing');
 
+      const analysisStartTime = performance.now();
       try {
         console.log('Analyzing pitch content with GPT-4...');
         contentAnalysis = await analyzePitchWithAI(transcript) as GPTAnalysisResponse;
         console.log('Analysis complete, score:', contentAnalysis.score);
+        
+        // Track AI feedback generation with latency
+        const latencyMs = Math.round(performance.now() - analysisStartTime);
+        const feedbackLength = JSON.stringify(contentAnalysis).length;
+        trackEvent('ai_feedback_generated', {
+          latency_ms: latencyMs,
+          feedback_length: feedbackLength,
+          score: contentAnalysis.score,
+          has_recommendations: !!contentAnalysis.recommendations?.length,
+        });
       } catch (err) {
         console.error('GPT analysis error:', err);
         toast.warning('Using demo analysis - check OpenAI API key');
         await new Promise(resolve => setTimeout(resolve, 2000));
         contentAnalysis = getMockAnalysis() as GPTAnalysisResponse;
+        
+        // Track mock feedback generation
+        trackEvent('ai_feedback_generated', {
+          latency_ms: Math.round(performance.now() - analysisStartTime),
+          feedback_length: JSON.stringify(contentAnalysis).length,
+          is_mock: true,
+        });
       }
 
       setCompletedSteps(prev => [...prev, 'analyzing']);
