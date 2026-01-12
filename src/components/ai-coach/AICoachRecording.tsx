@@ -372,6 +372,20 @@ export const AICoachRecording = ({ onStop, onCancel, initialStream }: AICoachRec
 
       startTimeRef.current = performance.now();
       setIsRecording(true);
+      
+      // Track pitch session started event
+      const hasMicPermission = stream.getAudioTracks().length > 0 && stream.getAudioTracks()[0].enabled;
+      const deviceType = window.innerWidth < 768 ? 'mobile' : window.innerWidth < 1024 ? 'tablet' : 'desktop';
+      // Infer pitch type from script content or default to 'practice'
+      const pitchType = hasScript ? 'scripted' : 'freestyle';
+      trackEvent('pitch_session_started', {
+        pitch_type: pitchType,
+        target_duration_sec: MAX_RECORDING_DURATION,
+        device_type: deviceType,
+        has_mic_permission: hasMicPermission,
+        prompt_mode: promptMode,
+        has_script: hasScript,
+      });
     } catch (err) {
       console.error("Recording setup error:", err);
       setInitError("Failed to start recording");
