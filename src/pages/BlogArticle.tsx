@@ -58,7 +58,10 @@ const BlogArticle = () => {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [audioDuration, setAudioDuration] = useState(0);
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  
+  const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
   // Calculate reading stats
   const readingStats = useMemo(() => {
@@ -92,6 +95,67 @@ const BlogArticle = () => {
       }
     };
   }, [audioUrl]);
+
+  // Keyboard shortcuts for audio player
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if audio is loaded and not typing in an input
+      if (!audioRef.current || !audioUrl) return;
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+
+      switch (e.code) {
+        case 'Space':
+          e.preventDefault();
+          togglePlayPause();
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          seekBy(-10);
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          seekBy(10);
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          cycleSpeed(1);
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          cycleSpeed(-1);
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [audioUrl, playbackSpeed]);
+
+  const seekBy = (seconds: number) => {
+    if (audioRef.current) {
+      const newTime = Math.max(0, Math.min(audioDuration, audioRef.current.currentTime + seconds));
+      audioRef.current.currentTime = newTime;
+      setAudioCurrentTime(newTime);
+    }
+  };
+
+  const cycleSpeed = (direction: number) => {
+    const currentIndex = SPEED_OPTIONS.indexOf(playbackSpeed);
+    const newIndex = Math.max(0, Math.min(SPEED_OPTIONS.length - 1, currentIndex + direction));
+    const newSpeed = SPEED_OPTIONS[newIndex];
+    setPlaybackSpeed(newSpeed);
+    if (audioRef.current) {
+      audioRef.current.playbackRate = newSpeed;
+    }
+  };
+
+  const handleSpeedChange = (speed: number) => {
+    setPlaybackSpeed(speed);
+    if (audioRef.current) {
+      audioRef.current.playbackRate = speed;
+    }
+  };
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -313,51 +377,92 @@ const BlogArticle = () => {
 
               {/* Audio Player Section */}
               <div className="mt-6 p-4 bg-muted/50 rounded-xl border border-border">
-                <div className="flex items-center gap-4">
-                  <Button
-                    variant={audioUrl ? "default" : "secondary"}
-                    size="sm"
-                    onClick={audioUrl ? togglePlayPause : handleGenerateAudio}
-                    disabled={isLoadingAudio}
-                    className="gap-2 min-w-[140px]"
-                  >
-                    {isLoadingAudio ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Generating...
-                      </>
-                    ) : audioUrl ? (
-                      <>
-                        {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                        {isPlaying ? 'Pause' : 'Play'}
-                      </>
-                    ) : (
-                      <>
-                        <Headphones className="w-4 h-4" />
-                        Listen to Article
-                      </>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-4">
+                    <Button
+                      variant={audioUrl ? "default" : "secondary"}
+                      size="sm"
+                      onClick={audioUrl ? togglePlayPause : handleGenerateAudio}
+                      disabled={isLoadingAudio}
+                      className="gap-2 min-w-[140px]"
+                    >
+                      {isLoadingAudio ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Generating...
+                        </>
+                      ) : audioUrl ? (
+                        <>
+                          {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                          {isPlaying ? 'Pause' : 'Play'}
+                        </>
+                      ) : (
+                        <>
+                          <Headphones className="w-4 h-4" />
+                          Listen to Article
+                        </>
+                      )}
+                    </Button>
+                    
+                    {audioUrl && (
+                      <div className="flex-1 flex items-center gap-3">
+                        <span className="text-xs text-muted-foreground w-10">{formatTime(audioCurrentTime)}</span>
+                        <Slider
+                          value={[audioCurrentTime]}
+                          max={audioDuration || 100}
+                          step={0.1}
+                          onValueChange={handleSeek}
+                          className="flex-1"
+                        />
+                        <span className="text-xs text-muted-foreground w-10">{formatTime(audioDuration)}</span>
+                        
+                        {/* Speed Control */}
+                        <div className="flex items-center gap-1">
+                          {SPEED_OPTIONS.map((speed) => (
+                            <button
+                              key={speed}
+                              onClick={() => handleSpeedChange(speed)}
+                              className={cn(
+                                "px-2 py-1 text-xs rounded-md transition-colors",
+                                playbackSpeed === speed
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-background text-muted-foreground hover:text-foreground hover:bg-muted"
+                              )}
+                            >
+                              {speed}x
+                            </button>
+                          ))}
+                        </div>
+                        
+                        <Volume2 className="w-4 h-4 text-muted-foreground" />
+                      </div>
                     )}
-                  </Button>
+                    
+                    {!audioUrl && !isLoadingAudio && (
+                      <span className="text-sm text-muted-foreground">
+                        🎧 AI-powered narration by ElevenLabs
+                      </span>
+                    )}
+                  </div>
                   
+                  {/* Keyboard shortcuts hint */}
                   {audioUrl && (
-                    <div className="flex-1 flex items-center gap-3">
-                      <span className="text-xs text-muted-foreground w-10">{formatTime(audioCurrentTime)}</span>
-                      <Slider
-                        value={[audioCurrentTime]}
-                        max={audioDuration || 100}
-                        step={0.1}
-                        onValueChange={handleSeek}
-                        className="flex-1"
-                      />
-                      <span className="text-xs text-muted-foreground w-10">{formatTime(audioDuration)}</span>
-                      <Volume2 className="w-4 h-4 text-muted-foreground" />
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <kbd className="px-1.5 py-0.5 bg-background rounded border border-border font-mono">Space</kbd>
+                        Play/Pause
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <kbd className="px-1.5 py-0.5 bg-background rounded border border-border font-mono">←</kbd>
+                        <kbd className="px-1.5 py-0.5 bg-background rounded border border-border font-mono">→</kbd>
+                        ±10s
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <kbd className="px-1.5 py-0.5 bg-background rounded border border-border font-mono">↑</kbd>
+                        <kbd className="px-1.5 py-0.5 bg-background rounded border border-border font-mono">↓</kbd>
+                        Speed
+                      </span>
                     </div>
-                  )}
-                  
-                  {!audioUrl && !isLoadingAudio && (
-                    <span className="text-sm text-muted-foreground">
-                      🎧 AI-powered narration by ElevenLabs
-                    </span>
                   )}
                 </div>
               </div>
