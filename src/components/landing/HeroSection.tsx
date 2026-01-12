@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Link2, Loader2, Zap, Video, Check, ArrowRight, Settings, Clock, FileUp, ChevronDown, Eye } from "lucide-react";
+import { Sparkles, Link2, Loader2, Zap, Video, Check, ArrowRight, Settings, Clock, FileUp, ChevronDown, Eye, Timer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isUrl, scrapeUrl, ScrapedProjectData } from "@/lib/api/firecrawl";
 import { toast } from "@/hooks/use-toast";
@@ -30,10 +30,19 @@ const saveRecentIdea = (idea: string) => {
 };
 
 interface HeroSectionProps {
-  onSubmit: (idea: string, scrapedData?: ScrapedProjectData) => void;
-  onAutoGenerate: (idea: string, scrapedData?: ScrapedProjectData) => void;
+  onSubmit: (idea: string, scrapedData?: ScrapedProjectData, durationMinutes?: number) => void;
+  onAutoGenerate: (idea: string, scrapedData?: ScrapedProjectData, durationMinutes?: number) => void;
   onOpenAICoach?: () => void;
 }
+
+const DURATION_OPTIONS = [
+  { value: 0.5, label: "30 sec", description: "Elevator pitch" },
+  { value: 1, label: "1 min", description: "Quick pitch" },
+  { value: 2, label: "2 min", description: "Standard" },
+  { value: 3, label: "3 min", description: "Hackathon" },
+  { value: 5, label: "5 min", description: "Detailed" },
+  { value: 10, label: "10 min", description: "Full presentation" },
+];
 
 export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSectionProps) => {
   const [projectInput, setProjectInput] = useState("");
@@ -46,6 +55,7 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
   const [extractedImages, setExtractedImages] = useState<string[]>([]);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [pendingFileData, setPendingFileData] = useState<ScrapedProjectData | null>(null);
+  const [selectedDuration, setSelectedDuration] = useState(3); // Default to 3 minutes (hackathon standard)
 
   const inputIsUrl = isUrl(projectInput);
   
@@ -138,11 +148,12 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
     if (idea) {
       trackEvent('Onboarding: Magic URL Used', { 
         url: inputIsUrl ? projectInput : undefined,
-        hasScrapedData: !!scrapedData 
+        hasScrapedData: !!scrapedData,
+        durationMinutes: selectedDuration
       });
       saveRecentIdea(idea);
       setRecentIdeas(getRecentIdeas());
-      onAutoGenerate(idea, scrapedData || undefined);
+      onAutoGenerate(idea, scrapedData || undefined, selectedDuration);
     }
   };
   
@@ -151,11 +162,12 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
     if (idea) {
       trackEvent('Onboarding: Customize Pitch Clicked', { 
         url: inputIsUrl ? projectInput : undefined,
-        hasScrapedData: !!scrapedData 
+        hasScrapedData: !!scrapedData,
+        durationMinutes: selectedDuration
       });
       saveRecentIdea(idea);
       setRecentIdeas(getRecentIdeas());
-      onSubmit(idea, scrapedData || undefined);
+      onSubmit(idea, scrapedData || undefined, selectedDuration);
     }
   };
 
@@ -430,6 +442,39 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Duration Selector */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.25 }}
+          className="mt-5"
+        >
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <Timer className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium text-foreground">Pitch Duration</span>
+          </div>
+          <div className="flex flex-wrap justify-center gap-2">
+            {DURATION_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setSelectedDuration(option.value)}
+                className={`
+                  relative px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200
+                  ${selectedDuration === option.value
+                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-105"
+                    : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/50"
+                  }
+                `}
+              >
+                <span className="block">{option.label}</span>
+                <span className={`text-[10px] ${selectedDuration === option.value ? "text-primary-foreground/80" : "text-muted-foreground/70"}`}>
+                  {option.description}
+                </span>
+              </button>
+            ))}
+          </div>
+        </motion.div>
 
         {/* Dual Action Buttons */}
         <motion.div
