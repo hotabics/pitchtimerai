@@ -35,6 +35,8 @@ interface HeroSectionProps {
   onOpenAICoach?: () => void;
 }
 
+const WORDS_PER_MINUTE = 150; // Average speaking pace
+
 const DURATION_OPTIONS = [
   { value: 0.5, label: "30 sec", description: "Elevator pitch" },
   { value: 1, label: "1 min", description: "Quick pitch" },
@@ -43,6 +45,8 @@ const DURATION_OPTIONS = [
   { value: 5, label: "5 min", description: "Detailed" },
   { value: 10, label: "10 min", description: "Full presentation" },
 ];
+
+const getEstimatedWords = (durationMinutes: number) => Math.round(durationMinutes * WORDS_PER_MINUTE);
 
 export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSectionProps) => {
   const [projectInput, setProjectInput] = useState("");
@@ -474,6 +478,23 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
               </button>
             ))}
           </div>
+          
+          {/* Word count indicator */}
+          <motion.div 
+            key={selectedDuration}
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-3 flex items-center justify-center gap-2"
+          >
+            <div className="px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
+              <span className="text-sm font-medium text-primary">
+                ~{getEstimatedWords(selectedDuration).toLocaleString()} words
+              </span>
+              <span className="text-xs text-muted-foreground ml-1.5">
+                @ {WORDS_PER_MINUTE} WPM
+              </span>
+            </div>
+          </motion.div>
         </motion.div>
 
         {/* Dual Action Buttons */}

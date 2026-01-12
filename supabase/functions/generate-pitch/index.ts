@@ -467,7 +467,7 @@ serve(async (req) => {
         break;
 
       case 'script':
-        systemPrompt = 'You are an expert pitch coach who creates compelling, time-appropriate pitch scripts.';
+        systemPrompt = 'You are an expert pitch coach who creates compelling, time-appropriate pitch scripts. You carefully match the script length to the requested duration using approximately 150 words per minute as a speaking pace guide.';
         const { duration, problem, persona, pitch, businessModels, demo } = sanitizedContext as Record<string, unknown>;
         const durationVal = typeof duration === 'number' ? duration : 3;
         const problemVal = typeof problem === 'string' ? problem : '';
@@ -476,19 +476,56 @@ serve(async (req) => {
         const businessModelsVal = Array.isArray(businessModels) ? businessModels.join(', ') : '';
         const demoObj = demo as Record<string, unknown> | undefined;
         
-        userPrompt = `Create a ${durationVal}-minute pitch script for this startup:
+        // Calculate target word count based on 150 WPM speaking pace
+        const targetWordCount = Math.round(durationVal * 150);
+        const wordRange = {
+          min: Math.round(targetWordCount * 0.9),
+          max: Math.round(targetWordCount * 1.1)
+        };
         
-        Idea: ${sanitizedIdea}
-        Problem: ${problemVal}
-        Target Audience: ${personaVal}
-        Elevator Pitch: ${pitchVal}
-        Business Models: ${businessModelsVal}
-        ${demoObj?.hasDemo ? `Demo: ${demoObj.demoType} - ${demoObj.demoDescription}` : 'No demo'}
+        // Adjust section complexity based on duration
+        let sections = 'Hook, Problem, Solution, Call to Action';
+        let sectionGuidance = '';
         
-        Return a JSON object with:
-        - "script": The full pitch script as a string with clear sections (Hook, Problem, Solution, ${demoObj?.hasDemo ? 'Demo, ' : ''}Business Model, Call to Action)
-        - "demoActions": ${demoObj?.hasDemo ? `An array of 3-4 specific demo actions based on ${demoObj.demoType}` : 'null'}
-        Only return valid JSON, no markdown.`;
+        if (durationVal <= 0.5) {
+          sections = 'Hook + Problem, Solution, Call to Action';
+          sectionGuidance = 'Keep it extremely concise - this is an elevator pitch. Each section should be 1-2 sentences max.';
+        } else if (durationVal === 1) {
+          sections = 'Hook, Problem, Solution, Call to Action';
+          sectionGuidance = 'Keep sections brief but impactful. 2-3 sentences per section.';
+        } else if (durationVal <= 3) {
+          sections = `Hook, Problem, Solution, ${demoObj?.hasDemo ? 'Demo, ' : ''}Business Model, Call to Action`;
+          sectionGuidance = 'Standard pitch format with moderate detail. 3-5 sentences per section.';
+        } else if (durationVal <= 5) {
+          sections = `Hook, Problem (with examples), Solution (with features), ${demoObj?.hasDemo ? 'Demo, ' : ''}Market Opportunity, Business Model, Traction/Validation, Call to Action`;
+          sectionGuidance = 'Include more detail, examples, and data points. Build the narrative with supporting evidence.';
+        } else {
+          sections = `Hook, Problem (with multiple examples), Solution (detailed features), ${demoObj?.hasDemo ? 'Comprehensive Demo, ' : ''}Market Analysis, Competitive Advantage, Business Model (with pricing), Traction/Validation, Team (if relevant), Future Roadmap, Call to Action`;
+          sectionGuidance = 'Full presentation format. Include detailed explanations, multiple examples, data, and comprehensive coverage of each section. Tell a complete story.';
+        }
+        
+        userPrompt = `Create a ${durationVal}-minute pitch script for this startup.
+
+CRITICAL: The script MUST be approximately ${targetWordCount} words (between ${wordRange.min}-${wordRange.max} words) to fit a ${durationVal}-minute delivery at 150 words per minute speaking pace.
+
+Startup Details:
+- Idea: ${sanitizedIdea}
+- Problem: ${problemVal}
+- Target Audience: ${personaVal}
+- Elevator Pitch: ${pitchVal}
+- Business Models: ${businessModelsVal}
+${demoObj?.hasDemo ? `- Demo: ${demoObj.demoType} - ${demoObj.demoDescription}` : '- No demo included'}
+
+Required Sections: ${sections}
+Section Guidance: ${sectionGuidance}
+
+Return a JSON object with:
+- "script": The full pitch script as a string with clear section headers in [BRACKETS]. The script should flow naturally when read aloud.
+- "wordCount": The actual word count of the script (number)
+- "estimatedDuration": Estimated delivery time in minutes based on word count / 150 (number)
+- "demoActions": ${demoObj?.hasDemo ? `An array of 3-4 specific demo actions based on ${demoObj.demoType}` : 'null'}
+
+Only return valid JSON, no markdown.`;
         break;
 
       default:
