@@ -2,7 +2,7 @@
 
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ArrowUp, Clock, Share2, Twitter, Linkedin, Link2, Sparkles, Headphones, Pause, Play, Loader2, Volume2 } from 'lucide-react';
+import { ArrowLeft, ArrowUp, Clock, Share2, Twitter, Linkedin, Link2, Sparkles, Headphones, Pause, Play, Loader2, Volume2, VolumeX, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LazyImage } from '@/components/ui/lazy-image';
@@ -59,6 +59,10 @@ const BlogArticle = () => {
   const [audioDuration, setAudioDuration] = useState(0);
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
+  const [showMiniPlayer, setShowMiniPlayer] = useState(false);
+  const audioPlayerRef = useRef<HTMLDivElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   
   const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2];
@@ -69,7 +73,7 @@ const BlogArticle = () => {
     return calculateReadingTime(post.content);
   }, [post]);
 
-  // Scroll progress tracking
+  // Scroll progress tracking + mini player visibility
   useEffect(() => {
     const handleScroll = () => {
       const scrollTop = window.scrollY;
@@ -77,11 +81,17 @@ const BlogArticle = () => {
       const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
       setScrollProgress(Math.min(100, Math.max(0, progress)));
       setShowBackToTop(scrollTop > 400);
+      
+      // Show mini player when main player is scrolled out of view
+      if (audioPlayerRef.current && audioUrl) {
+        const rect = audioPlayerRef.current.getBoundingClientRect();
+        setShowMiniPlayer(rect.bottom < 0);
+      }
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [audioUrl]);
 
   // Clean up audio on unmount
   useEffect(() => {
@@ -154,6 +164,28 @@ const BlogArticle = () => {
     setPlaybackSpeed(speed);
     if (audioRef.current) {
       audioRef.current.playbackRate = speed;
+    }
+  };
+
+  const handleVolumeChange = (value: number[]) => {
+    const newVolume = value[0];
+    setVolume(newVolume);
+    setIsMuted(newVolume === 0);
+    if (audioRef.current) {
+      audioRef.current.volume = newVolume;
+    }
+  };
+
+  const toggleMute = () => {
+    if (audioRef.current) {
+      if (isMuted) {
+        audioRef.current.volume = volume || 0.5;
+        setIsMuted(false);
+        if (volume === 0) setVolume(0.5);
+      } else {
+        audioRef.current.volume = 0;
+        setIsMuted(true);
+      }
     }
   };
 
@@ -376,7 +408,7 @@ const BlogArticle = () => {
               </div>
 
               {/* Audio Player Section */}
-              <div className="mt-6 p-4 bg-muted/50 rounded-xl border border-border">
+              <div ref={audioPlayerRef} className="mt-6 p-4 bg-muted/50 rounded-xl border border-border">
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center gap-4">
                     <Button
@@ -434,7 +466,23 @@ const BlogArticle = () => {
                           ))}
                         </div>
                         
-                        <Volume2 className="w-4 h-4 text-muted-foreground" />
+                        {/* Volume Control */}
+                        <div className="flex items-center gap-2 ml-2">
+                          <button onClick={toggleMute} className="text-muted-foreground hover:text-foreground transition-colors">
+                            {isMuted || volume === 0 ? (
+                              <VolumeX className="w-4 h-4" />
+                            ) : (
+                              <Volume2 className="w-4 h-4" />
+                            )}
+                          </button>
+                          <Slider
+                            value={[isMuted ? 0 : volume]}
+                            max={1}
+                            step={0.05}
+                            onValueChange={handleVolumeChange}
+                            className="w-20"
+                          />
+                        </div>
                       </div>
                     )}
                     
@@ -619,7 +667,7 @@ const BlogArticle = () => {
 
       {/* Back to Top Button */}
       <AnimatePresence>
-        {showBackToTop && (
+        {showBackToTop && !showMiniPlayer && (
           <motion.button
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -630,6 +678,89 @@ const BlogArticle = () => {
           >
             <ArrowUp className="w-5 h-5" />
           </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Sticky Mini Audio Player */}
+      <AnimatePresence>
+        {showMiniPlayer && audioUrl && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-lg border-t border-border shadow-2xl"
+          >
+            {/* Progress bar at top of mini player */}
+            <div className="h-1 bg-muted w-full">
+              <div 
+                className="h-full bg-primary transition-all duration-100"
+                style={{ width: `${audioDuration ? (audioCurrentTime / audioDuration) * 100 : 0}%` }}
+              />
+            </div>
+            
+            <div className="container mx-auto max-w-6xl px-4 py-3">
+              <div className="flex items-center gap-4">
+                {/* Play/Pause */}
+                <button
+                  onClick={togglePlayPause}
+                  className="p-2 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                >
+                  {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                </button>
+                
+                {/* Article info */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{post?.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatTime(audioCurrentTime)} / {formatTime(audioDuration)}
+                  </p>
+                </div>
+                
+                {/* Seek slider (hidden on mobile) */}
+                <div className="hidden sm:flex items-center gap-2 flex-1 max-w-md">
+                  <Slider
+                    value={[audioCurrentTime]}
+                    max={audioDuration || 100}
+                    step={0.1}
+                    onValueChange={handleSeek}
+                    className="flex-1"
+                  />
+                </div>
+                
+                {/* Speed indicator */}
+                <button
+                  onClick={() => cycleSpeed(1)}
+                  className="hidden md:flex px-2 py-1 text-xs bg-muted rounded-md hover:bg-muted/80 transition-colors"
+                >
+                  {playbackSpeed}x
+                </button>
+                
+                {/* Volume (hidden on mobile) */}
+                <div className="hidden md:flex items-center gap-2">
+                  <button onClick={toggleMute} className="text-muted-foreground hover:text-foreground transition-colors">
+                    {isMuted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                  </button>
+                  <Slider
+                    value={[isMuted ? 0 : volume]}
+                    max={1}
+                    step={0.05}
+                    onValueChange={handleVolumeChange}
+                    className="w-16"
+                  />
+                </div>
+                
+                {/* Back to top from mini player */}
+                <button
+                  onClick={scrollToTop}
+                  className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+                  title="Back to top"
+                >
+                  <ArrowUp className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
