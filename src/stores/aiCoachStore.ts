@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import type { GPTAnalysisResponse, ContentCoverage } from '@/services/openai';
 import type { FrameData } from '@/services/mediapipe';
+import type { TrackType } from '@/lib/tracks';
 export type { FrameData };
 
 export type CoachView = 'setup' | 'recording' | 'processing' | 'results';
@@ -71,6 +72,10 @@ interface AICoachState {
   currentView: CoachView;
   setCurrentView: (view: CoachView) => void;
 
+  // Pitch track type (investor, hackathon, etc.)
+  pitchTrack: TrackType | null;
+  setPitchTrack: (track: TrackType | null) => void;
+
   // Script blocks for teleprompter
   scriptBlocks: ScriptBlock[];
   setScriptBlocks: (blocks: ScriptBlock[]) => void;
@@ -135,6 +140,7 @@ export const generateBulletPointsFromScript = (scriptBlocks: ScriptBlock[]): str
 export const useAICoachStore = create<AICoachState>((set) => ({
   // Initial state
   currentView: 'setup',
+  pitchTrack: null,
   scriptBlocks: [],
   bulletPoints: [],
   promptMode: 'teleprompter',
@@ -151,6 +157,7 @@ export const useAICoachStore = create<AICoachState>((set) => ({
 
   // Actions
   setCurrentView: (view) => set({ currentView: view }),
+  setPitchTrack: (track) => set({ pitchTrack: track }),
   setScriptBlocks: (blocks) => set({ scriptBlocks: blocks }),
   setBulletPoints: (points) => set({ bulletPoints: points }),
   setPromptMode: (mode) => set({ promptMode: mode }),

@@ -237,16 +237,34 @@ export const useSurvey = ({
       });
       
       // Track survey completion
-      trackEvent('survey_answered', {
-        survey_id: survey.id,
-        answers: state.answers,
-        nps_score: npsScore,
-        friction_tags: frictionTags,
-        goal_type: goalType,
-        device_type: getDeviceType(),
-        trigger,
+      const eventData = {
+        event: 'survey_answered',
+        properties: {
+          survey_id: survey.id,
+          answers: state.answers,
+          nps_score: npsScore,
+          friction_tags: frictionTags,
+          goal_type: goalType,
+          device_type: getDeviceType(),
+          trigger,
+          timestamp: new Date().toISOString(),
+        },
         timestamp: new Date().toISOString(),
-      });
+      };
+      
+      trackEvent('survey_answered', eventData.properties);
+      
+      // Store event locally for analytics dashboard
+      try {
+        const storedEvents = localStorage.getItem('posthog_survey_events');
+        const events = storedEvents ? JSON.parse(storedEvents) : [];
+        events.push(eventData);
+        // Keep last 100 events
+        const trimmedEvents = events.slice(-100);
+        localStorage.setItem('posthog_survey_events', JSON.stringify(trimmedEvents));
+      } catch (e) {
+        console.warn('Failed to store survey event locally');
+      }
       
       // Save to history
       const history = getSurveyHistory();

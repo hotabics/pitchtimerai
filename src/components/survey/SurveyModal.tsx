@@ -118,11 +118,11 @@ export const SurveyModal = ({ isOpen, surveyType, trigger, onClose }: SurveyModa
             className={cn(
               "fixed z-50 bg-background rounded-2xl shadow-2xl",
               "flex flex-col overflow-hidden",
-              // Mobile: full screen
-              "inset-4 md:inset-auto",
-              // Desktop: centered modal
-              "md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2",
-              "md:w-full md:max-w-[560px] md:max-h-[90vh]"
+              // Mobile: nearly full screen with padding
+              "inset-4",
+              // Desktop: centered modal with fixed positioning
+              "md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2",
+              "md:w-full md:max-w-[560px] md:min-h-[400px] md:max-h-[85vh]"
             )}
           >
             {/* Header */}

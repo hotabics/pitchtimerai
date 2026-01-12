@@ -189,6 +189,10 @@ const Index = () => {
       if (scriptBlocks && scriptBlocks.length > 0) {
         store.setScriptBlocks(scriptBlocks);
       }
+      // Pass the current track type to the store
+      if (data.track) {
+        store.setPitchTrack(data.track);
+      }
     });
     setShowAICoach(true);
   };
