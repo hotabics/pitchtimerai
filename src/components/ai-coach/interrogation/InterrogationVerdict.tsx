@@ -4,7 +4,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Zap, Brain, Trophy, ArrowRight, RotateCcw, ChevronRight, ChevronDown, MessageSquare, CheckCircle2, XCircle } from 'lucide-react';
+import { Shield, Zap, Brain, Trophy, ArrowRight, RotateCcw, ChevronRight, ChevronDown, MessageSquare, CheckCircle2, XCircle, Download, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { type JurorType, JURORS } from './JurorSelection';
@@ -64,6 +64,7 @@ interface InterrogationVerdictProps {
   juror: JurorType;
   onRetry: () => void;
   onBack: () => void;
+  onExportPDF?: () => void;
 }
 
 const STATUS_COLORS: Record<VerdictData['status'], { bg: string; text: string; glow: string }> = {
@@ -91,7 +92,7 @@ const CATEGORY_DESCRIPTIONS = {
   coldBloodedness: 'Confidence and composure under pressure',
 };
 
-export const InterrogationVerdict = ({ data, juror, onRetry, onBack }: InterrogationVerdictProps) => {
+export const InterrogationVerdict = ({ data, juror, onRetry, onBack, onExportPDF }: InterrogationVerdictProps) => {
   const jurorConfig = JURORS.find(j => j.id === juror)!;
   const statusStyle = STATUS_COLORS[data.status];
   const [expandedResponse, setExpandedResponse] = useState<number | null>(null);
@@ -433,6 +434,16 @@ export const InterrogationVerdict = ({ data, juror, onRetry, onBack }: Interroga
         transition={{ delay: 1.2 }}
         className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-6"
       >
+        {onExportPDF && (
+          <Button
+            onClick={onExportPDF}
+            variant="outline"
+            className="border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export PDF
+          </Button>
+        )}
         <Button
           onClick={onRetry}
           variant="outline"
@@ -440,6 +451,14 @@ export const InterrogationVerdict = ({ data, juror, onRetry, onBack }: Interroga
         >
           <RotateCcw className="w-4 h-4 mr-2" />
           Try Again
+        </Button>
+        <Button
+          onClick={() => window.location.href = '/interrogation-history'}
+          variant="outline"
+          className="border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white"
+        >
+          <History className="w-4 h-4 mr-2" />
+          View History
         </Button>
         <Button
           onClick={onBack}

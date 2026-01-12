@@ -30,6 +30,7 @@ const Profile = lazy(() => import("./pages/Profile"));
 const Auth = lazy(() => import("./pages/Auth"));
 const MobileRecord = lazy(() => import("./pages/MobileRecord"));
 const AICoachPage = lazy(() => import("./components/ai-coach/AICoachPage").then(m => ({ default: m.AICoachPage })));
+const InterrogationHistory = lazy(() => import("./pages/InterrogationHistory"));
 
 const queryClient = new QueryClient();
 
@@ -61,6 +62,7 @@ const App = () => (
                 <Route path="/admin/feedback" element={<FeedbackAnalytics />} />
                 <Route path="/ai-coach" element={<AICoachPage />} />
                 <Route path="/mobile-record/:sessionId" element={<MobileRecord />} />
+                <Route path="/interrogation-history" element={<InterrogationHistory />} />
                 <Route path="/shared/:id" element={<SharedScript />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/blog" element={<Blog />} />
