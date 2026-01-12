@@ -124,6 +124,54 @@ export type Database = {
         }
         Relationships: []
       }
+      interrogation_sessions: {
+        Row: {
+          ammunition_score: number
+          choreography_score: number
+          cold_bloodedness_score: number
+          created_at: string
+          dossier_data: Json | null
+          id: string
+          juror_type: string
+          overall_score: number
+          questions: Json
+          responses: Json
+          status: string
+          user_id: string | null
+          verdict_data: Json
+        }
+        Insert: {
+          ammunition_score: number
+          choreography_score: number
+          cold_bloodedness_score: number
+          created_at?: string
+          dossier_data?: Json | null
+          id?: string
+          juror_type: string
+          overall_score: number
+          questions: Json
+          responses: Json
+          status: string
+          user_id?: string | null
+          verdict_data: Json
+        }
+        Update: {
+          ammunition_score?: number
+          choreography_score?: number
+          cold_bloodedness_score?: number
+          created_at?: string
+          dossier_data?: Json | null
+          id?: string
+          juror_type?: string
+          overall_score?: number
+          questions?: Json
+          responses?: Json
+          status?: string
+          user_id?: string | null
+          verdict_data?: Json
+        }
+        Relationships: []
+      }
       pitch_challenges: {
         Row: {
           created_at: string

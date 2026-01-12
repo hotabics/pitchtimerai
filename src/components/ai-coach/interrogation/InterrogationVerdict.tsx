@@ -1,11 +1,29 @@
 // Phase 3: The Verdict (Feedback Dashboard)
 // Summary screen with Choreography, Ammunition, Cold-Bloodedness scores
+// Includes Review My Answers section showing question-response pairs
 
-import { motion } from 'framer-motion';
-import { Shield, Zap, Brain, Trophy, ArrowRight, RotateCcw, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Shield, Zap, Brain, Trophy, ArrowRight, RotateCcw, ChevronRight, ChevronDown, MessageSquare, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { type JurorType, JURORS } from './JurorSelection';
+
+export interface ResponseRecord {
+  question: string;
+  category: string;
+  intensity: 'low' | 'medium' | 'high';
+  response: string;
+  analysis: {
+    relevance: number;
+    clarity: number;
+    confidence: number;
+    depth: number;
+    feedback: string;
+    fillerCount: number;
+    wordCount: number;
+  };
+}
 
 export interface VerdictData {
   choreography: {
@@ -38,6 +56,7 @@ export interface VerdictData {
     title: string;
     description: string;
   }>;
+  responses?: ResponseRecord[];
 }
 
 interface InterrogationVerdictProps {
@@ -75,6 +94,8 @@ const CATEGORY_DESCRIPTIONS = {
 export const InterrogationVerdict = ({ data, juror, onRetry, onBack }: InterrogationVerdictProps) => {
   const jurorConfig = JURORS.find(j => j.id === juror)!;
   const statusStyle = STATUS_COLORS[data.status];
+  const [expandedResponse, setExpandedResponse] = useState<number | null>(null);
+  const [showResponses, setShowResponses] = useState(false);
 
   const categories = [
     { key: 'choreography' as const, ...data.choreography },
@@ -86,6 +107,10 @@ export const InterrogationVerdict = ({ data, juror, onRetry, onBack }: Interroga
     if (score >= 80) return '#10B981';
     if (score >= 60) return '#FFD700';
     return '#8B0000';
+  };
+
+  const getAverageScore = (analysis: ResponseRecord['analysis']) => {
+    return Math.round((analysis.relevance + analysis.clarity + analysis.confidence + analysis.depth) / 4);
   };
 
   return (
@@ -230,6 +255,141 @@ export const InterrogationVerdict = ({ data, juror, onRetry, onBack }: Interroga
           );
         })}
       </div>
+
+      {/* Review My Answers Section */}
+      {data.responses && data.responses.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+          className="space-y-4"
+        >
+          <button
+            onClick={() => setShowResponses(!showResponses)}
+            className="w-full flex items-center justify-between text-xl font-bold text-[#FFD700] uppercase tracking-wider hover:text-[#FFD700]/80 transition-colors"
+          >
+            <span className="flex items-center gap-2">
+              <MessageSquare className="w-5 h-5" />
+              Review My Answers ({data.responses.length})
+            </span>
+            <ChevronDown className={`w-5 h-5 transition-transform ${showResponses ? 'rotate-180' : ''}`} />
+          </button>
+
+          <AnimatePresence>
+            {showResponses && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="space-y-4 overflow-hidden"
+              >
+                {data.responses.map((record, index) => {
+                  const avgScore = getAverageScore(record.analysis);
+                  const isExpanded = expandedResponse === index;
+                  
+                  return (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="relative rounded-xl border border-gray-800 bg-gray-900/50 overflow-hidden"
+                    >
+                      {/* Question Header */}
+                      <button
+                        onClick={() => setExpandedResponse(isExpanded ? null : index)}
+                        className="w-full p-4 flex items-start justify-between text-left hover:bg-gray-800/30 transition-colors"
+                      >
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 text-xs rounded-full uppercase tracking-wider ${
+                              record.intensity === 'high' 
+                                ? 'bg-[#8B0000]/30 text-red-400 border border-[#8B0000]/50'
+                                : record.intensity === 'medium'
+                                  ? 'bg-[#FFD700]/20 text-[#FFD700] border border-[#FFD700]/30'
+                                  : 'bg-gray-800 text-gray-400 border border-gray-700'
+                            }`}>
+                              Q{index + 1}: {record.category}
+                            </span>
+                            <span className={`flex items-center gap-1 text-xs ${
+                              avgScore >= 70 ? 'text-green-400' : avgScore >= 50 ? 'text-yellow-400' : 'text-red-400'
+                            }`}>
+                              {avgScore >= 70 ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                              {avgScore}%
+                            </span>
+                          </div>
+                          <p className="text-white font-medium">{record.question}</p>
+                        </div>
+                        <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform flex-shrink-0 ml-4 ${isExpanded ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      {/* Expanded Details */}
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0 }}
+                            animate={{ height: 'auto' }}
+                            exit={{ height: 0 }}
+                            className="overflow-hidden border-t border-gray-800"
+                          >
+                            <div className="p-4 space-y-4">
+                              {/* Your Response */}
+                              <div>
+                                <h5 className="text-xs text-gray-500 uppercase tracking-wider mb-2">Your Response</h5>
+                                <p className="text-gray-300 text-sm bg-gray-800/50 p-3 rounded-lg italic">
+                                  "{record.response}"
+                                </p>
+                                <p className="text-xs text-gray-600 mt-1">
+                                  {record.analysis.wordCount} words • {record.analysis.fillerCount} filler words
+                                </p>
+                              </div>
+
+                              {/* Score Breakdown */}
+                              <div className="grid grid-cols-2 gap-3">
+                                {[
+                                  { label: 'Relevance', value: record.analysis.relevance },
+                                  { label: 'Clarity', value: record.analysis.clarity },
+                                  { label: 'Confidence', value: record.analysis.confidence },
+                                  { label: 'Depth', value: record.analysis.depth },
+                                ].map(metric => (
+                                  <div key={metric.label} className="space-y-1">
+                                    <div className="flex justify-between text-xs">
+                                      <span className="text-gray-400">{metric.label}</span>
+                                      <span style={{ color: getScoreColor(metric.value) }}>{metric.value}%</span>
+                                    </div>
+                                    <div className="h-1 bg-gray-800 rounded-full overflow-hidden">
+                                      <div 
+                                        className="h-full rounded-full transition-all" 
+                                        style={{ 
+                                          width: `${metric.value}%`,
+                                          backgroundColor: getScoreColor(metric.value)
+                                        }} 
+                                      />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+
+                              {/* AI Feedback */}
+                              {record.analysis.feedback && (
+                                <div className="p-3 rounded-lg bg-[#FFD700]/10 border border-[#FFD700]/20">
+                                  <p className="text-sm text-[#FFD700]">
+                                    💡 {record.analysis.feedback}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+                  );
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+      )}
 
       {/* AI Pro-Tips */}
       <motion.div
