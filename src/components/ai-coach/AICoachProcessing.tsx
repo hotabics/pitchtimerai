@@ -20,6 +20,7 @@ import { uploadRecording, generateThumbnail } from '@/services/videoStorage';
 import { trackEvent } from '@/utils/analytics';
 import { toast } from 'sonner';
 import { formatFileSize } from '@/services/videoCompression';
+import { LiveTranscriptionDisplay } from './LiveTranscriptionDisplay';
 
 // Helper to format bytes
 const formatBytes = (bytes: number): string => formatFileSize(bytes);
@@ -59,6 +60,8 @@ export const AICoachProcessing = ({
   const [uploadStage, setUploadStage] = useState<UploadStage | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [compressionStats, setCompressionStats] = useState<{ original: number; compressed: number } | null>(null);
+  const [liveTranscript, setLiveTranscript] = useState('');
+  const [isTranscriptionComplete, setIsTranscriptionComplete] = useState(false);
 
   const { setResults, setError, promptMode, bulletPoints } = useAICoachStore();
 
@@ -85,6 +88,8 @@ export const AICoachProcessing = ({
         console.log('Transcribing audio with ElevenLabs...');
         const result = await transcribeWithElevenLabs(audioBlob);
         transcript = result.text;
+        setLiveTranscript(transcript);
+        setIsTranscriptionComplete(true);
         console.log('Transcription complete:', transcript.substring(0, 100) + '...');
       } catch (err) {
         console.error('ElevenLabs transcription error:', err);
@@ -92,6 +97,8 @@ export const AICoachProcessing = ({
         toast.warning('Using demo transcription - check ElevenLabs API key');
         await new Promise(resolve => setTimeout(resolve, 1500));
         transcript = getMockTranscript();
+        setLiveTranscript(transcript);
+        setIsTranscriptionComplete(true);
       }
 
       setCompletedSteps(prev => [...prev, 'transcribing']);
@@ -259,10 +266,25 @@ We're looking to expand this to universities and accelerator programs. Thanks fo
       </div>
 
       {/* Progress bar */}
-      <div className="mb-8">
+      <div className="mb-6">
         <Progress value={progress} className="h-2" />
         <p className="text-center text-sm text-muted-foreground mt-2">{progress}%</p>
       </div>
+
+      {/* Live Transcription Display - show during transcribing step */}
+      {(currentStep === 'transcribing' || liveTranscript) && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          className="mb-6"
+        >
+          <LiveTranscriptionDisplay
+            transcript={liveTranscript}
+            isComplete={isTranscriptionComplete}
+          />
+        </motion.div>
+      )}
 
       {/* Steps */}
       <div className="space-y-4">
