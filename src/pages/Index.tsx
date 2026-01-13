@@ -135,6 +135,7 @@ interface PitchData {
   customScript?: string;
   structuredScript?: StructuredScript;
   hookStyle?: 'auto' | 'statistic' | 'villain' | 'story' | 'contrarian' | 'question';
+  duration?: number;
 }
 
 const Index = () => {
@@ -243,6 +244,7 @@ const Index = () => {
       audienceLabel: autoPitch.audienceLabel,
       trackData: autoPitch.trackData,
       entryMode: "generate",
+      duration: pendingDuration, // Pass the user-selected duration to Dashboard
     });
     
     setShowAutoGenerateOverlay(false);
@@ -444,7 +446,7 @@ const Index = () => {
           <Dashboard
             data={{
               idea: data.idea || "My Pitch",
-              duration: 3,
+              duration: data.duration || 3,
               track: 'hackathon-no-demo', // Default track for custom scripts
               trackData: {},
               audienceLabel: "Custom Script",
@@ -470,11 +472,12 @@ const Index = () => {
         <Dashboard
           data={{
             idea: data.idea || "",
-            duration: 3,
+            duration: data.duration || 3,
             track: data.track || 'hackathon-no-demo',
             trackData: td as Record<string, unknown>,
             audienceLabel: data.audienceLabel,
             entryMode: "generate",
+            hookStyle: data.hookStyle,
           }}
           onEditInputs={handleEditInputs}
         />
