@@ -35,6 +35,7 @@ import { useUserStore } from "@/stores/userStore";
 import { ScriptVersionHistory, ScriptVersion } from "./dashboard/ScriptVersionHistory";
 import { openPrintView } from "./dashboard/PrintView";
 import { HookRegenerator, HookStyleBadge } from "./dashboard/HookRegenerator";
+import { DurationSelector } from "./dashboard/DurationSelector";
 
 interface SpeechBlock {
   timeStart: string;
@@ -143,6 +144,7 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
     hookStyle?: string;
   } | null>(null);
   const [viewMode, setViewMode] = useState<"blocks" | "full" | "bullets">("blocks");
+  const [currentDuration, setCurrentDuration] = useState(data.duration);
   
   // Practice mode state
   const [blockProgress, setBlockProgress] = useState(0);
@@ -551,8 +553,9 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
     }
   }, []);
 
-  const generateSpeech = async (modifier?: string) => {
+  const generateSpeech = async (modifier?: string, overrideDuration?: number) => {
     setIsLoading(true);
+    const durationToUse = overrideDuration ?? currentDuration;
     try {
       const inputs: Record<string, unknown> = {
         idea: data.idea,
@@ -566,7 +569,7 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
       const { data: result, error } = await supabase.functions.invoke('generate-speech', {
         body: {
           track: data.track,
-          duration: data.duration,
+          duration: durationToUse,
           inputs,
           hasDemo: false,
           hookStyle: data.hookStyle || 'auto',
@@ -589,7 +592,8 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
       // Track successful script generation
       trackEvent('Script: Generated', { 
         track: data.track, 
-        timeSaved: data.duration * 50 // Estimated time saved based on formula
+        duration: durationToUse,
+        timeSaved: durationToUse * 50 // Estimated time saved based on formula
       });
     } catch (err) {
       console.error('Failed to generate speech:', err);
@@ -647,6 +651,37 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
     });
   };
 
+  // Handle duration change - regenerate with new duration
+  const handleDurationChange = async (newDuration: number) => {
+    if (newDuration === currentDuration) return;
+    
+    setCurrentDuration(newDuration);
+    setIsRegenerating(true);
+    
+    const durationLabel = newDuration < 1 
+      ? `${newDuration * 60}s` 
+      : `${newDuration} min`;
+    
+    toast({
+      title: "Regenerating...",
+      description: `Adjusting script for ${durationLabel} (~${Math.round(newDuration * 130)} words)`,
+    });
+    
+    await generateSpeech(undefined, newDuration);
+    setIsRegenerating(false);
+    handleRestart();
+    
+    trackEvent('Script: Duration Changed', { 
+      fromDuration: currentDuration,
+      toDuration: newDuration 
+    });
+    
+    toast({
+      title: "Duration Updated!",
+      description: `Script regenerated for ${durationLabel}`,
+    });
+  };
+
   const handleExportPDF = () => {
     const { canExportWithoutWatermark } = useUserStore.getState();
     const showWatermark = !canExportWithoutWatermark();
@@ -670,7 +705,7 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
     
     pdf.setFontSize(12);
     pdf.setTextColor(100);
-    pdf.text(`${trackConfig?.name || "Presentation"} • ${data.duration} min`, pageWidth / 2, yPosition + 50, { align: "center" });
+    pdf.text(`${trackConfig?.name || "Presentation"} • ${currentDuration} min`, pageWidth / 2, yPosition + 50, { align: "center" });
     if (data.audienceLabel) {
       pdf.text(`Audience: ${data.audienceLabel}`, pageWidth / 2, yPosition + 60, { align: "center" });
     }
@@ -955,7 +990,7 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
           />
           <p className="text-lg font-medium text-foreground">Generating your speech...</p>
           <p className="text-sm text-muted-foreground">
-            Target: {data.duration} min × 130 wpm = ~{data.duration * 130} words
+            Target: {currentDuration} min × 130 wpm = ~{Math.round(currentDuration * 130)} words
           </p>
         </motion.div>
       </div>
@@ -979,15 +1014,15 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
             )}>
               {trackConfig?.name || "Speech"}
             </span>
-            <span className="text-xs text-muted-foreground flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              {data.duration} min
-            </span>
-            {meta && (
-              <span className="text-xs text-muted-foreground">
-                • {meta.actualWordCount} words
-              </span>
-            )}
+            
+            {/* Duration Selector */}
+            <DurationSelector
+              currentDuration={currentDuration}
+              actualWordCount={meta?.actualWordCount}
+              onDurationChange={handleDurationChange}
+              isRegenerating={isRegenerating}
+            />
+            
             {meta?.hookStyle && (
               <HookStyleBadge style={meta.hookStyle} />
             )}
