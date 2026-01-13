@@ -11,11 +11,29 @@ const techStack = [
     )
   },
   { 
+    name: "ElevenLabs", 
+    description: "Voice AI & TTS",
+    logo: (
+      <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor">
+        <path d="M7 4h3v16H7V4zm7 0h3v16h-3V4z"/>
+      </svg>
+    )
+  },
+  { 
     name: "MediaPipe", 
     description: "Face Mesh AI",
     logo: (
       <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor">
         <path d="M12 0C5.372 0 0 5.373 0 12s5.372 12 12 12 12-5.373 12-12S18.628 0 12 0zm-.001 4.5a3 3 0 110 6 3 3 0 010-6zm0 15a8.949 8.949 0 01-6.364-2.636.75.75 0 011.06-1.061A7.448 7.448 0 0012 18a7.448 7.448 0 005.303-2.197.75.75 0 011.061 1.06A8.949 8.949 0 0111.999 19.5z"/>
+      </svg>
+    )
+  },
+  { 
+    name: "Supabase", 
+    description: "Backend & Auth",
+    logo: (
+      <svg viewBox="0 0 24 24" className="w-6 h-6" fill="currentColor">
+        <path d="M11.9 1.036c-.015-.986-1.26-1.41-1.874-.637L.764 12.05C-.33 13.427.65 15.455 2.409 15.455h9.579v7.509c0 .986 1.255 1.403 1.869.63l9.262-11.653c1.093-1.375.114-3.403-1.645-3.403h-9.583V1.036h.001z"/>
       </svg>
     )
   },
