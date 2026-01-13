@@ -325,18 +325,40 @@ const BlogArticle = () => {
     window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${url}`, '_blank');
   };
 
-  // Get related posts (same category, excluding current)
-  const relatedPosts = BLOG_POSTS.filter(p => p.category === post.category && p.id !== post.id).slice(0, 2);
+  // Get related posts (same category, excluding current, with limit of 3)
+  const relatedPosts = BLOG_POSTS.filter(p => p.category === post.category && p.id !== post.id).slice(0, 3);
+
+  // Calculate estimated time remaining
+  const timeRemaining = Math.max(0, Math.round(readingStats.minutes * (1 - scrollProgress / 100)));
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Reading Progress Bar */}
-      <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-muted">
-        <motion.div 
-          className="h-full bg-primary"
-          style={{ width: `${scrollProgress}%` }}
-          transition={{ duration: 0.1 }}
-        />
+      {/* Reading Progress Bar with Time Indicator */}
+      <div className="fixed top-0 left-0 right-0 z-50">
+        <div className="h-1 bg-muted">
+          <motion.div 
+            className="h-full bg-gradient-to-r from-primary via-primary to-primary/80"
+            style={{ width: `${scrollProgress}%` }}
+            transition={{ duration: 0.1 }}
+          />
+        </div>
+        {/* Reading time indicator - shows after 10% scroll */}
+        <AnimatePresence>
+          {scrollProgress > 10 && scrollProgress < 95 && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="absolute right-4 top-2 bg-card/90 backdrop-blur-sm border border-border rounded-full px-3 py-1 shadow-sm"
+            >
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Clock className="w-3 h-3" />
+                <span>{timeRemaining} min left</span>
+                <span className="text-primary font-medium">{Math.round(scrollProgress)}%</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Hero Image */}
@@ -672,36 +694,63 @@ const BlogArticle = () => {
           </div>
         </motion.section>
 
-        {/* Related Articles */}
+        {/* Related Articles - Enhanced */}
         {relatedPosts.length > 0 && (
           <section className="mb-12">
-            <h2 className="text-2xl font-bold mb-6">Related Articles</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {relatedPosts.map((relatedPost) => (
-                <Link 
-                  key={relatedPost.id} 
-                  to={`/blog/${relatedPost.id}`}
-                  className="group"
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold">Related Articles</h2>
+              <Link to="/blog" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                View all articles →
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {relatedPosts.map((relatedPost, index) => (
+                <motion.div
+                  key={relatedPost.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
                 >
-                  <div className="bg-card border border-border rounded-xl overflow-hidden flex transition-all duration-300 hover:shadow-lg hover:border-primary/30">
-                    <div className="w-32 h-32 flex-shrink-0">
-                      <LazyImage
-                        src={relatedPost.image}
-                        alt={relatedPost.title}
-                        aspectRatio="1/1"
-                        containerClassName="h-full"
-                      />
+                  <Link 
+                    to={`/blog/${relatedPost.id}`}
+                    className="group block h-full"
+                  >
+                    <div className="bg-card border border-border rounded-xl overflow-hidden h-full flex flex-col transition-all duration-300 hover:shadow-lg hover:border-primary/30 hover:-translate-y-1">
+                      <div className="aspect-video relative overflow-hidden">
+                        <LazyImage
+                          src={relatedPost.image}
+                          alt={relatedPost.title}
+                          aspectRatio="16/9"
+                          containerClassName="h-full"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                      <div className="p-4 flex flex-col flex-1">
+                        <Badge className={cn('mb-2 w-fit border text-xs', CATEGORY_COLORS[relatedPost.category])}>
+                          {relatedPost.category}
+                        </Badge>
+                        <h3 className="font-semibold group-hover:text-primary transition-colors line-clamp-2 mb-2">
+                          {relatedPost.title}
+                        </h3>
+                        <p className="text-sm text-muted-foreground line-clamp-2 flex-1">
+                          {relatedPost.excerpt}
+                        </p>
+                        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
+                          <img
+                            src={relatedPost.author.avatar}
+                            alt={relatedPost.author.name}
+                            className="w-6 h-6 rounded-full"
+                          />
+                          <span className="text-xs text-muted-foreground">{relatedPost.author.name}</span>
+                          <span className="text-xs text-muted-foreground ml-auto flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {relatedPost.readTime}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="p-4 flex flex-col justify-center">
-                      <Badge className={cn('mb-2 w-fit border text-xs', CATEGORY_COLORS[relatedPost.category])}>
-                        {relatedPost.category}
-                      </Badge>
-                      <h3 className="font-semibold group-hover:text-primary transition-colors line-clamp-2">
-                        {relatedPost.title}
-                      </h3>
-                    </div>
-                  </div>
-                </Link>
+                  </Link>
+                </motion.div>
               ))}
             </div>
           </section>

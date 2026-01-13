@@ -145,6 +145,7 @@ const Index = () => {
   const [autoGenerateInput, setAutoGenerateInput] = useState("");
   const [autoGenerateIsUrl, setAutoGenerateIsUrl] = useState(false);
   const [pendingAutoData, setPendingAutoData] = useState<ScrapedProjectData | undefined>(undefined);
+  const [pendingDuration, setPendingDuration] = useState<number>(3); // Default 3 minutes
   
   const [data, setData] = useState<Partial<PitchData>>({ entryMode: "generate" });
   const [trackStep, setTrackStep] = useState(0);
@@ -223,16 +224,17 @@ const Index = () => {
   };
 
   // Auto-generate: Skip wizard entirely
-  const handleAutoGenerate = (idea: string, scrapedData?: ScrapedProjectData) => {
+  const handleAutoGenerate = (idea: string, scrapedData?: ScrapedProjectData, durationMinutes?: number) => {
     setAutoGenerateInput(idea);
     setAutoGenerateIsUrl(isUrl(idea) || !!scrapedData);
     setPendingAutoData(scrapedData);
+    setPendingDuration(durationMinutes || 3);
     setShowAutoGenerateOverlay(true);
   };
 
   // Called when auto-generate overlay completes
   const handleAutoGenerateComplete = useCallback(() => {
-    const autoPitch = generateAutoPitch(autoGenerateInput, pendingAutoData);
+    const autoPitch = generateAutoPitch(autoGenerateInput, pendingAutoData, pendingDuration);
     
     setData({
       ...data,
@@ -246,11 +248,15 @@ const Index = () => {
     setShowAutoGenerateOverlay(false);
     setShowDashboard(true);
     
+    const durationLabel = pendingDuration < 1 
+      ? `${pendingDuration * 60}s` 
+      : `${pendingDuration}min`;
+    
     toast({
       title: "🎉 Pitch Auto-Generated!",
-      description: `${autoPitch.audienceLabel} pitch ready. Skipped the wizard!`,
+      description: `${autoPitch.audienceLabel} pitch ready (${durationLabel}, ~${autoPitch.estimatedWords} words)`,
     });
-  }, [autoGenerateInput, pendingAutoData, data]);
+  }, [autoGenerateInput, pendingAutoData, pendingDuration, data]);
 
   // Entry: Practice your own pitch
   const handlePracticeOwn = () => {
