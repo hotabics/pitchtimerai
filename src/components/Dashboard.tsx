@@ -145,7 +145,21 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
     hookStyle?: string;
   } | null>(null);
   const [viewMode, setViewMode] = useState<"blocks" | "full" | "bullets">("blocks");
-  const [currentDuration, setCurrentDuration] = useState(data.duration);
+  // Initialize from data.duration, fall back to localStorage, then 3 min default
+  const [currentDuration, setCurrentDuration] = useState(() => {
+    if (data.duration !== undefined && data.duration > 0) {
+      return data.duration;
+    }
+    // Fall back to stored duration preference
+    const stored = localStorage.getItem('pitchperfect_preferred_duration');
+    if (stored) {
+      const parsed = parseFloat(stored);
+      if (!isNaN(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+    return 3; // Default to 3 minutes
+  });
   
   // Practice mode state
   const [blockProgress, setBlockProgress] = useState(0);
