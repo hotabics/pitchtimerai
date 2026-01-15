@@ -9,6 +9,7 @@ import { WhatsNewModal } from "./components/WhatsNewModal";
 import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 import { SurveyTriggerProvider } from "./components/survey";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
 // Lazy load pages for code splitting - reduces initial CSS bundle
 const Index = lazy(() => import("./pages/Index"));
@@ -58,15 +59,10 @@ const App = () => (
             <main className="flex-1 pt-16">
               <Suspense fallback={<PageLoader />}>
                 <Routes>
+                  {/* Public routes */}
                   <Route path="/" element={<Index />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/pricing" element={<Pricing />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/admin/analytics" element={<AdminAnalytics />} />
-                  <Route path="/admin/feedback" element={<FeedbackAnalytics />} />
-                  <Route path="/ai-coach" element={<AICoachPage />} />
-                  <Route path="/mobile-record/:sessionId" element={<MobileRecord />} />
-                  <Route path="/interrogation-history" element={<InterrogationHistory />} />
                   <Route path="/shared/:id" element={<SharedScript />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/blog" element={<Blog />} />
@@ -77,9 +73,20 @@ const App = () => (
                   <Route path="/contact" element={<Contact />} />
                   <Route path="/cookies" element={<Cookies />} />
                   <Route path="/careers" element={<Careers />} />
-                  <Route path="/settings" element={<Settings />} />
                   <Route path="/survey" element={<Survey />} />
-                  <Route path="/admin/surveys" element={<SurveyAnalytics />} />
+                  
+                  {/* Protected routes - require authentication */}
+                  <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                  <Route path="/ai-coach" element={<ProtectedRoute><AICoachPage /></ProtectedRoute>} />
+                  <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                  <Route path="/interrogation-history" element={<ProtectedRoute><InterrogationHistory /></ProtectedRoute>} />
+                  <Route path="/mobile-record/:sessionId" element={<ProtectedRoute><MobileRecord /></ProtectedRoute>} />
+                  
+                  {/* Admin routes - protected */}
+                  <Route path="/admin/analytics" element={<ProtectedRoute><AdminAnalytics /></ProtectedRoute>} />
+                  <Route path="/admin/feedback" element={<ProtectedRoute><FeedbackAnalytics /></ProtectedRoute>} />
+                  <Route path="/admin/surveys" element={<ProtectedRoute><SurveyAnalytics /></ProtectedRoute>} />
+                  
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
