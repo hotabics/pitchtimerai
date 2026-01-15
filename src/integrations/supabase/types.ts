@@ -245,6 +245,7 @@ export type Database = {
           track: string
           transcription: string | null
           transcription_html: string | null
+          user_id: string | null
           video_url: string | null
           wpm: number
         }
@@ -275,6 +276,7 @@ export type Database = {
           track: string
           transcription?: string | null
           transcription_html?: string | null
+          user_id?: string | null
           video_url?: string | null
           wpm?: number
         }
@@ -305,6 +307,7 @@ export type Database = {
           track?: string
           transcription?: string | null
           transcription_html?: string | null
+          user_id?: string | null
           video_url?: string | null
           wpm?: number
         }

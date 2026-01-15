@@ -351,6 +351,9 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
   // Save session to database and return session ID
   const saveSession = useCallback(async (analysisResult: AnalysisResult, recordingSeconds: number): Promise<string | null> => {
     try {
+      // Get current user for ownership
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const { data, error } = await supabase.from('practice_sessions').insert({
         idea,
         track,
@@ -367,6 +370,8 @@ export const SpeechCoach = ({ speechBlocks, onBack, idea, track, duration }: Spe
         feedback: analysisResult.feedback,
         original_script: originalScript,
         session_group_id: sessionGroupId,
+        // Link to authenticated user for proper access control
+        user_id: user?.id || null,
       }).select('id').single();
 
       if (error) throw error;
