@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ScrapedProjectData } from "@/lib/api/firecrawl";
 import { generateAutoPitch, isUrl } from "@/services/mockScraper";
 import { trackEvent } from "@/utils/analytics";
+import { saveDuration, getStoredDuration } from "@/hooks/usePitchDuration";
 
 // Lazy load heavy components to reduce initial bundle
 const Dashboard = lazy(() => import("@/components/Dashboard").then(m => ({ default: m.Dashboard })));
@@ -146,12 +147,23 @@ const Index = () => {
   const [autoGenerateInput, setAutoGenerateInput] = useState("");
   const [autoGenerateIsUrl, setAutoGenerateIsUrl] = useState(false);
   const [pendingAutoData, setPendingAutoData] = useState<ScrapedProjectData | undefined>(undefined);
-  const [pendingDuration, setPendingDuration] = useState<number>(3); // Default 3 minutes
+  // Initialize from localStorage for persistence between sessions
+  const [pendingDuration, setPendingDuration] = useState<number>(() => getStoredDuration());
   
   const [data, setData] = useState<Partial<PitchData>>({ entryMode: "generate" });
   const [trackStep, setTrackStep] = useState(0);
   const [isStructuring, setIsStructuring] = useState(false);
 
+  // Handler for duration changes from sidebar - saves to localStorage
+  const handleDurationChangeFromSidebar = useCallback((newDuration: number) => {
+    setPendingDuration(newDuration);
+    saveDuration(newDuration);
+    setData(prev => ({ ...prev, duration: newDuration }));
+    toast({
+      title: "Duration Updated",
+      description: `Pitch length set to ${newDuration < 1 ? `${newDuration * 60}s` : `${newDuration} min`}`,
+    });
+  }, []);
 
   const currentTrack = data.track;
   const trackConfig = currentTrack ? trackConfigs[currentTrack] : null;
@@ -380,6 +392,8 @@ const Index = () => {
       projectName: data.idea,
       audienceLabel: data.audienceLabel,
       prepTime,
+      pitchDuration: data.duration || pendingDuration,
+      onDurationChange: handleDurationChangeFromSidebar,
     };
 
     if (!currentTrack || !data.trackData) return base;

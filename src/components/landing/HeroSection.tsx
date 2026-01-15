@@ -8,6 +8,7 @@ import { trackEvent } from "@/utils/analytics";
 import { FileUploadZone } from "./FileUploadZone";
 import { DocumentPreviewModal } from "./DocumentPreviewModal";
 import { RotatingSlogan } from "./RotatingSlogan";
+import { getStoredDuration, saveDuration, DURATION_PRESETS } from "@/hooks/usePitchDuration";
 
 const RECENT_IDEAS_KEY = "pitchperfect_recent_ideas";
 const MAX_RECENT_IDEAS = 3;
@@ -38,14 +39,12 @@ interface HeroSectionProps {
 
 const WORDS_PER_MINUTE = 150; // Average speaking pace
 
-const DURATION_OPTIONS = [
-  { value: 0.5, label: "30 sec", description: "Elevator pitch" },
-  { value: 1, label: "1 min", description: "Quick pitch" },
-  { value: 2, label: "2 min", description: "Standard" },
-  { value: 3, label: "3 min", description: "Hackathon" },
-  { value: 5, label: "5 min", description: "Detailed" },
-  { value: 10, label: "10 min", description: "Full presentation" },
-];
+// Use the shared presets but map to the expected format
+const DURATION_OPTIONS = DURATION_PRESETS.map(p => ({
+  value: p.value,
+  label: p.label,
+  description: p.description,
+}));
 
 const getEstimatedWords = (durationMinutes: number) => Math.round(durationMinutes * WORDS_PER_MINUTE);
 
@@ -60,7 +59,14 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
   const [extractedImages, setExtractedImages] = useState<string[]>([]);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [pendingFileData, setPendingFileData] = useState<ScrapedProjectData | null>(null);
-  const [selectedDuration, setSelectedDuration] = useState(3); // Default to 3 minutes (hackathon standard)
+  // Initialize from localStorage for persistence between sessions
+  const [selectedDuration, setSelectedDuration] = useState(() => getStoredDuration());
+
+  // Save duration to localStorage when it changes
+  const handleDurationChange = (duration: number) => {
+    setSelectedDuration(duration);
+    saveDuration(duration);
+  };
 
   const inputIsUrl = isUrl(projectInput);
   
@@ -446,7 +452,7 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
             {DURATION_OPTIONS.map((option) => (
               <button
                 key={option.value}
-                onClick={() => setSelectedDuration(option.value)}
+                onClick={() => handleDurationChange(option.value)}
                 className={`
                   relative px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200
                   ${selectedDuration === option.value
