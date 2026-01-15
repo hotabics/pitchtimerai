@@ -1,11 +1,12 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Globe, Users, MessageSquare, FileText, Check, Sparkles } from "lucide-react";
+import { Loader2, Globe, Users, MessageSquare, FileText, Check, Sparkles, Lightbulb, AlertCircle, Wrench, Heart } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface AutoGenerateOverlayProps {
   isVisible: boolean;
   isUrlMode: boolean;
   inputValue: string;
+  durationMinutes?: number;
   onComplete: () => void;
 }
 
@@ -14,27 +15,31 @@ interface Step {
   label: string;
   icon: React.ElementType;
   duration: number; // milliseconds
+  section?: string; // Optional section being created
 }
 
 const urlSteps: Step[] = [
-  { id: 'scan', label: 'Scanning Website...', icon: Globe, duration: 1500 },
-  { id: 'extract', label: 'Extracting Key Information...', icon: FileText, duration: 1200 },
-  { id: 'audience', label: 'Identifying Target Audience...', icon: Users, duration: 1000 },
-  { id: 'tone', label: 'Selecting Best Tone...', icon: MessageSquare, duration: 800 },
-  { id: 'draft', label: 'Drafting Script...', icon: FileText, duration: 1500 },
+  { id: 'scan', label: 'Scanning Website...', icon: Globe, duration: 1200 },
+  { id: 'extract', label: 'Extracting Key Information...', icon: FileText, duration: 1000 },
+  { id: 'hook', label: 'Crafting Your Hook...', icon: Sparkles, duration: 1200, section: 'Hook' },
+  { id: 'problem', label: 'Defining The Problem...', icon: AlertCircle, duration: 1000, section: 'Problem' },
+  { id: 'solution', label: 'Presenting Your Solution...', icon: Wrench, duration: 1200, section: 'Solution' },
+  { id: 'close', label: 'Writing The Close...', icon: Heart, duration: 800, section: 'Close' },
 ];
 
 const textSteps: Step[] = [
-  { id: 'analyze', label: 'Analyzing Your Idea...', icon: Sparkles, duration: 1200 },
-  { id: 'audience', label: 'Identifying Target Audience...', icon: Users, duration: 1000 },
-  { id: 'tone', label: 'Selecting Best Tone...', icon: MessageSquare, duration: 800 },
-  { id: 'draft', label: 'Drafting Script...', icon: FileText, duration: 1500 },
+  { id: 'analyze', label: 'Analyzing Your Idea...', icon: Lightbulb, duration: 1000 },
+  { id: 'hook', label: 'Crafting Your Hook...', icon: Sparkles, duration: 1200, section: 'Hook' },
+  { id: 'problem', label: 'Defining The Problem...', icon: AlertCircle, duration: 1000, section: 'Problem' },
+  { id: 'solution', label: 'Presenting Your Solution...', icon: Wrench, duration: 1200, section: 'Solution' },
+  { id: 'close', label: 'Writing The Close...', icon: Heart, duration: 800, section: 'Close' },
 ];
 
 export const AutoGenerateOverlay = ({ 
   isVisible, 
   isUrlMode, 
   inputValue,
+  durationMinutes = 3,
   onComplete 
 }: AutoGenerateOverlayProps) => {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -91,14 +96,46 @@ export const AutoGenerateOverlay = ({
               <h2 className="text-2xl font-bold text-foreground mb-2">
                 Auto-Generating Your Pitch
               </h2>
-              <p className="text-muted-foreground text-sm max-w-xs mx-auto">
+              <p className="text-muted-foreground text-sm max-w-xs mx-auto mb-3">
                 {isUrlMode ? (
                   <>Extracting insights from <span className="text-primary font-medium break-all">{inputValue}</span></>
                 ) : (
-                  <>Creating the perfect pitch for <span className="text-primary font-medium">"{inputValue}"</span></>
+                  <>Creating the perfect pitch for <span className="text-primary font-medium">"{inputValue.slice(0, 50)}{inputValue.length > 50 ? '...' : ''}"</span></>
                 )}
               </p>
+              
+              {/* Duration badge */}
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium">
+                <span>⏱️</span>
+                <span>{durationMinutes < 1 ? `${durationMinutes * 60}s` : `${durationMinutes} min`}</span>
+                <span className="text-primary/60">•</span>
+                <span className="text-primary/80">~{Math.round(durationMinutes * 130)} words</span>
+              </div>
             </motion.div>
+
+            {/* Current Section Preview */}
+            {currentStep?.section && (
+              <motion.div
+                key={currentStep.section}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="mb-6 p-4 rounded-xl bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20"
+              >
+                <div className="flex items-center gap-3">
+                  <motion.div
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ duration: 1, repeat: Infinity }}
+                    className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center"
+                  >
+                    <currentStep.icon className="w-5 h-5" />
+                  </motion.div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Currently writing</p>
+                    <p className="text-lg font-bold text-foreground">{currentStep.section}</p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
 
             {/* Steps Progress */}
             <div className="space-y-4">
