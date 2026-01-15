@@ -243,11 +243,23 @@ const Index = () => {
 
   // Auto-generate: Skip wizard entirely
   const handleAutoGenerate = (idea: string, scrapedData?: ScrapedProjectData, durationMinutes?: number) => {
+    const duration = durationMinutes || 3;
+    const durationLabel = duration < 1 
+      ? `${duration * 60} seconds` 
+      : `${duration} minute${duration !== 1 ? 's' : ''}`;
+    const wordCount = Math.round(duration * 130);
+    
     setAutoGenerateInput(idea);
     setAutoGenerateIsUrl(isUrl(idea) || !!scrapedData);
     setPendingAutoData(scrapedData);
-    setPendingDuration(durationMinutes || 3);
+    setPendingDuration(duration);
     setShowAutoGenerateOverlay(true);
+    
+    // Show confirmation toast with duration info
+    toast({
+      title: `⏱️ Generating ${durationLabel} pitch`,
+      description: `Creating ~${wordCount} words for your presentation`,
+    });
   };
 
   // Called when auto-generate overlay completes
