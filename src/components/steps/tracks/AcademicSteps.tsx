@@ -36,6 +36,9 @@ export const AcademicTopicStep = ({ onNext, onBack, initialValue = "", idea = ""
     isRateLimited,
     remainingAttempts,
     cooldownSeconds,
+    hasError,
+    retryCount,
+    retryWithBackoff,
   } = useSuggestions({
     type: "academic-topic-suggestions",
     idea,
@@ -88,6 +91,9 @@ export const AcademicTopicStep = ({ onNext, onBack, initialValue = "", idea = ""
             isRateLimited={isRateLimited}
             remainingAttempts={remainingAttempts}
             cooldownSeconds={cooldownSeconds}
+            hasError={hasError}
+            retryCount={retryCount}
+            onRetry={retryWithBackoff}
           />
         </motion.div>
 

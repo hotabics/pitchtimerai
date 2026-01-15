@@ -37,6 +37,9 @@ export const HackathonPainStep = ({ onNext, onBack, initialValue = "", idea = ""
     isRateLimited,
     remainingAttempts,
     cooldownSeconds,
+    hasError,
+    retryCount,
+    retryWithBackoff,
   } = useSuggestions({
     type: "pain-suggestions",
     idea,
@@ -108,6 +111,9 @@ export const HackathonPainStep = ({ onNext, onBack, initialValue = "", idea = ""
             isRateLimited={isRateLimited}
             remainingAttempts={remainingAttempts}
             cooldownSeconds={cooldownSeconds}
+            hasError={hasError}
+            retryCount={retryCount}
+            onRetry={retryWithBackoff}
           />
         </motion.div>
 
