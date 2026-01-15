@@ -602,29 +602,40 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
         description: err instanceof Error ? err.message : "Failed to generate speech",
         variant: "destructive",
       });
-      // Fallback to placeholder blocks
+      // Fallback to placeholder blocks - use currentDuration for proper time calculation
+      const totalSeconds = Math.floor(currentDuration * 60);
+      const hookEnd = Math.floor(totalSeconds * 0.15); // 15%
+      const problemEnd = Math.floor(totalSeconds * 0.35); // 20%
+      const solutionEnd = Math.floor(totalSeconds * 0.75); // 40%
+      
+      const formatTimeFromSeconds = (seconds: number): string => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+      };
+      
       setSpeechBlocks([
         {
-          timeStart: "0:00",
-          timeEnd: "0:30",
+          timeStart: formatTimeFromSeconds(0),
+          timeEnd: formatTimeFromSeconds(hookEnd),
           title: "The Hook",
           content: `Imagine ${data.idea}... That's what we're building.`,
         },
         {
-          timeStart: "0:30",
-          timeEnd: "1:00",
+          timeStart: formatTimeFromSeconds(hookEnd),
+          timeEnd: formatTimeFromSeconds(problemEnd),
           title: "The Problem",
           content: data.trackData.pain as string || data.trackData.opportunity as string || "The current solutions just don't cut it.",
         },
         {
-          timeStart: "1:00",
-          timeEnd: "2:00",
+          timeStart: formatTimeFromSeconds(problemEnd),
+          timeEnd: formatTimeFromSeconds(solutionEnd),
           title: "The Solution",
           content: data.trackData.fix as string || data.trackData.thing as string || "Our approach changes everything.",
         },
         {
-          timeStart: "2:00",
-          timeEnd: "3:00",
+          timeStart: formatTimeFromSeconds(solutionEnd),
+          timeEnd: formatTimeFromSeconds(totalSeconds),
           title: "The Closing",
           content: "Thank you for your time. Any questions?",
         },
