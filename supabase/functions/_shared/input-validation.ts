@@ -186,17 +186,25 @@ export function validateType(type: unknown, allowedTypes: string[]): ValidationR
 
 /**
  * Validates duration for speech generation
+ * Supports 0.5 min (30 sec) up to 30 min
  */
 export function validateDuration(duration: unknown): { isValid: boolean; error?: string; value?: number } {
+  // Handle undefined/null - default to 3 minutes
+  if (duration === undefined || duration === null) {
+    return { isValid: true, value: 3 };
+  }
+
   if (typeof duration !== 'number') {
     return { isValid: false, error: 'Duration must be a number' };
   }
 
-  if (duration < 1 || duration > 30) {
-    return { isValid: false, error: 'Duration must be between 1 and 30 minutes' };
+  // Support sub-minute durations (0.5 = 30 seconds) up to 30 minutes
+  if (duration < 0.5 || duration > 30) {
+    return { isValid: false, error: 'Duration must be between 0.5 and 30 minutes' };
   }
 
-  return { isValid: true, value: Math.round(duration) };
+  // Keep the decimal for sub-minute durations, round to one decimal place
+  return { isValid: true, value: Math.round(duration * 10) / 10 };
 }
 
 /**
