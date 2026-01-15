@@ -3,6 +3,7 @@ import { Clock, FileText, Users, Presentation, AlertCircle, Lightbulb, DollarSig
 import { useState, useEffect, useRef } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import confetti from "canvas-confetti";
+import { DurationChip } from "@/components/sidebar/DurationChip";
 
 export interface BriefData {
   projectName?: string;
@@ -16,6 +17,8 @@ export interface BriefData {
   monetization?: string[];
   generationTier?: string;
   prepTime?: number;
+  pitchDuration?: number;
+  onDurationChange?: (duration: number) => void;
 }
 
 // Hook for smooth counting animation
@@ -243,6 +246,21 @@ export const ProjectBrief = ({ data, currentStep }: ProjectBriefProps) => {
             <h2 className="text-lg font-semibold text-foreground">Project Brief</h2>
             <span className="text-xs text-muted-foreground">Step {currentStep}/7</span>
           </div>
+
+          {/* Duration Chip - Interactive pitch length selector */}
+          {data.pitchDuration !== undefined && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="mb-4"
+            >
+              <DurationChip 
+                duration={data.pitchDuration} 
+                onDurationChange={data.onDurationChange}
+                readonly={!data.onDurationChange}
+              />
+            </motion.div>
+          )}
 
           {/* Time Counter Card */}
           <motion.div
