@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Sparkles, RefreshCw } from "lucide-react";
+import { Sparkles, RefreshCw, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -21,6 +21,9 @@ interface AISuggestionsProps {
   isRateLimited?: boolean;
   remainingAttempts?: number;
   cooldownSeconds?: number;
+  hasError?: boolean;
+  retryCount?: number;
+  onRetry?: () => void;
 }
 
 const colorClasses = {
@@ -79,8 +82,13 @@ export const AISuggestions = ({
   isRateLimited = false,
   remainingAttempts,
   cooldownSeconds = 0,
+  hasError = false,
+  retryCount = 0,
+  onRetry,
 }: AISuggestionsProps) => {
   const colors = colorClasses[accentColor];
+  const maxRetries = 3;
+  const canRetry = hasError && retryCount < maxRetries && !isLoading;
 
   return (
     <motion.div
@@ -120,6 +128,38 @@ export const AISuggestions = ({
       
       {isLoading ? (
         <SuggestionSkeleton count={4} />
+      ) : hasError && suggestions.length === 0 ? (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center justify-center p-6 rounded-lg border border-destructive/30 bg-destructive/5 text-center space-y-3"
+        >
+          <AlertCircle className="w-8 h-8 text-destructive" />
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground">Failed to load suggestions</p>
+            <p className="text-xs text-muted-foreground">
+              {retryCount > 0 
+                ? `Attempt ${retryCount} of ${maxRetries} failed. ${canRetry ? 'Click retry to try again.' : 'Max retries reached.'}`
+                : 'There was an error loading AI suggestions.'}
+            </p>
+          </div>
+          {canRetry && onRetry && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onRetry}
+              className="mt-2"
+            >
+              <RefreshCw className="w-3 h-3 mr-2" />
+              Retry (attempt {retryCount + 1}/{maxRetries})
+            </Button>
+          )}
+          {retryCount >= maxRetries && (
+            <p className="text-xs text-muted-foreground">
+              Using fallback suggestions. You can still regenerate later.
+            </p>
+          )}
+        </motion.div>
       ) : (
         <div className="space-y-2">
           {suggestions.map((suggestion, index) => (
@@ -185,6 +225,8 @@ export const useSuggestions = ({ type, idea, context, fallbackSuggestions }: Use
   const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   
   // Rate limiting state
   const [isRateLimited, setIsRateLimited] = useState(false);
@@ -192,6 +234,7 @@ export const useSuggestions = ({ type, idea, context, fallbackSuggestions }: Use
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const attemptsRef = useRef<number[]>([]);
   const cooldownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Track context hash to detect changes
   const contextHash = useRef<string>("");
@@ -199,11 +242,25 @@ export const useSuggestions = ({ type, idea, context, fallbackSuggestions }: Use
     return ctx ? JSON.stringify(ctx) : "";
   }, []);
 
-  // Cleanup cooldown interval on unmount
+  // Calculate exponential backoff delay
+  const getBackoffDelay = useCallback((attempt: number): number => {
+    // Base delay of 1 second, doubles each attempt, max 30 seconds
+    const baseDelay = 1000;
+    const maxDelay = 30000;
+    const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
+    // Add jitter (±25%) to prevent thundering herd
+    const jitter = delay * 0.25 * (Math.random() - 0.5);
+    return Math.round(delay + jitter);
+  }, []);
+
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (cooldownIntervalRef.current) {
         clearInterval(cooldownIntervalRef.current);
+      }
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
       }
     };
   }, []);
@@ -253,15 +310,17 @@ export const useSuggestions = ({ type, idea, context, fallbackSuggestions }: Use
     return true;
   }, []);
 
-  const fetchSuggestions = useCallback(async (isInitialLoad = false) => {
+  const fetchSuggestions = useCallback(async (isInitialLoad = false, currentRetry = 0) => {
     if (!idea) return;
     
-    // Skip rate limit check for initial load
-    if (!isInitialLoad && !checkRateLimit()) {
+    // Skip rate limit check for initial load and retries
+    if (!isInitialLoad && currentRetry === 0 && !checkRateLimit()) {
       return;
     }
     
     setIsLoading(true);
+    setHasError(false);
+    
     try {
       const { data, error } = await supabase.functions.invoke("generate-pitch", {
         body: { type, idea, context },
@@ -271,36 +330,57 @@ export const useSuggestions = ({ type, idea, context, fallbackSuggestions }: Use
       
       if (data?.suggestions && Array.isArray(data.suggestions)) {
         setSuggestions(data.suggestions.map((text: string, i: number) => ({ id: `s-${i}`, text })));
+        setRetryCount(0); // Reset retry count on success
+        setHasError(false);
       } else {
         throw new Error("Invalid response format");
       }
     } catch (error) {
       console.error("Failed to fetch suggestions:", error);
+      setHasError(true);
+      setRetryCount(currentRetry);
       
-      const { dismiss } = toast({
-        title: "Couldn't load AI suggestions",
-        description: "Using default suggestions instead.",
-        variant: "destructive",
-        action: (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              dismiss();
-              fetchSuggestions();
-            }}
-            className="shrink-0"
-          >
-            Retry
-          </Button>
-        ),
-      });
-      
-      setSuggestions(fallbackSuggestions.map((text, i) => ({ id: `s-${i}`, text })));
+      // Show toast with retry info
+      const maxRetries = 3;
+      if (currentRetry < maxRetries) {
+        const delay = getBackoffDelay(currentRetry);
+        toast({
+          title: "Couldn't load AI suggestions",
+          description: `Retrying in ${Math.round(delay / 1000)}s... (attempt ${currentRetry + 1}/${maxRetries})`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Failed to load AI suggestions",
+          description: "Using default suggestions. You can try regenerating later.",
+          variant: "destructive",
+        });
+        setSuggestions(fallbackSuggestions.map((text, i) => ({ id: `s-${i}`, text })));
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [idea, type, context, fallbackSuggestions, checkRateLimit]);
+  }, [idea, type, context, fallbackSuggestions, checkRateLimit, getBackoffDelay]);
+
+  // Manual retry with exponential backoff
+  const retryWithBackoff = useCallback(() => {
+    const maxRetries = 3;
+    if (retryCount >= maxRetries || isLoading) return;
+    
+    const nextRetry = retryCount + 1;
+    const delay = getBackoffDelay(retryCount);
+    
+    setIsLoading(true);
+    
+    // Clear any existing retry timeout
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+    }
+    
+    retryTimeoutRef.current = setTimeout(() => {
+      fetchSuggestions(true, nextRetry);
+    }, delay);
+  }, [retryCount, isLoading, getBackoffDelay, fetchSuggestions]);
 
   // Fetch suggestions when idea changes or context changes significantly
   useEffect(() => {
@@ -313,7 +393,9 @@ export const useSuggestions = ({ type, idea, context, fallbackSuggestions }: Use
     if (!hasFetched || contextChanged) {
       contextHash.current = newContextHash;
       setHasFetched(true);
-      fetchSuggestions(true);
+      setRetryCount(0);
+      setHasError(false);
+      fetchSuggestions(true, 0);
     }
   }, [idea, context, hasFetched, getContextHash, fetchSuggestions]);
 
@@ -333,7 +415,9 @@ export const useSuggestions = ({ type, idea, context, fallbackSuggestions }: Use
 
   const regenerate = () => {
     setSelectedSuggestions([]);
-    fetchSuggestions(false);
+    setRetryCount(0);
+    setHasError(false);
+    fetchSuggestions(false, 0);
   };
 
   const getSelectedTexts = () => {
@@ -359,5 +443,8 @@ export const useSuggestions = ({ type, idea, context, fallbackSuggestions }: Use
     isRateLimited,
     remainingAttempts,
     cooldownSeconds,
+    hasError,
+    retryCount,
+    retryWithBackoff,
   };
 };

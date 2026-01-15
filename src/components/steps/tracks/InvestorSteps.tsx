@@ -36,6 +36,9 @@ export const InvestorOpportunityStep = ({ onNext, onBack, initialValue = "", ide
     isRateLimited,
     remainingAttempts,
     cooldownSeconds,
+    hasError,
+    retryCount,
+    retryWithBackoff,
   } = useSuggestions({
     type: "investor-opportunity-suggestions",
     idea,
@@ -88,6 +91,9 @@ export const InvestorOpportunityStep = ({ onNext, onBack, initialValue = "", ide
             isRateLimited={isRateLimited}
             remainingAttempts={remainingAttempts}
             cooldownSeconds={cooldownSeconds}
+            hasError={hasError}
+            retryCount={retryCount}
+            onRetry={retryWithBackoff}
           />
         </motion.div>
 
