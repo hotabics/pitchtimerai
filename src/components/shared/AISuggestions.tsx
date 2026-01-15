@@ -184,6 +184,7 @@ export const useSuggestions = ({ type, idea, context, fallbackSuggestions }: Use
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [selectedSuggestions, setSelectedSuggestions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasFetched, setHasFetched] = useState(false);
   
   // Rate limiting state
   const [isRateLimited, setIsRateLimited] = useState(false);
@@ -191,6 +192,12 @@ export const useSuggestions = ({ type, idea, context, fallbackSuggestions }: Use
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const attemptsRef = useRef<number[]>([]);
   const cooldownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Track context hash to detect changes
+  const contextHash = useRef<string>("");
+  const getContextHash = useCallback((ctx?: Record<string, unknown>) => {
+    return ctx ? JSON.stringify(ctx) : "";
+  }, []);
 
   // Cleanup cooldown interval on unmount
   useEffect(() => {
@@ -295,9 +302,20 @@ export const useSuggestions = ({ type, idea, context, fallbackSuggestions }: Use
     }
   }, [idea, type, context, fallbackSuggestions, checkRateLimit]);
 
+  // Fetch suggestions when idea changes or context changes significantly
   useEffect(() => {
-    if (idea) fetchSuggestions(true);
-  }, [idea]);
+    if (!idea) return;
+    
+    const newContextHash = getContextHash(context);
+    const contextChanged = newContextHash !== contextHash.current;
+    
+    // Fetch if: first load, or context has meaningfully changed
+    if (!hasFetched || contextChanged) {
+      contextHash.current = newContextHash;
+      setHasFetched(true);
+      fetchSuggestions(true);
+    }
+  }, [idea, context, hasFetched, getContextHash, fetchSuggestions]);
 
   const toggleSuggestion = (id: string) => {
     const suggestion = suggestions.find((s) => s.id === id);
