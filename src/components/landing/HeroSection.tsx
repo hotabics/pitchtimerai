@@ -102,6 +102,32 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
   useEffect(() => {
     setRecentIdeas(getRecentIdeas());
   }, []);
+
+  // Keyboard shortcuts for duration selection (1-6 keys)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      
+      // Check for number keys 1-6
+      const keyNum = parseInt(e.key);
+      if (keyNum >= 1 && keyNum <= 6) {
+        const preset = DURATION_OPTIONS[keyNum - 1];
+        if (preset) {
+          handleDurationChange(preset.value);
+          toast({
+            title: `Duration: ${preset.label}`,
+            description: `${preset.description} selected`,
+          });
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleDurationChange]);
   
   // Auto-scrape when URL is detected
   useEffect(() => {
@@ -447,20 +473,32 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
           <div className="flex items-center justify-center gap-2 mb-3">
             <Timer className="w-4 h-4 text-primary" />
             <span className="text-sm font-medium text-foreground">Pitch Duration</span>
+            <span className="text-[10px] text-muted-foreground hidden sm:inline">(Press 1-6)</span>
           </div>
           <div className="flex flex-wrap justify-center gap-2">
-            {DURATION_OPTIONS.map((option) => (
+            {DURATION_OPTIONS.map((option, index) => (
               <button
                 key={option.value}
                 onClick={() => handleDurationChange(option.value)}
                 className={`
-                  relative px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200
+                  relative px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 group
                   ${selectedDuration === option.value
                     ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-105"
                     : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/50"
                   }
                 `}
               >
+                {/* Keyboard shortcut indicator */}
+                <span className={`
+                  absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center
+                  transition-opacity duration-200 hidden sm:flex
+                  ${selectedDuration === option.value 
+                    ? "bg-primary-foreground/20 text-primary-foreground opacity-100" 
+                    : "bg-muted-foreground/10 text-muted-foreground opacity-0 group-hover:opacity-100"
+                  }
+                `}>
+                  {index + 1}
+                </span>
                 <span className="block">{option.label}</span>
                 <span className={`text-[10px] ${selectedDuration === option.value ? "text-primary-foreground/80" : "text-muted-foreground/70"}`}>
                   {option.description}

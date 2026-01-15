@@ -36,6 +36,7 @@ import { ScriptVersionHistory, ScriptVersion } from "./dashboard/ScriptVersionHi
 import { openPrintView } from "./dashboard/PrintView";
 import { HookRegenerator, HookStyleBadge } from "./dashboard/HookRegenerator";
 import { DurationSelector } from "./dashboard/DurationSelector";
+import { WordCountProgress } from "./dashboard/WordCountProgress";
 
 interface SpeechBlock {
   timeStart: string;
@@ -1078,6 +1079,15 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
               />
             )}
           </div>
+          
+          {/* Word Count Progress Bar */}
+          {meta?.actualWordCount && (
+            <WordCountProgress
+              actualWordCount={meta.actualWordCount}
+              targetDuration={currentDuration}
+              className="mt-4"
+            />
+          )}
         </motion.div>
 
         {/* Tabs */}
