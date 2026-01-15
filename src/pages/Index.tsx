@@ -542,6 +542,7 @@ const Index = () => {
           isVisible={showAutoGenerateOverlay}
           isUrlMode={autoGenerateIsUrl}
           inputValue={autoGenerateInput}
+          durationMinutes={pendingDuration}
           onComplete={handleAutoGenerateComplete}
         />
       </>

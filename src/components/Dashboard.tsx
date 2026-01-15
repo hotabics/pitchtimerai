@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import QRCode from "qrcode";
+import confetti from "canvas-confetti";
 import { 
   FileText, Video, Play, Pause, RotateCcw, Monitor, 
   Smartphone, Presentation, RefreshCw, Download, Clock, Minus, 
@@ -603,6 +604,14 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
         hookStyle: result.meta.hookStyle || result.speech.hookStyle,
       });
       setCurrentBlock(0);
+      
+      // 🎉 Celebrate with confetti!
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444'],
+      });
       
       // Track successful script generation
       trackEvent('Script: Generated', { 
