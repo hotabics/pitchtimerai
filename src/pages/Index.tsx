@@ -204,11 +204,16 @@ const Index = () => {
   };
 
   // Step 1: Landing with idea input (customize mode)
-  const handleStep1 = (idea: string, scrapedData?: ScrapedProjectData) => {
+  const handleStep1 = (idea: string, scrapedData?: ScrapedProjectData, durationMinutes?: number) => {
+    // Store duration in pending state for use when generating
+    if (durationMinutes) {
+      setPendingDuration(durationMinutes);
+    }
     setData({ 
       ...data, 
       idea: scrapedData?.name || idea, 
       entryMode: "generate",
+      duration: durationMinutes || pendingDuration || 3, // Store duration immediately
       // Pre-fill track data if we have scraped data
       ...(scrapedData && {
         trackData: {
@@ -220,7 +225,7 @@ const Index = () => {
     setStep(1);
     toast({
       title: scrapedData ? "URL Data Imported!" : "Idea Captured!",
-      description: "Let's customize your pitch...",
+      description: `Let's customize your ${durationMinutes || pendingDuration || 3} min pitch...`,
     });
   };
 
@@ -314,10 +319,19 @@ const Index = () => {
   // Step 2: Audience selection -> determines track
   const handleStep2 = (audience: string, audienceLabel: string, hookStyle?: 'auto' | 'statistic' | 'villain' | 'story' | 'contrarian' | 'question') => {
     const track = determineTrack(audience, "none");
-    setData({ ...data, audience, audienceLabel, track, trackData: {}, hookStyle: hookStyle || 'auto' });
+    // Preserve duration from previous step
+    setData({ 
+      ...data, 
+      audience, 
+      audienceLabel, 
+      track, 
+      trackData: {}, 
+      hookStyle: hookStyle || 'auto',
+      duration: data.duration || pendingDuration || 3, // Preserve duration
+    });
     setStep(2);
     setTrackStep(0);
-    trackEvent('Onboarding: Step Completed', { step: 'Audience Selection', hookStyle });
+    trackEvent('Onboarding: Step Completed', { step: 'Audience Selection', hookStyle, duration: data.duration || pendingDuration });
     toast({
       title: "Track Selected!",
       description: `${trackConfigs[track].name} mode activated`,
@@ -329,11 +343,12 @@ const Index = () => {
     setData({
       ...data,
       trackData: { ...(data.trackData || {}), [fieldName]: value },
+      duration: data.duration || pendingDuration || 3, // Always preserve duration
     });
     
     const maxTrackSteps = trackConfig?.stepCount || 4;
     if (trackStep + 1 >= maxTrackSteps) {
-      trackEvent('Onboarding: Step Completed', { step: 'Track Details' });
+      trackEvent('Onboarding: Step Completed', { step: 'Track Details', duration: data.duration || pendingDuration });
       setStep(3);
     } else {
       setTrackStep(trackStep + 1);
@@ -342,12 +357,14 @@ const Index = () => {
 
   // Generation step
   const handleGeneration = (tier: string, tierLabel: string) => {
-    setData({ ...data, generationTier: tier });
+    const durationToUse = data.duration || pendingDuration || 3;
+    setData({ ...data, generationTier: tier, duration: durationToUse });
     setShowDashboard(true);
-    trackEvent('Onboarding: Step Completed', { step: 'Generation' });
+    trackEvent('Onboarding: Step Completed', { step: 'Generation', duration: durationToUse });
+    const durationLabel = durationToUse < 1 ? `${durationToUse * 60}s` : `${durationToUse} min`;
     toast({
       title: "🎉 Pitch Generated!",
-      description: `${tierLabel} package ready. You saved hours!`,
+      description: `${tierLabel} ${durationLabel} pitch ready. You saved hours!`,
     });
   };
 
