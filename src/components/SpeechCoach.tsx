@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { escapeHtml } from "@/lib/escapeHtml";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
@@ -164,16 +165,18 @@ const analyzeTranscription = (
   const mentionedTerms = keyTerms.filter(term => transcriptionLower.includes(term));
   const score = Math.min(100, Math.round((mentionedTerms.length / Math.max(keyTerms.length, 1)) * 100) + 40);
   
-  // Build HTML with highlighting
-  let html = transcription;
+  // SECURITY: Escape user-generated transcription to prevent XSS
+  let html = escapeHtml(transcription);
   
-  // Highlight key terms in green
+  // Highlight key terms in green (safe - we control these patterns)
   mentionedTerms.forEach(term => {
-    const regex = new RegExp(`\\b(${term})\\b`, 'gi');
+    // Escape the term for use in regex to prevent regex injection
+    const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`\\b(${escapedTerm})\\b`, 'gi');
     html = html.replace(regex, '<span class="text-success font-bold">$1</span>');
   });
   
-  // Highlight filler words in red
+  // Highlight filler words in red (safe - patterns are hardcoded)
   Object.values(fillerPatterns).forEach(pattern => {
     html = html.replace(pattern, '<span class="text-destructive font-medium">$&</span>');
   });
