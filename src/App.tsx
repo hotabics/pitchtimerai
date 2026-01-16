@@ -36,6 +36,7 @@ const AICoachPage = lazy(() => import("./components/ai-coach/AICoachPage").then(
 const InterrogationHistory = lazy(() => import("./pages/InterrogationHistory"));
 const Survey = lazy(() => import("./pages/Survey"));
 const SurveyAnalytics = lazy(() => import("./pages/SurveyAnalytics"));
+const AdminRoles = lazy(() => import("./pages/AdminRoles"));
 
 const queryClient = new QueryClient();
 
@@ -87,7 +88,7 @@ const App = () => (
                   <Route path="/admin/analytics" element={<AdminRoute><AdminAnalytics /></AdminRoute>} />
                   <Route path="/admin/feedback" element={<AdminRoute><FeedbackAnalytics /></AdminRoute>} />
                   <Route path="/admin/surveys" element={<AdminRoute><SurveyAnalytics /></AdminRoute>} />
-                  
+                  <Route path="/admin/roles" element={<AdminRoute><AdminRoles /></AdminRoute>} />
                   
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
