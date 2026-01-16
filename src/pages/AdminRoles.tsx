@@ -23,8 +23,8 @@ interface UserRole {
 
 interface Profile {
   id: string;
-  email: string;
-  full_name?: string;
+  email: string | null;
+  name: string | null;
 }
 
 export default function AdminRoles() {
@@ -47,10 +47,10 @@ export default function AdminRoles() {
 
       if (rolesError) throw rolesError;
 
-      // Fetch profiles for email lookup
+      // Fetch profiles for email lookup - cast to work with newly added column
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, email, full_name');
+        .select('id, email, name') as unknown as { data: Profile[] | null; error: Error | null };
 
       if (profilesError) {
         console.warn('Could not fetch profiles:', profilesError);
@@ -60,11 +60,11 @@ export default function AdminRoles() {
 
       // Map emails to roles
       const rolesWithEmail = (roles || []).map(role => {
-        const profile = profilesData?.find(p => p.id === role.user_id);
+        const profile = (profilesData || []).find(p => p.id === role.user_id);
         return {
           ...role,
           email: profile?.email || 'Unknown',
-        };
+        } as UserRole;
       });
 
       setUserRoles(rolesWithEmail);
@@ -96,16 +96,16 @@ export default function AdminRoles() {
 
     setAdding(true);
     try {
-      // Find user by email in profiles
-      const { data: profile, error: profileError } = await supabase
+      // Find user by email in profiles - cast for new column
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('id, email')
         .eq('email', searchEmail.trim().toLowerCase())
-        .maybeSingle();
+        .maybeSingle() as unknown as { data: { id: string; email: string } | null; error: Error | null };
 
       if (profileError) throw profileError;
 
-      if (!profile) {
+      if (!profileData) {
         toast({
           title: 'User not found',
           description: 'No user found with that email address. They must sign up first.',
@@ -115,7 +115,7 @@ export default function AdminRoles() {
       }
 
       // Check if role already exists
-      const existing = userRoles.find(r => r.user_id === profile.id && r.role === selectedRole);
+      const existing = userRoles.find(r => r.user_id === profileData.id && r.role === selectedRole);
       if (existing) {
         toast({
           title: 'Role exists',
@@ -129,7 +129,7 @@ export default function AdminRoles() {
       const { error: insertError } = await supabase
         .from('user_roles')
         .insert({
-          user_id: profile.id,
+          user_id: profileData.id,
           role: selectedRole,
         });
 
@@ -142,11 +142,11 @@ export default function AdminRoles() {
 
       setSearchEmail('');
       fetchData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error adding role:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to add role',
+        description: error instanceof Error ? error.message : 'Failed to add role',
         variant: 'destructive',
       });
     } finally {
@@ -169,11 +169,11 @@ export default function AdminRoles() {
       });
 
       fetchData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error removing role:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to remove role',
+        description: error instanceof Error ? error.message : 'Failed to remove role',
         variant: 'destructive',
       });
     }
