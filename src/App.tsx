@@ -10,6 +10,7 @@ import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 import { SurveyTriggerProvider } from "./components/survey";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { AdminRoute } from "./components/auth/AdminRoute";
 
 // Lazy load pages for code splitting - reduces initial CSS bundle
 const Index = lazy(() => import("./pages/Index"));
@@ -82,10 +83,11 @@ const App = () => (
                   <Route path="/interrogation-history" element={<ProtectedRoute><InterrogationHistory /></ProtectedRoute>} />
                   <Route path="/mobile-record/:sessionId" element={<ProtectedRoute><MobileRecord /></ProtectedRoute>} />
                   
-                  {/* Admin routes - protected */}
-                  <Route path="/admin/analytics" element={<ProtectedRoute><AdminAnalytics /></ProtectedRoute>} />
-                  <Route path="/admin/feedback" element={<ProtectedRoute><FeedbackAnalytics /></ProtectedRoute>} />
-                  <Route path="/admin/surveys" element={<ProtectedRoute><SurveyAnalytics /></ProtectedRoute>} />
+                  {/* Admin routes - require admin role */}
+                  <Route path="/admin/analytics" element={<AdminRoute><AdminAnalytics /></AdminRoute>} />
+                  <Route path="/admin/feedback" element={<AdminRoute><FeedbackAnalytics /></AdminRoute>} />
+                  <Route path="/admin/surveys" element={<AdminRoute><SurveyAnalytics /></AdminRoute>} />
+                  
                   
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
