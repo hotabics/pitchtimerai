@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import confetti from "canvas-confetti";
 import { DurationChip } from "@/components/sidebar/DurationChip";
+import { PresentationUpload } from "@/components/presentation/PresentationUpload";
+import { ParsedPresentation } from "@/lib/api/presentationParser";
 
 export interface BriefData {
   projectName?: string;
@@ -19,6 +21,13 @@ export interface BriefData {
   prepTime?: number;
   pitchDuration?: number;
   onDurationChange?: (duration: number) => void;
+  // Presentation support
+  presentation?: {
+    data: ParsedPresentation;
+    filename: string;
+  } | null;
+  onPresentationParsed?: (data: ParsedPresentation, filename: string) => void;
+  onPresentationRemoved?: () => void;
 }
 
 // Hook for smooth counting animation
@@ -297,6 +306,25 @@ export const ProjectBrief = ({ data, currentStep }: ProjectBriefProps) => {
             </div>
           </motion.div>
         </motion.div>
+
+        {/* Presentation Upload Panel */}
+        {(data.onPresentationParsed || data.presentation) && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="mb-4"
+          >
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+              Source Material
+            </p>
+            <PresentationUpload
+              currentPresentation={data.presentation}
+              onPresentationParsed={data.onPresentationParsed || (() => {})}
+              onPresentationRemoved={data.onPresentationRemoved || (() => {})}
+            />
+          </motion.div>
+        )}
 
         {/* Flight Plan / Receipt Style List */}
         <div className="space-y-1">
