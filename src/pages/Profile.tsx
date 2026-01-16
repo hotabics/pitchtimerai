@@ -19,9 +19,10 @@ import { ProgressCharts } from "@/components/profile/ProgressCharts";
 import { RecordingCard } from "@/components/profile/RecordingCard";
 import { MiniPlayerModal } from "@/components/profile/MiniPlayerModal";
 import { PerformanceStats } from "@/components/profile/PerformanceStats";
-import { RecordingFilters, FilterState, SortOption } from "@/components/profile/RecordingFilters";
+import { RecordingFilters, FilterState } from "@/components/profile/RecordingFilters";
 import { MyContentSection } from "@/components/profile/MyContentSection";
 import { StreakCalendar } from "@/components/profile/StreakCalendar";
+import { WeeklyAchievements } from "@/components/profile/WeeklyAchievements";
 import { generateSessionPDF, generateSummaryPDF } from "@/services/pdfExport";
 
 interface PracticeSession {
@@ -59,23 +60,6 @@ interface UserStats {
   weeklyPitches: number;
   weeklyMinutes: number;
 }
-
-// Achievement definitions
-const achievements = [
-  { id: 'first_pitch', name: 'First Pitch', icon: '🏆', description: 'Complete your first pitch', unlockCondition: (stats: UserStats) => stats.totalPitches >= 1 },
-  { id: 'speed_demon', name: 'Speed Demon', icon: '⚡', description: 'Pitch under 1 minute', unlockCondition: () => false }, // Would need duration data
-  { id: 'no_notes', name: 'No Notes', icon: '🧠', description: 'Use Bullet Mode', unlockCondition: () => false },
-  { id: 'perfect_10', name: 'Perfect 10', icon: '💯', description: 'Score 10/10 on a pitch', unlockCondition: (stats: UserStats) => stats.bestScore >= 100 },
-  { id: 'streak_master', name: 'Streak Master', icon: '🔥', description: '7-day practice streak', unlockCondition: (stats: UserStats) => stats.currentStreak >= 7 },
-  { id: 'prolific', name: 'Prolific', icon: '📚', description: 'Complete 10 pitches', unlockCondition: (stats: UserStats) => stats.totalPitches >= 10 },
-];
-
-const formatTypeName = (type: string) => {
-  return type
-    .split(/[-_]/)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-};
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -339,6 +323,51 @@ const Profile = () => {
     const recentSessions = sessions.slice(0, 5);
     return Math.round(recentSessions.reduce((sum, s) => sum + (s.wpm || 0), 0) / recentSessions.length);
   }, [sessions]);
+
+  // Calculate consecutive weeks with completed goals (simplified - weeks with at least one session)
+  const calculateConsecutiveWeeks = () => {
+    if (sessions.length === 0) return 0;
+    
+    const now = new Date();
+    let consecutiveWeeks = 0;
+    
+    for (let weekOffset = 0; weekOffset < 12; weekOffset++) {
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - now.getDay() - (weekOffset * 7));
+      weekStart.setHours(0, 0, 0, 0);
+      
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 7);
+      
+      const hasSessionThisWeek = sessions.some(s => {
+        const sessionDate = new Date(s.created_at);
+        return sessionDate >= weekStart && sessionDate < weekEnd;
+      });
+      
+      if (hasSessionThisWeek) {
+        consecutiveWeeks++;
+      } else {
+        break;
+      }
+    }
+    
+    return consecutiveWeeks;
+  };
+
+  // Calculate total weeks with completed goals
+  const calculateTotalWeeksCompleted = () => {
+    if (sessions.length === 0) return 0;
+    
+    const weekSet = new Set<string>();
+    sessions.forEach(s => {
+      const date = new Date(s.created_at);
+      const weekStart = new Date(date);
+      weekStart.setDate(date.getDate() - date.getDay());
+      weekSet.add(weekStart.toISOString().split('T')[0]);
+    });
+    
+    return weekSet.size;
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -627,54 +656,19 @@ const Profile = () => {
             <PitchChallenges />
           </motion.div>
 
-          {/* Achievements */}
+          {/* Weekly Achievements */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.65 }}
             className="md:col-span-2 lg:col-span-3"
           >
-            <Card className="bg-card shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Trophy className="h-5 w-5 text-amber-500" />
-                  Achievements
-                </CardTitle>
-                <CardDescription>Unlock badges by improving your skills</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-4">
-                  {achievements.map((achievement) => {
-                    const isUnlocked = achievement.unlockCondition(stats);
-                    return (
-                      <div
-                        key={achievement.id}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-lg border transition-all ${
-                          isUnlocked 
-                            ? 'bg-primary/5 border-primary/20' 
-                            : 'bg-muted/50 border-muted opacity-50 grayscale'
-                        }`}
-                        title={achievement.description}
-                      >
-                        <span className="text-2xl">{achievement.icon}</span>
-                        <div className="flex-1">
-                          <p className="font-medium text-sm">{achievement.name}</p>
-                          <p className="text-xs text-muted-foreground">{achievement.description}</p>
-                        </div>
-                        {isUnlocked && (
-                          <SocialShare 
-                            achievement={{ name: achievement.name, icon: achievement.icon, description: achievement.description }}
-                            score={stats.bestScore}
-                            totalPitches={stats.totalPitches}
-                            streak={stats.currentStreak}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
+            <WeeklyAchievements 
+              consecutiveWeeks={calculateConsecutiveWeeks()}
+              totalWeeksCompleted={calculateTotalWeeksCompleted()}
+              currentStreak={stats.currentStreak}
+              longestStreak={stats.longestStreak}
+            />
           </motion.div>
 
           {/* My Content Section - Saved Pitches & AI Coach Sessions */}

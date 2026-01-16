@@ -79,7 +79,12 @@ export const useUserStore = create<UserState>()(
       }),
 
       logout: async () => {
-        await supabase.auth.signOut();
+        try {
+          await supabase.auth.signOut();
+        } catch (error) {
+          // Ignore signOut errors (e.g. session_not_found) - still clear local state
+          console.warn('SignOut error (ignored):', error);
+        }
         resetAnalytics();
         trackEvent('user_logout');
         set({ 
