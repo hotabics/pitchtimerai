@@ -2,7 +2,7 @@
 
 const MAX_INPUT_LENGTH = 2000;
 const MAX_IDEA_LENGTH = 500;
-const MAX_CONTEXT_VALUE_LENGTH = 1000;
+const MAX_CONTEXT_VALUE_LENGTH = 3000; // Increased to handle longer pitch context including ideas and descriptions
 
 // Suspicious patterns that may indicate prompt injection
 const INJECTION_PATTERNS = [
