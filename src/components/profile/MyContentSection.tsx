@@ -313,9 +313,9 @@ export const MyContentSection = () => {
           <p className="text-sm text-muted-foreground mb-4 max-w-sm">
             Generate a pitch and it will be automatically saved here.
           </p>
-          <Button onClick={() => navigate('/')}>
+          <Button onClick={() => navigate('/ai-coach')}>
             <Plus className="w-4 h-4 mr-2" />
-            Create New Pitch
+            Create Your First Pitch
           </Button>
         </>
       ) : (
