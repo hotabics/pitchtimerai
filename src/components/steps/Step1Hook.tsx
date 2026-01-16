@@ -13,8 +13,15 @@ const TechStackBanner = lazy(() => import("@/components/landing/TechStackBanner"
 const BentoGrid = lazy(() => import("@/components/landing/BentoGrid").then(m => ({ default: m.BentoGrid })));
 
 // Reserve space for lazy sections to prevent CLS
+// Heights calculated from actual section content to prevent footer shift:
+// - PathComparisonDemo: ~500px mobile / ~400px desktop
+// - ComparisonSection: ~600px mobile / ~500px desktop  
+// - AICoachSpotlight: ~1200px mobile / ~900px desktop
+// - TechStackBanner: ~400px mobile / ~300px desktop
+// - BentoGrid section: ~600px mobile / ~400px desktop
+// Total: ~3300px mobile / ~2500px desktop (with buffer)
 const SectionSkeleton = () => (
-  <div className="min-h-[2400px] md:min-h-[1800px]" aria-hidden="true" />
+  <div className="min-h-[3400px] md:min-h-[2600px]" aria-hidden="true" />
 );
 
 export type EntryMode = "generate" | "custom_script";
