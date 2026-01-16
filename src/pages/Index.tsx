@@ -268,8 +268,13 @@ const Index = () => {
 
   // Auto-generate: Skip wizard entirely - NOW REQUIRES audience + duration
   const handleAutoGenerate = (idea: string, scrapedData?: ScrapedProjectData, durationMinutes?: number, audience?: AudienceType) => {
-    // Duration and audience are now REQUIRED - no more defaults
-    if (!durationMinutes || !audience) {
+    // Duration and audience are now REQUIRED - use proper checks
+    // durationMinutes could be 0.5 which is falsy with !durationMinutes, so check explicitly
+    const hasValidDuration = durationMinutes !== undefined && durationMinutes !== null && durationMinutes > 0;
+    const hasValidAudience = audience !== undefined && audience !== null;
+    
+    if (!hasValidDuration || !hasValidAudience) {
+      console.log('Auto-generate validation failed:', { durationMinutes, hasValidDuration, audience, hasValidAudience });
       toast({
         title: "Missing Required Fields",
         description: "Please select both audience and duration before generating",
@@ -282,6 +287,8 @@ const Index = () => {
       ? `${durationMinutes * 60} seconds` 
       : `${durationMinutes} minute${durationMinutes !== 1 ? 's' : ''}`;
     const wordCount = Math.round(durationMinutes * 130);
+    
+    console.log('Auto-generate starting with:', { idea, durationMinutes, audience });
     
     setAutoGenerateInput(idea);
     setAutoGenerateIsUrl(isUrl(idea) || !!scrapedData);
