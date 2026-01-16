@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getAuthStatus } from "../_shared/auth-validation.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -629,6 +630,11 @@ serve(async (req) => {
   }
 
   try {
+    // Check authentication status (optional - allows both authenticated and anonymous)
+    const authResult = await getAuthStatus(req);
+    const isAuthenticated = authResult.authenticated;
+    console.log(`Evaluation request from ${isAuthenticated ? `user ${authResult.userId}` : 'anonymous'}`);
+
     const { session_id, track, segments, duration_seconds, baseline_session_id } = await req.json();
     
     console.log('Evaluating hackathon jury pitch:', { session_id, track, segmentCount: segments?.length, duration_seconds, baseline_session_id });
