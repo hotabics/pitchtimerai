@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Rocket, Sparkles } from "lucide-react";
+import { Rocket, Sparkles, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+const MAX_IDEA_LENGTH = 500;
+const WARNING_THRESHOLD = 0.8; // 80% of max
 
 interface HeroInputProps {
   onSubmit: (idea: string) => void;
@@ -11,9 +14,26 @@ export const HeroInput = ({ onSubmit }: HeroInputProps) => {
   const [idea, setIdea] = useState("");
   const [isFocused, setIsFocused] = useState(false);
 
+  const charCount = idea.length;
+  const isNearLimit = charCount >= MAX_IDEA_LENGTH * WARNING_THRESHOLD;
+  const isAtLimit = charCount >= MAX_IDEA_LENGTH;
+  const remainingChars = MAX_IDEA_LENGTH - charCount;
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Auto-truncate if somehow exceeds limit
+    if (value.length <= MAX_IDEA_LENGTH) {
+      setIdea(value);
+    } else {
+      setIdea(value.slice(0, MAX_IDEA_LENGTH));
+    }
+  };
+
   const handleSubmit = () => {
     if (idea.trim()) {
-      onSubmit(idea.trim());
+      // Truncate to safe limit before sending
+      const safeIdea = idea.trim().slice(0, MAX_IDEA_LENGTH);
+      onSubmit(safeIdea);
     }
   };
 
@@ -55,10 +75,11 @@ export const HeroInput = ({ onSubmit }: HeroInputProps) => {
               <input
                 type="text"
                 value={idea}
-                onChange={(e) => setIdea(e.target.value)}
+                onChange={handleInputChange}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
                 onKeyDown={handleKeyDown}
+                maxLength={MAX_IDEA_LENGTH}
                 placeholder="What are you building? (e.g., Tinder for rescue dogs...)"
                 className="
                   w-full h-14 pl-12 pr-4 
@@ -87,6 +108,24 @@ export const HeroInput = ({ onSubmit }: HeroInputProps) => {
               <span className="font-semibold">Optimise My Pitch</span>
             </Button>
           </div>
+          
+          {/* Character count indicator */}
+          {charCount > 0 && (
+            <div className={`
+              flex items-center justify-end gap-1.5 mt-2 px-2 text-xs transition-colors
+              ${isAtLimit ? "text-destructive" : isNearLimit ? "text-yellow-500" : "text-muted-foreground"}
+            `}>
+              {isNearLimit && (
+                <AlertTriangle className="w-3.5 h-3.5" />
+              )}
+              <span className="font-medium">
+                {charCount}/{MAX_IDEA_LENGTH}
+              </span>
+              {isAtLimit && (
+                <span className="text-destructive/80">Character limit reached</span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
