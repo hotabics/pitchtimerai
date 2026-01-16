@@ -85,6 +85,62 @@ export type Database = {
           },
         ]
       }
+      coach_analysis: {
+        Row: {
+          content_analysis: Json | null
+          created_at: string
+          delivery_metrics: Json | null
+          duration_seconds: number | null
+          id: string
+          overall_score: number | null
+          pitch_id: string | null
+          prompt_mode: string | null
+          recommendations: Json | null
+          thumbnail_url: string | null
+          transcript: string | null
+          user_id: string
+          video_url: string | null
+        }
+        Insert: {
+          content_analysis?: Json | null
+          created_at?: string
+          delivery_metrics?: Json | null
+          duration_seconds?: number | null
+          id?: string
+          overall_score?: number | null
+          pitch_id?: string | null
+          prompt_mode?: string | null
+          recommendations?: Json | null
+          thumbnail_url?: string | null
+          transcript?: string | null
+          user_id: string
+          video_url?: string | null
+        }
+        Update: {
+          content_analysis?: Json | null
+          created_at?: string
+          delivery_metrics?: Json | null
+          duration_seconds?: number | null
+          id?: string
+          overall_score?: number | null
+          pitch_id?: string | null
+          prompt_mode?: string | null
+          recommendations?: Json | null
+          thumbnail_url?: string | null
+          transcript?: string | null
+          user_id?: string
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_analysis_pitch_id_fkey"
+            columns: ["pitch_id"]
+            isOneToOne: false
+            referencedRelation: "saved_pitches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feedback_logs: {
         Row: {
           additional_context: Json | null
@@ -345,6 +401,57 @@ export type Database = {
           id?: string
           name?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      saved_pitches: {
+        Row: {
+          audience: string | null
+          audience_label: string | null
+          created_at: string
+          duration_minutes: number
+          generation_mode: string | null
+          hook_style: string | null
+          id: string
+          idea: string
+          meta: Json | null
+          speech_blocks: Json
+          title: string
+          track: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          audience?: string | null
+          audience_label?: string | null
+          created_at?: string
+          duration_minutes?: number
+          generation_mode?: string | null
+          hook_style?: string | null
+          id?: string
+          idea: string
+          meta?: Json | null
+          speech_blocks?: Json
+          title: string
+          track: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          audience?: string | null
+          audience_label?: string | null
+          created_at?: string
+          duration_minutes?: number
+          generation_mode?: string | null
+          hook_style?: string | null
+          id?: string
+          idea?: string
+          meta?: Json | null
+          speech_blocks?: Json
+          title?: string
+          track?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
