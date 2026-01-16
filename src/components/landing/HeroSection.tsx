@@ -72,12 +72,16 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [pendingFileData, setPendingFileData] = useState<ScrapedProjectData | null>(null);
   // Initialize from localStorage for persistence between sessions
-  const [selectedDuration, setSelectedDuration] = useState(() => getStoredDuration());
+  const [selectedDuration, setSelectedDuration] = useState<number>(() => getStoredDuration());
   // Audience selection for auto-generate (mandatory)
   const [selectedAudience, setSelectedAudience] = useState<AudienceType | null>(null);
 
   // Check if auto-generate is enabled (requires both inputs)
-  const canAutoGenerate = (projectInput.trim() || scrapedData) && selectedAudience && selectedDuration && !isScrapingUrl;
+  // Use explicit checks for audience and duration since duration could be a valid number like 0.5
+  const hasIdea = !!(projectInput.trim() || scrapedData);
+  const hasAudience = selectedAudience !== null;
+  const hasDuration = selectedDuration !== null && selectedDuration !== undefined && selectedDuration > 0;
+  const canAutoGenerate = hasIdea && hasAudience && hasDuration && !isScrapingUrl;
 
   // Save duration to localStorage when it changes
   const handleDurationChange = (duration: number) => {
@@ -215,7 +219,7 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
       });
       return;
     }
-    if (!selectedDuration) {
+    if (!selectedDuration || selectedDuration <= 0) {
       toast({
         title: "Select Pitch Duration",
         description: "Please select how long your pitch should be",
@@ -223,6 +227,9 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
       });
       return;
     }
+    
+    // All validations passed - generate the pitch
+    console.log('Auto-generating pitch with:', { idea, selectedAudience, selectedDuration });
     
     trackEvent('Onboarding: Auto-Generate Started', { 
       url: inputIsUrl ? projectInput : undefined,
