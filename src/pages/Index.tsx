@@ -9,6 +9,7 @@ import { AutoGenerateOverlay } from "@/components/landing/AutoGenerateOverlay";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrapedProjectData } from "@/lib/api/firecrawl";
+import { ParsedPresentation } from "@/lib/api/presentationParser";
 import { generateAutoPitch, isUrl } from "@/services/mockScraper";
 import { trackEvent } from "@/utils/analytics";
 import { saveDuration, getStoredDuration } from "@/hooks/usePitchDuration";
@@ -125,6 +126,11 @@ interface StructuredScript {
   estimated_total_seconds: number;
 }
 
+interface PresentationData {
+  data: ParsedPresentation;
+  filename: string;
+}
+
 interface PitchData {
   idea: string;
   audience: string;
@@ -137,6 +143,7 @@ interface PitchData {
   structuredScript?: StructuredScript;
   hookStyle?: 'auto' | 'statistic' | 'villain' | 'story' | 'contrarian' | 'question';
   duration?: number;
+  presentation?: PresentationData | null;
 }
 
 const Index = () => {
@@ -163,6 +170,22 @@ const Index = () => {
       title: "Duration Updated",
       description: `Pitch length set to ${newDuration < 1 ? `${newDuration * 60}s` : `${newDuration} min`}`,
     });
+  }, []);
+
+  // Handler for presentation upload
+  const handlePresentationParsed = useCallback((presentationData: ParsedPresentation, filename: string) => {
+    setData(prev => ({ 
+      ...prev, 
+      presentation: { data: presentationData, filename } 
+    }));
+    trackEvent('presentation_uploaded', { 
+      slides: presentationData.total_slides,
+      words: presentationData.total_words 
+    });
+  }, []);
+
+  const handlePresentationRemoved = useCallback(() => {
+    setData(prev => ({ ...prev, presentation: null }));
   }, []);
 
   const currentTrack = data.track;
@@ -406,6 +429,10 @@ const Index = () => {
       prepTime,
       pitchDuration: data.duration || pendingDuration,
       onDurationChange: handleDurationChangeFromSidebar,
+      // Presentation support
+      presentation: data.presentation,
+      onPresentationParsed: handlePresentationParsed,
+      onPresentationRemoved: handlePresentationRemoved,
     };
 
     if (!currentTrack || !data.trackData) return base;
