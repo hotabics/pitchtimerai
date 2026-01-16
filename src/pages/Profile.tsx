@@ -21,6 +21,7 @@ import { MiniPlayerModal } from "@/components/profile/MiniPlayerModal";
 import { PerformanceStats } from "@/components/profile/PerformanceStats";
 import { RecordingFilters, FilterState, SortOption } from "@/components/profile/RecordingFilters";
 import { MyContentSection } from "@/components/profile/MyContentSection";
+import { StreakCalendar } from "@/components/profile/StreakCalendar";
 import { generateSessionPDF, generateSummaryPDF } from "@/services/pdfExport";
 
 interface PracticeSession {
@@ -50,10 +51,13 @@ interface UserStats {
   totalPitches: number;
   bestScore: number;
   currentStreak: number;
+  longestStreak: number;
   avgEyeContact: number;
   avgFillerScore: number;
   avgPacingScore: number;
   avgStructureScore: number;
+  weeklyPitches: number;
+  weeklyMinutes: number;
 }
 
 // Achievement definitions
@@ -127,10 +131,13 @@ const Profile = () => {
         totalPitches: 0,
         bestScore: 0,
         currentStreak: 0,
+        longestStreak: 0,
         avgEyeContact: 0,
         avgFillerScore: 0,
         avgPacingScore: 0,
         avgStructureScore: 0,
+        weeklyPitches: 0,
+        weeklyMinutes: 0,
       };
     }
 
@@ -159,6 +166,38 @@ const Profile = () => {
       } else break;
     }
 
+    // Calculate longest streak
+    const sortedDatesAsc = [...sortedDates].sort();
+    let longestStreak = 0;
+    let tempStreak = 1;
+    for (let i = 1; i < sortedDatesAsc.length; i++) {
+      const prevDate = new Date(sortedDatesAsc[i - 1]);
+      const currDate = new Date(sortedDatesAsc[i]);
+      const diffDays = Math.round((currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 1) {
+        tempStreak++;
+      } else {
+        longestStreak = Math.max(longestStreak, tempStreak);
+        tempStreak = 1;
+      }
+    }
+    longestStreak = Math.max(longestStreak, tempStreak, currentStreak);
+
+    // Calculate weekly stats
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay()); // Start of week (Sunday)
+    startOfWeek.setHours(0, 0, 0, 0);
+    
+    const thisWeekSessions = sessions.filter(s => new Date(s.created_at) >= startOfWeek);
+    const weeklyPitches = thisWeekSessions.length;
+    // Estimate minutes based on WPM and average transcript length (~150 words per minute for 1 min)
+    const weeklyMinutes = Math.round(thisWeekSessions.reduce((sum, s) => {
+      // Rough estimate: assume 2-3 min average per session
+      return sum + 2.5;
+    }, 0));
+
     // Calculate skill averages from last 5 sessions
     const recentSessions = sessions.slice(0, 5);
     const avgScore = recentSessions.reduce((sum, s) => sum + (s.score || 0), 0) / recentSessions.length;
@@ -175,10 +214,13 @@ const Profile = () => {
       totalPitches,
       bestScore,
       currentStreak,
+      longestStreak,
       avgEyeContact,
       avgFillerScore,
       avgPacingScore,
       avgStructureScore,
+      weeklyPitches,
+      weeklyMinutes,
     };
   }, [sessions]);
 
@@ -525,11 +567,25 @@ const Profile = () => {
             </Card>
           </motion.div>
 
-          {/* Leaderboard */}
+          {/* Streak Calendar */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.45 }}
+            className="md:col-span-2 lg:col-span-3"
+          >
+            <StreakCalendar 
+              sessions={sessions.map(s => ({ created_at: s.created_at, score: s.score }))}
+              currentStreak={stats.currentStreak}
+              longestStreak={stats.longestStreak}
+            />
+          </motion.div>
+
+          {/* Leaderboard */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
             className="lg:row-span-2"
           >
             <Leaderboard />
@@ -539,13 +595,15 @@ const Profile = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
+            transition={{ delay: 0.55 }}
             className="md:col-span-2"
           >
             <GoalSetting 
               currentScore={stats.bestScore} 
               currentWpm={avgWpm} 
-              totalPitches={stats.totalPitches} 
+              totalPitches={stats.totalPitches}
+              weeklyPitches={stats.weeklyPitches}
+              weeklyMinutes={stats.weeklyMinutes}
             />
           </motion.div>
 
