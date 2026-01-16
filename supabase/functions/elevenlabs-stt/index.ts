@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { checkRateLimit, getRateLimitKey, createRateLimitResponse, RATE_LIMITS } from "../_shared/rate-limit.ts";
+import { checkRateLimit, getRateLimitKey, createRateLimitResponse, getRateLimitConfig } from "../_shared/rate-limit.ts";
 import { getAuthStatus } from "../_shared/auth-validation.ts";
 
 const corsHeaders = {
@@ -33,19 +33,17 @@ serve(async (req) => {
     const authResult = await getAuthStatus(req);
     const isAuthenticated = authResult.authenticated;
     
-    // Rate limiting - more generous for authenticated users
-    const rateLimitKey = getRateLimitKey(req, 'elevenlabs-stt');
-    const rateLimitConfig = isAuthenticated 
-      ? { ...RATE_LIMITS.speech, maxRequests: RATE_LIMITS.speech.maxRequests * 2 }
-      : RATE_LIMITS.speech;
+    // Rate limiting - MUCH stricter for unauthenticated users (3/min vs 40/min)
+    const rateLimitKey = getRateLimitKey(req, `elevenlabs-stt:${isAuthenticated ? 'auth' : 'anon'}`);
+    const rateLimitConfig = getRateLimitConfig('speech', isAuthenticated);
     const rateLimitResult = checkRateLimit(rateLimitKey, rateLimitConfig);
     
     if (!rateLimitResult.allowed) {
-      console.warn(`Rate limit exceeded for key: ${rateLimitKey} (authenticated: ${isAuthenticated})`);
+      console.warn(`Rate limit exceeded for key: ${rateLimitKey} (authenticated: ${isAuthenticated}, limit: ${rateLimitConfig.maxRequests}/min)`);
       return createRateLimitResponse(rateLimitResult, corsHeaders);
     }
 
-    console.log(`STT request from ${isAuthenticated ? `user ${authResult.userId}` : 'anonymous'}`);
+    console.log(`STT request from ${isAuthenticated ? `user ${authResult.userId}` : 'anonymous'} (limit: ${rateLimitConfig.maxRequests}/min, remaining: ${rateLimitResult.remaining})`);
 
     const formData = await req.formData();
     const audioFile = formData.get('audio') as File;

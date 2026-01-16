@@ -1,4 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { checkRateLimit, getRateLimitKey, createRateLimitResponse, getRateLimitConfig } from "../_shared/rate-limit.ts";
+import { getAuthStatus } from "../_shared/auth-validation.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -172,6 +174,22 @@ serve(async (req) => {
   }
 
   try {
+    // Check authentication status (optional - allows both authenticated and anonymous)
+    const authResult = await getAuthStatus(req);
+    const isAuthenticated = authResult.authenticated;
+    
+    // Rate limiting - MUCH stricter for unauthenticated users (2/min vs 15/min)
+    const rateLimitKey = getRateLimitKey(req, `interrogation:${isAuthenticated ? 'auth' : 'anon'}`);
+    const rateLimitConfig = getRateLimitConfig('interrogation', isAuthenticated);
+    const rateLimitResult = checkRateLimit(rateLimitKey, rateLimitConfig);
+    
+    if (!rateLimitResult.allowed) {
+      console.warn(`Rate limit exceeded for key: ${rateLimitKey} (authenticated: ${isAuthenticated}, limit: ${rateLimitConfig.maxRequests}/min)`);
+      return createRateLimitResponse(rateLimitResult, corsHeaders);
+    }
+
+    console.log(`Interrogation request from ${isAuthenticated ? `user ${authResult.userId}` : 'anonymous'} (limit: ${rateLimitConfig.maxRequests}/min)`);
+
     const { juror_type, dossier_data } = await req.json();
 
     if (!juror_type || !['mentor', 'reviewer', 'shark'].includes(juror_type)) {
