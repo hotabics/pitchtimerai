@@ -77,6 +77,17 @@ interface DashboardProps {
   };
   onBack?: () => void;
   onEditInputs?: () => void;
+  initialData?: {
+    speechBlocks?: SpeechBlock[];
+    meta?: {
+      targetWordCount: number;
+      actualWordCount: number;
+      fullScript?: string;
+      bulletPoints?: string[];
+      estimatedDuration?: string;
+      hookStyle?: string;
+    };
+  };
 }
 
 const SPEAKING_RATE = 130; // words per minute
@@ -133,14 +144,18 @@ const formatTime = (ms: number): string => {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 };
 
-export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
+export const Dashboard = ({ data, onBack, onEditInputs, initialData }: DashboardProps) => {
   const { isLoggedIn } = useUserStore();
   const [activeTab, setActiveTab] = useState("script");
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentBlock, setCurrentBlock] = useState(0);
-  const [speechBlocks, setSpeechBlocks] = useState<SpeechBlock[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Initialize speechBlocks from initialData if available
+  const [speechBlocks, setSpeechBlocks] = useState<SpeechBlock[]>(
+    initialData?.speechBlocks || []
+  );
+  const [isLoading, setIsLoading] = useState(!initialData?.speechBlocks);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  // Initialize meta from initialData if available
   const [meta, setMeta] = useState<{ 
     targetWordCount: number; 
     actualWordCount: number;
@@ -148,7 +163,7 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
     bulletPoints?: string[];
     estimatedDuration?: string;
     hookStyle?: string;
-  } | null>(null);
+  } | null>(initialData?.meta || null);
   const [viewMode, setViewMode] = useState<"blocks" | "full" | "bullets">("blocks");
   // Initialize from data.duration, fall back to localStorage, then 3 min default
   const [currentDuration, setCurrentDuration] = useState(() => {

@@ -22,6 +22,8 @@ import { toast } from 'sonner';
 import { useSurveyTriggerContext } from '@/components/survey';
 import { formatFileSize } from '@/services/videoCompression';
 import { LiveTranscriptionDisplay } from './LiveTranscriptionDisplay';
+import { useCoachAnalysis } from '@/hooks/useCoachAnalysis';
+import { useUserStore } from '@/stores/userStore';
 
 // Helper to format bytes
 const formatBytes = (bytes: number): string => formatFileSize(bytes);
@@ -65,6 +67,8 @@ export const AICoachProcessing = ({
   const [isTranscriptionComplete, setIsTranscriptionComplete] = useState(false);
 
   const { setResults, setError, promptMode, bulletPoints } = useAICoachStore();
+  const { saveAnalysis } = useCoachAnalysis();
+  const { isLoggedIn } = useUserStore();
 
   useEffect(() => {
     processRecording();
@@ -232,6 +236,43 @@ export const AICoachProcessing = ({
         videoUrl,
         thumbnailUrl,
       });
+
+      // Auto-save analysis results to database for logged-in users
+      if (isLoggedIn) {
+        try {
+          await saveAnalysis({
+            overallScore: contentAnalysis?.score,
+            transcript,
+            deliveryMetrics: {
+              eyeContactPercent: videoMetrics.averageEyeContact,
+              wpm,
+              fillerCount: fillerData.total,
+              fillerBreakdown: fillerData.breakdown,
+              stabilityScore: videoMetrics.stabilityScore,
+              smilePercent: videoMetrics.smilePercentage,
+              postureScore: videoMetrics.averagePosture,
+              postureGrade: videoMetrics.postureGrade,
+              handsVisiblePercent: videoMetrics.handsVisiblePercent,
+              bodyStabilityScore: videoMetrics.averageBodyStability,
+            },
+            contentAnalysis: contentAnalysis ? {
+              score: contentAnalysis.score,
+              sentiment: contentAnalysis.sentiment,
+              strengths: contentAnalysis.strengths,
+              recommendations: contentAnalysis.recommendations,
+            } : undefined,
+            recommendations: contentAnalysis?.recommendations,
+            videoUrl,
+            thumbnailUrl,
+            durationSeconds: duration,
+            promptMode,
+          });
+          toast.success('Session saved to your account');
+        } catch (saveErr) {
+          console.warn('Failed to save analysis to database:', saveErr);
+          // Non-blocking - continue without cloud save
+        }
+      }
 
       // Track AI coach session complete (also fires pitch_session_completed for survey triggers)
       trackEvent('ai_coach_session_completed', {
