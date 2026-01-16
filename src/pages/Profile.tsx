@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Settings, Trophy, Flame, Mic, Video, Plus, Target, TrendingUp, LogOut, Download } from "lucide-react";
+import { Settings, Trophy, Flame, Mic, Video, Plus, Target, TrendingUp, LogOut, Download, Sparkles, FileText, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
@@ -302,10 +302,70 @@ const Profile = () => {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Page Title */}
-        <div className="mb-8">
+        <div className="mb-6">
           <h1 className="text-3xl font-bold tracking-tight">Your Profile</h1>
           <p className="text-muted-foreground">Track your progress and manage your pitches</p>
         </div>
+
+        {/* Quick Actions */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Button
+              variant="outline"
+              className="h-auto py-4 px-4 flex items-center justify-between group hover:border-primary/50 hover:bg-primary/5"
+              onClick={() => navigate('/')}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <FileText className="w-5 h-5 text-primary" />
+                </div>
+                <div className="text-left">
+                  <div className="font-medium">Generate Pitch</div>
+                  <div className="text-xs text-muted-foreground">Create a new pitch script</div>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+            </Button>
+
+            <Button
+              variant="outline"
+              className="h-auto py-4 px-4 flex items-center justify-between group hover:border-primary/50 hover:bg-primary/5"
+              onClick={() => navigate('/ai-coach')}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-amber-500" />
+                </div>
+                <div className="text-left">
+                  <div className="font-medium">AI Coach</div>
+                  <div className="text-xs text-muted-foreground">Practice with feedback</div>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+            </Button>
+
+            <Button
+              variant="outline"
+              className="h-auto py-4 px-4 flex items-center justify-between group hover:border-primary/50 hover:bg-primary/5"
+              onClick={() => navigate('/settings')}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                  <Settings className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <div className="text-left">
+                  <div className="font-medium">Settings</div>
+                  <div className="text-xs text-muted-foreground">Account preferences</div>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+            </Button>
+          </div>
+        </motion.div>
 
         {/* Bento Grid Layout */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
