@@ -13,6 +13,7 @@ import { ParsedPresentation } from "@/lib/api/presentationParser";
 import { generateAutoPitch, isUrl } from "@/services/mockScraper";
 import { trackEvent } from "@/utils/analytics";
 import { saveDuration, getStoredDuration } from "@/hooks/usePitchDuration";
+import { AudienceType } from "@/components/landing/HeroSection";
 
 // Lazy load heavy components to reduce initial bundle
 const Dashboard = lazy(() => import("@/components/Dashboard").then(m => ({ default: m.Dashboard })));
@@ -156,6 +157,7 @@ const Index = () => {
   const [pendingAutoData, setPendingAutoData] = useState<ScrapedProjectData | undefined>(undefined);
   // Initialize from localStorage for persistence between sessions
   const [pendingDuration, setPendingDuration] = useState<number>(() => getStoredDuration());
+  const [pendingAudience, setPendingAudience] = useState<AudienceType | undefined>(undefined);
   
   const [data, setData] = useState<Partial<PitchData>>({ entryMode: "generate" });
   const [trackStep, setTrackStep] = useState(0);
@@ -264,35 +266,46 @@ const Index = () => {
     });
   };
 
-  // Auto-generate: Skip wizard entirely
-  const handleAutoGenerate = (idea: string, scrapedData?: ScrapedProjectData, durationMinutes?: number) => {
-    const duration = durationMinutes || 3;
-    const durationLabel = duration < 1 
-      ? `${duration * 60} seconds` 
-      : `${duration} minute${duration !== 1 ? 's' : ''}`;
-    const wordCount = Math.round(duration * 130);
+  // Auto-generate: Skip wizard entirely - NOW REQUIRES audience + duration
+  const handleAutoGenerate = (idea: string, scrapedData?: ScrapedProjectData, durationMinutes?: number, audience?: AudienceType) => {
+    // Duration and audience are now REQUIRED - no more defaults
+    if (!durationMinutes || !audience) {
+      toast({
+        title: "Missing Required Fields",
+        description: "Please select both audience and duration before generating",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const durationLabel = durationMinutes < 1 
+      ? `${durationMinutes * 60} seconds` 
+      : `${durationMinutes} minute${durationMinutes !== 1 ? 's' : ''}`;
+    const wordCount = Math.round(durationMinutes * 130);
     
     setAutoGenerateInput(idea);
     setAutoGenerateIsUrl(isUrl(idea) || !!scrapedData);
     setPendingAutoData(scrapedData);
-    setPendingDuration(duration);
+    setPendingDuration(durationMinutes);
+    setPendingAudience(audience);
     setShowAutoGenerateOverlay(true);
     
-    // Show confirmation toast with duration info
+    // Show confirmation toast with duration + audience info
     toast({
       title: `⏱️ Generating ${durationLabel} pitch`,
-      description: `Creating ~${wordCount} words for your presentation`,
+      description: `For ${audience} audience, ~${wordCount} words`,
     });
   };
 
   // Called when auto-generate overlay completes
   const handleAutoGenerateComplete = useCallback(() => {
-    const autoPitch = generateAutoPitch(autoGenerateInput, pendingAutoData, pendingDuration);
+    const autoPitch = generateAutoPitch(autoGenerateInput, pendingAutoData, pendingDuration, pendingAudience);
     
     setData({
       ...data,
       idea: autoPitch.idea,
       track: autoPitch.track,
+      audience: pendingAudience,
       audienceLabel: autoPitch.audienceLabel,
       trackData: autoPitch.trackData,
       entryMode: "generate",
@@ -303,14 +316,14 @@ const Index = () => {
     setShowDashboard(true);
     
     const durationLabel = pendingDuration < 1 
-      ? `${pendingDuration * 60}s` 
+      ? `${pendingDuration}s` 
       : `${pendingDuration}min`;
     
     toast({
       title: "🎉 Pitch Auto-Generated!",
       description: `${autoPitch.audienceLabel} pitch ready (${durationLabel}, ~${autoPitch.estimatedWords} words)`,
     });
-  }, [autoGenerateInput, pendingAutoData, pendingDuration, data]);
+  }, [autoGenerateInput, pendingAutoData, pendingDuration, pendingAudience, data]);
 
   // Entry: Practice your own pitch
   const handlePracticeOwn = () => {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Link2, Loader2, Zap, Video, Check, ArrowRight, Settings, Clock, FileUp, ChevronDown, Eye, Timer } from "lucide-react";
+import { Sparkles, Link2, Loader2, Zap, Video, Check, ArrowRight, Settings, Clock, FileUp, ChevronDown, Eye, Timer, Users, Gavel, TrendingUp, Coffee, GraduationCap, PartyPopper, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isUrl, scrapeUrl, ScrapedProjectData } from "@/lib/api/firecrawl";
 import { toast } from "@/hooks/use-toast";
@@ -9,6 +9,18 @@ import { FileUploadZone } from "./FileUploadZone";
 import { DocumentPreviewModal } from "./DocumentPreviewModal";
 import { RotatingSlogan } from "./RotatingSlogan";
 import { getStoredDuration, saveDuration, DURATION_PRESETS } from "@/hooks/usePitchDuration";
+
+// Audience options for auto-generate (matches Step2Audience)
+export const AUDIENCE_OPTIONS = [
+  { id: "judges", label: "Hackathon Judges", icon: Gavel, color: "bg-violet-500/20", iconColor: "text-violet-500" },
+  { id: "investors", label: "Investors (VCs)", icon: TrendingUp, color: "bg-emerald-500/20", iconColor: "text-emerald-500" },
+  { id: "users", label: "Users / Customers", icon: Users, color: "bg-blue-500/20", iconColor: "text-blue-500" },
+  { id: "academic", label: "Academic Panel", icon: GraduationCap, color: "bg-indigo-500/20", iconColor: "text-indigo-500" },
+  { id: "peers", label: "Students / Peers", icon: PartyPopper, color: "bg-fuchsia-500/20", iconColor: "text-fuchsia-500" },
+  { id: "nontech", label: "Non-Tech (Simple)", icon: Coffee, color: "bg-amber-500/20", iconColor: "text-amber-500" },
+] as const;
+
+export type AudienceType = typeof AUDIENCE_OPTIONS[number]["id"];
 
 const RECENT_IDEAS_KEY = "pitchperfect_recent_ideas";
 const MAX_RECENT_IDEAS = 3;
@@ -33,7 +45,7 @@ const saveRecentIdea = (idea: string) => {
 
 interface HeroSectionProps {
   onSubmit: (idea: string, scrapedData?: ScrapedProjectData, durationMinutes?: number) => void;
-  onAutoGenerate: (idea: string, scrapedData?: ScrapedProjectData, durationMinutes?: number) => void;
+  onAutoGenerate: (idea: string, scrapedData?: ScrapedProjectData, durationMinutes?: number, audience?: AudienceType) => void;
   onOpenAICoach?: () => void;
 }
 
@@ -61,6 +73,11 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
   const [pendingFileData, setPendingFileData] = useState<ScrapedProjectData | null>(null);
   // Initialize from localStorage for persistence between sessions
   const [selectedDuration, setSelectedDuration] = useState(() => getStoredDuration());
+  // Audience selection for auto-generate (mandatory)
+  const [selectedAudience, setSelectedAudience] = useState<AudienceType | null>(null);
+
+  // Check if auto-generate is enabled (requires both inputs)
+  const canAutoGenerate = (projectInput.trim() || scrapedData) && selectedAudience && selectedDuration && !isScrapingUrl;
 
   // Save duration to localStorage when it changes
   const handleDurationChange = (duration: number) => {
@@ -182,16 +199,40 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
   
   const handleGenerateScript = () => {
     const idea = scrapedData?.name || projectInput.trim();
-    if (idea) {
-      trackEvent('Onboarding: Magic URL Used', { 
-        url: inputIsUrl ? projectInput : undefined,
-        hasScrapedData: !!scrapedData,
-        durationMinutes: selectedDuration
+    if (!idea) {
+      toast({
+        title: "Missing Project Idea",
+        description: "Please enter your project idea or paste a URL",
+        variant: "destructive",
       });
-      saveRecentIdea(idea);
-      setRecentIdeas(getRecentIdeas());
-      onAutoGenerate(idea, scrapedData || undefined, selectedDuration);
+      return;
     }
+    if (!selectedAudience) {
+      toast({
+        title: "Select Target Audience",
+        description: "Please select who you're pitching to before generating",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!selectedDuration) {
+      toast({
+        title: "Select Pitch Duration",
+        description: "Please select how long your pitch should be",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    trackEvent('Onboarding: Auto-Generate Started', { 
+      url: inputIsUrl ? projectInput : undefined,
+      hasScrapedData: !!scrapedData,
+      durationMinutes: selectedDuration,
+      audience: selectedAudience
+    });
+    saveRecentIdea(idea);
+    setRecentIdeas(getRecentIdeas());
+    onAutoGenerate(idea, scrapedData || undefined, selectedDuration, selectedAudience);
   };
   
   const handleCustomizePitch = () => {
@@ -463,7 +504,53 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
           )}
         </AnimatePresence>
 
-        {/* Duration Selector */}
+        {/* Target Audience Selector (REQUIRED) */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+          className="mt-5"
+        >
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <Users className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium text-foreground">Who are you pitching to?</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/20 text-destructive font-medium">Required</span>
+          </div>
+          <div className="flex flex-wrap justify-center gap-2">
+            {AUDIENCE_OPTIONS.map((option) => {
+              const Icon = option.icon;
+              const isSelected = selectedAudience === option.id;
+              return (
+                <button
+                  key={option.id}
+                  onClick={() => setSelectedAudience(option.id)}
+                  className={`
+                    flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200
+                    ${isSelected
+                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+                      : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/50"
+                    }
+                  `}
+                >
+                  <Icon className={`w-4 h-4 ${isSelected ? "text-primary-foreground" : option.iconColor}`} />
+                  <span>{option.label}</span>
+                </button>
+              );
+            })}
+          </div>
+          {!selectedAudience && (projectInput.trim() || scrapedData) && (
+            <motion.p 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-xs text-amber-500 text-center mt-2 flex items-center justify-center gap-1"
+            >
+              <AlertCircle className="w-3 h-3" />
+              Select your target audience to enable Auto-Generate
+            </motion.p>
+          )}
+        </motion.div>
+
+        {/* Duration Selector (REQUIRED) */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -473,7 +560,8 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
           <div className="flex items-center justify-center gap-2 mb-3">
             <Timer className="w-4 h-4 text-primary" />
             <span className="text-sm font-medium text-foreground">Pitch Duration</span>
-            <span className="text-[10px] text-muted-foreground hidden sm:inline">(Press 1-6)</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/20 text-destructive font-medium">Required</span>
+            <span className="text-[10px] text-muted-foreground hidden sm:inline ml-1">(Press 1-6)</span>
           </div>
           <div className="flex flex-wrap justify-center gap-2">
             {DURATION_OPTIONS.map((option, index) => (
@@ -525,25 +613,39 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
           </motion.div>
         </motion.div>
 
+        {/* Helper text */}
+        <motion.p 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="text-xs text-muted-foreground text-center mt-4 max-w-md mx-auto"
+        >
+          💡 Choose who you're presenting to and how much time you have — we'll structure the pitch accordingly.
+        </motion.p>
+
         {/* Dual Action Buttons */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.3 }}
+          transition={{ duration: 0.4, delay: 0.35 }}
           className="mt-6 flex flex-col sm:flex-row gap-3 w-full"
         >
-          {/* Auto-Generate Button (Primary) */}
+          {/* Auto-Generate Button (Primary) - requires audience + duration */}
           <Button
             onClick={handleGenerateScript}
-            disabled={(!projectInput.trim() && !scrapedData) || isScrapingUrl}
+            disabled={!canAutoGenerate}
             size="lg"
-            className="flex-1 min-w-fit h-14 sm:h-14 px-5 sm:px-6 rounded-xl bg-gradient-to-r from-primary via-amber-500 to-primary text-white hover:opacity-90 shadow-lg shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed font-bold text-base sm:text-lg transition-all duration-300 border-2 border-amber-400/30 whitespace-nowrap"
+            className={`flex-1 min-w-fit h-14 sm:h-14 px-5 sm:px-6 rounded-xl text-white hover:opacity-90 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed font-bold text-base sm:text-lg transition-all duration-300 whitespace-nowrap ${
+              canAutoGenerate 
+                ? "bg-gradient-to-r from-primary via-amber-500 to-primary shadow-primary/25 border-2 border-amber-400/30" 
+                : "bg-muted text-muted-foreground"
+            }`}
           >
             <Zap className="w-5 h-5 sm:w-6 sm:h-6 mr-2 flex-shrink-0" />
-            Auto-Generate
+            {canAutoGenerate ? "Auto-Generate" : "Select Audience & Duration"}
           </Button>
 
-          {/* Customize Pitch Button (Secondary) */}
+          {/* Customize Pitch Button (Secondary) - only requires idea */}
           <Button
             onClick={handleCustomizePitch}
             disabled={(!projectInput.trim() && !scrapedData) || isScrapingUrl}
@@ -558,7 +660,7 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
 
         {/* Helper text */}
         <p className="text-xs text-muted-foreground text-center mt-3">
-          Choose 'Customize' to select specific audiences (Investors, Non-Tech, etc.)
+          'Customize' lets you step through audience selection with more detail
         </p>
       </motion.div>
 
