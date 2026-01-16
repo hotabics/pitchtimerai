@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Settings, Trophy, Flame, Mic, Video, Plus, Target, TrendingUp, LogOut } from "lucide-react";
+import { Settings, Trophy, Flame, Mic, Video, Plus, Target, TrendingUp, LogOut, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
@@ -20,8 +20,8 @@ import { RecordingCard } from "@/components/profile/RecordingCard";
 import { MiniPlayerModal } from "@/components/profile/MiniPlayerModal";
 import { PerformanceStats } from "@/components/profile/PerformanceStats";
 import { RecordingFilters, FilterState, SortOption } from "@/components/profile/RecordingFilters";
+import { MyContentSection } from "@/components/profile/MyContentSection";
 import { generateSessionPDF, generateSummaryPDF } from "@/services/pdfExport";
-import { Download } from "lucide-react";
 
 interface PracticeSession {
   id: string;
@@ -559,11 +559,21 @@ const Profile = () => {
             </Card>
           </motion.div>
 
-          {/* Performance Stats */}
+          {/* My Content Section - Saved Pitches & AI Coach Sessions */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.7 }}
+            className="md:col-span-2 lg:col-span-3"
+          >
+            <MyContentSection />
+          </motion.div>
+
+          {/* Performance Stats */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.75 }}
             className="md:col-span-2 lg:col-span-3"
           >
             <PerformanceStats sessions={sessions} />
