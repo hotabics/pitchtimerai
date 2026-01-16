@@ -203,7 +203,22 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
   
   const handleGenerateScript = () => {
     const idea = scrapedData?.name || projectInput.trim();
+    
+    // Track validation attempt with current state
+    const validationState = {
+      hasIdea: !!idea,
+      hasAudience: !!selectedAudience,
+      hasDuration: selectedDuration !== null && selectedDuration !== undefined && selectedDuration > 0,
+      audience: selectedAudience,
+      duration: selectedDuration,
+    };
+    
     if (!idea) {
+      // Track validation failure
+      trackEvent('Auto-Generate: Validation Failed', {
+        ...validationState,
+        failureReason: 'missing_idea',
+      });
       toast({
         title: "Missing Project Idea",
         description: "Please enter your project idea or paste a URL",
@@ -212,6 +227,11 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
       return;
     }
     if (!selectedAudience) {
+      // Track validation failure
+      trackEvent('Auto-Generate: Validation Failed', {
+        ...validationState,
+        failureReason: 'missing_audience',
+      });
       toast({
         title: "Select Target Audience",
         description: "Please select who you're pitching to before generating",
@@ -220,6 +240,11 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
       return;
     }
     if (!selectedDuration || selectedDuration <= 0) {
+      // Track validation failure
+      trackEvent('Auto-Generate: Validation Failed', {
+        ...validationState,
+        failureReason: 'missing_duration',
+      });
       toast({
         title: "Select Pitch Duration",
         description: "Please select how long your pitch should be",
@@ -228,8 +253,19 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
       return;
     }
     
-    // All validations passed - generate the pitch
+    // All validations passed - track successful parameters
     console.log('Auto-generating pitch with:', { idea, selectedAudience, selectedDuration });
+    
+    // Track Auto-Generate with full parameters
+    trackEvent('Auto-Generate: Parameters Set', {
+      audience: selectedAudience,
+      audienceLabel: AUDIENCE_OPTIONS.find(o => o.id === selectedAudience)?.label,
+      durationMinutes: selectedDuration,
+      durationLabel: DURATION_OPTIONS.find(o => o.value === selectedDuration)?.label,
+      estimatedWords: getEstimatedWords(selectedDuration),
+      hasScrapedData: !!scrapedData,
+      inputType: inputIsUrl ? 'url' : uploadedFileName ? 'file' : 'text',
+    });
     
     trackEvent('Onboarding: Auto-Generate Started', { 
       url: inputIsUrl ? projectInput : undefined,
@@ -630,12 +666,70 @@ export const HeroSection = ({ onSubmit, onAutoGenerate, onOpenAICoach }: HeroSec
           💡 Choose who you're presenting to and how much time you have — we'll structure the pitch accordingly.
         </motion.p>
 
+        {/* Selection Status Indicator */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="mt-4 flex flex-wrap items-center justify-center gap-2"
+        >
+          {/* Audience status chip */}
+          <div className={`
+            inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200
+            ${selectedAudience 
+              ? "bg-emerald-500/15 text-emerald-500 border border-emerald-500/30" 
+              : "bg-amber-500/15 text-amber-500 border border-amber-500/30"
+            }
+          `}>
+            {selectedAudience ? (
+              <>
+                <Check className="w-3 h-3" />
+                <span>{AUDIENCE_OPTIONS.find(o => o.id === selectedAudience)?.label}</span>
+              </>
+            ) : (
+              <>
+                <AlertCircle className="w-3 h-3" />
+                <span>No audience selected</span>
+              </>
+            )}
+          </div>
+
+          {/* Duration status chip */}
+          <div className={`
+            inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200
+            ${hasDuration 
+              ? "bg-emerald-500/15 text-emerald-500 border border-emerald-500/30" 
+              : "bg-amber-500/15 text-amber-500 border border-amber-500/30"
+            }
+          `}>
+            {hasDuration ? (
+              <>
+                <Check className="w-3 h-3" />
+                <span>{DURATION_OPTIONS.find(o => o.value === selectedDuration)?.label} • ~{getEstimatedWords(selectedDuration).toLocaleString()} words</span>
+              </>
+            ) : (
+              <>
+                <AlertCircle className="w-3 h-3" />
+                <span>No duration selected</span>
+              </>
+            )}
+          </div>
+
+          {/* Idea status chip (only show if missing when user tried to interact) */}
+          {!hasIdea && (selectedAudience || hasDuration) && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-amber-500/15 text-amber-500 border border-amber-500/30">
+              <AlertCircle className="w-3 h-3" />
+              <span>Enter your idea above</span>
+            </div>
+          )}
+        </motion.div>
+
         {/* Dual Action Buttons */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.35 }}
-          className="mt-6 flex flex-col sm:flex-row gap-3 w-full"
+          className="mt-4 flex flex-col sm:flex-row gap-3 w-full"
         >
           {/* Auto-Generate Button (Primary) - requires audience + duration */}
           <Button
