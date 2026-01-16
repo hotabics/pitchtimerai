@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RefreshCw, TrendingUp, BarChart3, Calendar, ArrowLeft, Mic, Clock, Target, ThumbsUp, ThumbsDown, Zap, Users, MessageSquare, Download, FileText, Mail, Send } from "lucide-react";
+import { RefreshCw, TrendingUp, BarChart3, Calendar, ArrowLeft, Mic, Clock, Target, ThumbsUp, ThumbsDown, Zap, Users, MessageSquare, Download, FileText, Mail, Send, Shield } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -402,6 +402,14 @@ const AdminAnalytics = () => {
           </div>
           
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Manage Roles Link */}
+            <Link to="/admin/roles">
+              <Button variant="outline" size="sm">
+                <Shield className="h-4 w-4 mr-2" />
+                Manage Roles
+              </Button>
+            </Link>
+            
             {/* Date Range Filter */}
             <Select value={dateRange} onValueChange={(v) => handleDateRangeChange(v as DateRangeOption)}>
               <SelectTrigger className="w-[140px]">
