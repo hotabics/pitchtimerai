@@ -53,7 +53,7 @@ export function PresentationUpload({
     if (file.size > MAX_PRESENTATION_SIZE) {
       toast({
         title: 'File too large',
-        description: 'Maximum file size is 25MB.',
+        description: 'Maximum file size is 50MB.',
         variant: 'destructive'
       });
       return;

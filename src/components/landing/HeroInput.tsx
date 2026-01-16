@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
-import { motion } from "framer-motion";
-import { Rocket, Sparkles, AlertTriangle, Clock, HelpCircle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Rocket, Sparkles, AlertTriangle, Clock, HelpCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -8,9 +8,17 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const MAX_IDEA_LENGTH = 500;
 const WARNING_THRESHOLD = 0.8; // 80% of max
+
+// Example pitch ideas for quick start
+const EXAMPLE_IDEAS = [
+  { label: "Uber for Dog Walking", idea: "An on-demand dog walking app connecting pet owners with vetted, nearby walkers in minutes" },
+  { label: "AI Study Buddy", idea: "AI-powered study companion that creates personalized flashcards and quizzes from any textbook or notes" },
+  { label: "Carbon Tracker", idea: "Personal carbon footprint tracker that gamifies sustainable living with daily challenges and rewards" },
+];
 
 // Estimate generation time based on idea complexity
 const getEstimatedTime = (ideaLength: number): { min: number; max: number; label: string } => {
@@ -23,9 +31,10 @@ const getEstimatedTime = (ideaLength: number): { min: number; max: number; label
 
 interface HeroInputProps {
   onSubmit: (idea: string) => void;
+  isLoading?: boolean;
 }
 
-export const HeroInput = ({ onSubmit }: HeroInputProps) => {
+export const HeroInput = ({ onSubmit, isLoading = false }: HeroInputProps) => {
   const [idea, setIdea] = useState("");
   const [isFocused, setIsFocused] = useState(false);
 
@@ -47,18 +56,116 @@ export const HeroInput = ({ onSubmit }: HeroInputProps) => {
   };
 
   const handleSubmit = () => {
-    if (idea.trim()) {
+    if (idea.trim() && !isLoading) {
       // Truncate to safe limit before sending
       const safeIdea = idea.trim().slice(0, MAX_IDEA_LENGTH);
       onSubmit(safeIdea);
     }
   };
 
+  const handleExampleClick = (exampleIdea: string) => {
+    setIdea(exampleIdea);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && idea.trim()) {
+    if (e.key === "Enter" && idea.trim() && !isLoading) {
       handleSubmit();
     }
   };
+
+  // Loading skeleton component
+  if (isLoading) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="w-full max-w-xl mx-auto px-4"
+      >
+        <div className="relative">
+          {/* Animated glow effect */}
+          <motion.div
+            className="absolute inset-0 rounded-2xl bg-primary/30 blur-xl"
+            animate={{
+              opacity: [0.3, 0.6, 0.3],
+              scale: [1, 1.02, 1],
+            }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          />
+
+          {/* Skeleton content */}
+          <div className="relative glass-premium rounded-2xl p-4 space-y-4">
+            {/* Header skeleton */}
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Loader2 className="w-6 h-6 text-primary animate-spin" />
+              </div>
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-5 w-3/4 bg-primary/10" />
+                <Skeleton className="h-3 w-1/2 bg-muted/50" />
+              </div>
+            </div>
+
+            {/* Progress bar */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-primary animate-pulse" />
+                  Crafting your pitch...
+                </span>
+                <span className="font-medium text-primary">Generating</span>
+              </div>
+              <div className="h-2 rounded-full bg-muted overflow-hidden">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-primary via-emerald-500 to-primary rounded-full"
+                  initial={{ width: "0%", x: "-100%" }}
+                  animate={{ 
+                    width: "100%",
+                    x: ["0%", "100%"]
+                  }}
+                  transition={{ 
+                    width: { duration: 0.5 },
+                    x: { duration: 1.5, repeat: Infinity, ease: "linear" }
+                  }}
+                  style={{ backgroundSize: "200% 100%" }}
+                />
+              </div>
+            </div>
+
+            {/* Content skeleton blocks */}
+            <div className="space-y-3 pt-2">
+              <Skeleton className="h-4 w-full bg-muted/40" />
+              <Skeleton className="h-4 w-5/6 bg-muted/40" />
+              <Skeleton className="h-4 w-4/5 bg-muted/40" />
+            </div>
+
+            {/* Section preview skeletons */}
+            <div className="grid grid-cols-3 gap-2 pt-2">
+              {["Hook", "Problem", "Solution"].map((section) => (
+                <div key={section} className="p-2 rounded-lg bg-muted/20 border border-border/30">
+                  <Skeleton className="h-3 w-12 mb-1.5 bg-primary/20" />
+                  <Skeleton className="h-2 w-full bg-muted/30" />
+                  <Skeleton className="h-2 w-3/4 mt-1 bg-muted/30" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Estimated time remaining */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="text-center text-xs text-muted-foreground mt-4"
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5" />
+            This usually takes 10-30 seconds
+          </span>
+        </motion.p>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -146,7 +253,7 @@ export const HeroInput = ({ onSubmit }: HeroInputProps) => {
             </div>
             <Button
               onClick={handleSubmit}
-              disabled={!idea.trim()}
+              disabled={!idea.trim() || isLoading}
               size="lg"
               className="
                 h-14 px-6 sm:px-8 rounded-xl
@@ -191,6 +298,35 @@ export const HeroInput = ({ onSubmit }: HeroInputProps) => {
           )}
         </div>
       </div>
+
+      {/* Example idea chips */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1 }}
+        className="mt-4"
+      >
+        <p className="text-center text-xs text-muted-foreground mb-2">
+          Try an example:
+        </p>
+        <div className="flex flex-wrap justify-center gap-2">
+          {EXAMPLE_IDEAS.map((example) => (
+            <button
+              key={example.label}
+              onClick={() => handleExampleClick(example.idea)}
+              className="
+                px-3 py-1.5 text-xs font-medium rounded-full
+                bg-muted/60 hover:bg-primary/20 
+                text-muted-foreground hover:text-primary 
+                border border-border/50 hover:border-primary/30 
+                transition-all duration-200
+              "
+            >
+              {example.label}
+            </button>
+          ))}
+        </div>
+      </motion.div>
 
       {/* Helper text */}
       <motion.p

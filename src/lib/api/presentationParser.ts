@@ -30,7 +30,7 @@ export const SUPPORTED_PRESENTATION_MIMES = [
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 ];
-export const MAX_PRESENTATION_SIZE = 25 * 1024 * 1024; // 25MB
+export const MAX_PRESENTATION_SIZE = 50 * 1024 * 1024; // 50MB
 
 /**
  * Check if a file is a supported presentation format
