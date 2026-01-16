@@ -189,6 +189,11 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const trackConfig = trackConfigs[data.track];
 
+  // Bullet points sync state
+  const [bulletPointsStale, setBulletPointsStale] = useState(false);
+  const [isRegeneratingBullets, setIsRegeneratingBullets] = useState(false);
+  const bulletRegenerateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // Version history state
   const [savedVersions, setSavedVersions] = useState<ScriptVersion[]>(() => {
     // Load from localStorage on mount
@@ -203,6 +208,62 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
       JSON.stringify(savedVersions)
     );
   }, [savedVersions, data.idea]);
+
+  // Debounced bullet points regeneration when blocks are edited
+  useEffect(() => {
+    if (!bulletPointsStale || speechBlocks.length === 0) return;
+
+    // Clear any pending regeneration
+    if (bulletRegenerateTimeoutRef.current) {
+      clearTimeout(bulletRegenerateTimeoutRef.current);
+    }
+
+    // Debounce the regeneration by 1.5 seconds
+    bulletRegenerateTimeoutRef.current = setTimeout(async () => {
+      setIsRegeneratingBullets(true);
+      
+      try {
+        const fullScript = speechBlocks.map(block => block.content).join('\n\n');
+        
+        const { data: result, error } = await supabase.functions.invoke('regenerate-bullets', {
+          body: { script: fullScript },
+        });
+
+        if (error) throw error;
+        if (result?.bulletPoints) {
+          setMeta(prev => prev ? {
+            ...prev,
+            bulletPoints: result.bulletPoints,
+          } : null);
+          
+          toast({
+            title: "Bullet Points Updated",
+            description: "Synced with your latest edits.",
+          });
+        }
+      } catch (err) {
+        console.error('Failed to regenerate bullet points:', err);
+        // Fallback: generate simple bullets from block titles + first sentence
+        const fallbackBullets = speechBlocks.map(block => {
+          const firstSentence = block.content.split(/[.!?]/)[0]?.trim() || block.content.slice(0, 100);
+          return `${block.title}: ${firstSentence}`;
+        });
+        setMeta(prev => prev ? {
+          ...prev,
+          bulletPoints: fallbackBullets,
+        } : null);
+      } finally {
+        setIsRegeneratingBullets(false);
+        setBulletPointsStale(false);
+      }
+    }, 1500);
+
+    return () => {
+      if (bulletRegenerateTimeoutRef.current) {
+        clearTimeout(bulletRegenerateTimeoutRef.current);
+      }
+    };
+  }, [bulletPointsStale, speechBlocks]);
 
   const handleSaveVersion = (version: ScriptVersion) => {
     setSavedVersions(prev => [version, ...prev]);
@@ -251,11 +312,29 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
     // Track manual editing
     trackEvent('Script: Manually Edited');
     
-    setSpeechBlocks(prev => prev.map((block, index) => 
-      index === editingBlockIndex 
-        ? { ...block, content: editingContent.trim() || block.content }
-        : block
-    ));
+    const newContent = editingContent.trim() || speechBlocks[editingBlockIndex].content;
+    
+    setSpeechBlocks(prev => {
+      const updated = prev.map((block, index) => 
+        index === editingBlockIndex 
+          ? { ...block, content: newContent }
+          : block
+      );
+      
+      // Immediately sync fullScript from updated blocks
+      const newFullScript = updated.map(block => block.content).join('\n\n');
+      const newWordCount = updated.reduce((acc, block) => 
+        acc + block.content.split(/\s+/).filter(w => w.length > 0).length, 0
+      );
+      
+      setMeta(prevMeta => prevMeta ? {
+        ...prevMeta,
+        fullScript: newFullScript,
+        actualWordCount: newWordCount,
+      } : null);
+      
+      return updated;
+    });
     
     // Clear cached audio for this block since content changed
     const cachedUrl = audioCache.current.get(editingBlockIndex);
@@ -267,9 +346,12 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
     setEditingBlockIndex(null);
     setEditingContent("");
     
+    // Mark that bullet points need regeneration
+    setBulletPointsStale(true);
+    
     toast({
       title: "Block Updated",
-      description: "Your changes have been saved.",
+      description: "Full script synced. Bullet points will update shortly.",
     });
   };
 
@@ -1236,7 +1318,12 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
                   className="glass-card rounded-xl p-6"
                 >
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-semibold text-foreground">Complete Script</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-semibold text-foreground">Complete Script</h3>
+                      <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                        ✓ Synced with blocks
+                      </span>
+                    </div>
                     <div className="flex items-center gap-2">
                       {meta.estimatedDuration && (
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -1272,7 +1359,30 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
                   className="glass-card rounded-xl p-6"
                 >
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-semibold text-foreground">Key Points</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-semibold text-foreground">Key Points</h3>
+                      {isRegeneratingBullets && (
+                        <motion.span
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="text-xs text-primary flex items-center gap-1"
+                        >
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                          >
+                            <RefreshCw className="w-3 h-3" />
+                          </motion.div>
+                          Syncing...
+                        </motion.span>
+                      )}
+                      {!isRegeneratingBullets && bulletPointsStale && (
+                        <span className="text-xs text-amber-500 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          Updating soon...
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2">
                       {meta.estimatedDuration && (
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -1295,7 +1405,7 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
                       </Button>
                     </div>
                   </div>
-                  <ul className="space-y-3">
+                  <ul className={cn("space-y-3", isRegeneratingBullets && "opacity-50")}>
                     {meta.bulletPoints.map((point, index) => (
                       <motion.li
                         key={index}
