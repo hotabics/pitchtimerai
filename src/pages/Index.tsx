@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, lazy, Suspense } from "react";
 import { AnimatePresence } from "framer-motion";
+import { useLocation, useNavigate } from "react-router-dom";
 // Header is now global via Navbar in App.tsx
 import { WizardLayout } from "@/components/WizardLayout";
 import { BriefData } from "@/components/ProjectBrief";
@@ -14,6 +15,7 @@ import { generateAutoPitch, isUrl } from "@/services/mockScraper";
 import { trackEvent } from "@/utils/analytics";
 import { saveDuration, getStoredDuration } from "@/hooks/usePitchDuration";
 import { AudienceType } from "@/components/landing/HeroSection";
+import { useUserStore } from "@/stores/userStore";
 
 // Lazy load heavy components to reduce initial bundle
 const Dashboard = lazy(() => import("@/components/Dashboard").then(m => ({ default: m.Dashboard })));
@@ -148,6 +150,10 @@ interface PitchData {
 }
 
 const Index = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { isLoggedIn, user } = useUserStore();
+  
   const [step, setStep] = useState(0);
   const [showDashboard, setShowDashboard] = useState(false);
   const [showAICoach, setShowAICoach] = useState(false);
@@ -162,6 +168,70 @@ const Index = () => {
   const [data, setData] = useState<Partial<PitchData>>({ entryMode: "generate" });
   const [trackStep, setTrackStep] = useState(0);
   const [isStructuring, setIsStructuring] = useState(false);
+  const [loadedPitchData, setLoadedPitchData] = useState<{
+    speechBlocks: unknown;
+    meta: unknown;
+  } | null>(null);
+
+  // Handle loading saved pitch from navigation state
+  useEffect(() => {
+    const loadSavedPitch = async () => {
+      const state = location.state as { loadPitchId?: string } | null;
+      if (!state?.loadPitchId || !isLoggedIn || !user) return;
+      
+      try {
+        const { data: pitch, error } = await supabase
+          .from('saved_pitches')
+          .select('*')
+          .eq('id', state.loadPitchId)
+          .eq('user_id', user.id)
+          .single();
+        
+        if (error) throw error;
+        
+        // Set pitch data and navigate to dashboard
+        setData({
+          idea: pitch.idea,
+          track: pitch.track as TrackType,
+          trackData: {},
+          audience: pitch.audience || undefined,
+          audienceLabel: pitch.audience_label || undefined,
+          duration: pitch.duration_minutes,
+          hookStyle: pitch.hook_style as PitchData['hookStyle'],
+          entryMode: pitch.generation_mode as EntryMode || 'generate',
+          generationTier: 'pro',
+        });
+        
+        // Store loaded pitch data for Dashboard
+        setLoadedPitchData({
+          speechBlocks: pitch.speech_blocks,
+          meta: pitch.meta,
+        });
+        
+        setPendingDuration(pitch.duration_minutes);
+        setShowDashboard(true);
+        
+        // Clear navigation state
+        navigate('/', { replace: true, state: {} });
+        
+        toast({
+          title: "Pitch Loaded",
+          description: `Continuing with "${pitch.title.slice(0, 40)}..."`,
+        });
+        
+        trackEvent('Pitch: Loaded', { pitch_id: state.loadPitchId });
+      } catch (err) {
+        console.error('Failed to load pitch:', err);
+        toast({
+          title: "Error",
+          description: "Failed to load saved pitch",
+          variant: "destructive",
+        });
+      }
+    };
+    
+    loadSavedPitch();
+  }, [location.state, isLoggedIn, user, navigate]);
 
   // Handler for duration changes from sidebar - saves to localStorage
   const handleDurationChangeFromSidebar = useCallback((newDuration: number) => {
@@ -570,6 +640,24 @@ const Index = () => {
             hookStyle: data.hookStyle,
           }}
           onEditInputs={handleEditInputs}
+          initialData={loadedPitchData ? {
+            speechBlocks: loadedPitchData.speechBlocks as Array<{
+              timeStart: string;
+              timeEnd: string;
+              title: string;
+              content: string;
+              isDemo?: boolean;
+              visualCue?: string;
+            }>,
+            meta: loadedPitchData.meta as {
+              targetWordCount: number;
+              actualWordCount: number;
+              fullScript?: string;
+              bulletPoints?: string[];
+              estimatedDuration?: string;
+              hookStyle?: string;
+            } | undefined,
+          } : undefined}
         />
       </Suspense>
     );

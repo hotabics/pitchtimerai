@@ -35,6 +35,7 @@ const guestLinks = [
 
 const userLinks = [
   { label: 'Dashboard', href: '/' },
+  { label: 'My Pitches', href: '/my-pitches' },
   { label: 'My Projects', href: '/profile' },
 ];
 
