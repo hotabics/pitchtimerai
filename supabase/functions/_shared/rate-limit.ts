@@ -125,21 +125,75 @@ export function createRateLimitResponse(
   );
 }
 
-// Default rate limit configs for different function types
-export const RATE_LIMITS = {
-  // AI generation functions - more expensive
+// Stricter rate limits for unauthenticated users
+export const RATE_LIMITS_UNAUTHENTICATED = {
+  // AI generation functions - very strict for anonymous users
   aiGeneration: {
-    maxRequests: 30,
-    windowMs: 60 * 1000, // 30 requests per minute
+    maxRequests: 5,
+    windowMs: 60 * 1000, // 5 requests per minute (was 30)
   },
-  // TTS/STT - expensive external API
+  // TTS/STT - expensive external API, strict limits
   speech: {
-    maxRequests: 20,
-    windowMs: 60 * 1000, // 20 requests per minute
+    maxRequests: 3,
+    windowMs: 60 * 1000, // 3 requests per minute (was 20)
   },
-  // Analytics - less expensive
+  // Analytics - moderate limits
   analytics: {
+    maxRequests: 15,
+    windowMs: 60 * 1000, // 15 requests per minute (was 60)
+  },
+  // Document parsing - strict for anonymous
+  documentParsing: {
+    maxRequests: 3,
+    windowMs: 60 * 1000, // 3 requests per minute
+  },
+  // Interrogation - AI-intensive, very strict
+  interrogation: {
+    maxRequests: 2,
+    windowMs: 60 * 1000, // 2 requests per minute
+  },
+} as const;
+
+// More generous rate limits for authenticated users
+export const RATE_LIMITS_AUTHENTICATED = {
+  // AI generation functions - generous for logged-in users
+  aiGeneration: {
     maxRequests: 60,
     windowMs: 60 * 1000, // 60 requests per minute
   },
+  // TTS/STT - generous for logged-in users
+  speech: {
+    maxRequests: 40,
+    windowMs: 60 * 1000, // 40 requests per minute
+  },
+  // Analytics - very generous
+  analytics: {
+    maxRequests: 120,
+    windowMs: 60 * 1000, // 120 requests per minute
+  },
+  // Document parsing - generous for authenticated
+  documentParsing: {
+    maxRequests: 20,
+    windowMs: 60 * 1000, // 20 requests per minute
+  },
+  // Interrogation - generous for authenticated
+  interrogation: {
+    maxRequests: 15,
+    windowMs: 60 * 1000, // 15 requests per minute
+  },
 } as const;
+
+// Legacy export for backwards compatibility
+export const RATE_LIMITS = RATE_LIMITS_UNAUTHENTICATED;
+
+/**
+ * Get rate limit config based on authentication status
+ */
+export function getRateLimitConfig(
+  type: keyof typeof RATE_LIMITS_AUTHENTICATED,
+  isAuthenticated: boolean
+): RateLimitConfig {
+  return isAuthenticated
+    ? RATE_LIMITS_AUTHENTICATED[type]
+    : RATE_LIMITS_UNAUTHENTICATED[type];
+}

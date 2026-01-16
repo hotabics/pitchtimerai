@@ -112,3 +112,11 @@ export async function getAuthStatus(req: Request): Promise<AuthResult> {
 export async function requireAuth(req: Request): Promise<AuthResult> {
   return validateAuth(req, { required: true });
 }
+
+/**
+ * Get rate limit multiplier based on auth status
+ * Authenticated users get more generous limits
+ */
+export function getAuthMultiplier(authResult: AuthResult): number {
+  return authResult.authenticated ? 1 : 1; // Config handles this now via separate limits
+}

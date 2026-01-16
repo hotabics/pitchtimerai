@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { validateIdea, validateType, validateContext } from "../_shared/input-validation.ts";
-import { checkRateLimit, getRateLimitKey, createRateLimitResponse, RATE_LIMITS } from "../_shared/rate-limit.ts";
+import { checkRateLimit, getRateLimitKey, createRateLimitResponse, getRateLimitConfig } from "../_shared/rate-limit.ts";
 import { getAuthStatus } from "../_shared/auth-validation.ts";
 
 const corsHeaders = {
@@ -37,19 +37,18 @@ serve(async (req) => {
     const isAuthenticated = authResult.authenticated;
     const userId = authResult.userId;
     
-    // Rate limiting - more generous for authenticated users
-    const rateLimitKey = getRateLimitKey(req, 'generate-pitch');
-    const rateLimitConfig = isAuthenticated 
-      ? { ...RATE_LIMITS.aiGeneration, maxRequests: RATE_LIMITS.aiGeneration.maxRequests * 2 }
-      : RATE_LIMITS.aiGeneration;
+    // Rate limiting - MUCH stricter for unauthenticated users
+    const rateLimitKey = getRateLimitKey(req, `generate-pitch:${isAuthenticated ? 'auth' : 'anon'}`);
+    const rateLimitConfig = getRateLimitConfig('aiGeneration', isAuthenticated);
     const rateLimitResult = checkRateLimit(rateLimitKey, rateLimitConfig);
     
     if (!rateLimitResult.allowed) {
-      console.warn(`Rate limit exceeded for key: ${rateLimitKey} (authenticated: ${isAuthenticated})`);
+      console.warn(`Rate limit exceeded for key: ${rateLimitKey} (authenticated: ${isAuthenticated}, limit: ${rateLimitConfig.maxRequests}/min)`);
       return createRateLimitResponse(rateLimitResult, corsHeaders);
     }
 
-    console.log(`Request from ${isAuthenticated ? `user ${userId}` : 'anonymous'}`);
+    console.log(`Request from ${isAuthenticated ? `user ${userId}` : 'anonymous'} (limit: ${rateLimitConfig.maxRequests}/min, remaining: ${rateLimitResult.remaining})`);
+
 
     const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
     if (!OPENAI_API_KEY) {
