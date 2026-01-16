@@ -2,8 +2,21 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import DOMPurify from 'dompurify';
 import { Slide, useSlidesStore } from '@/stores/slidesStore';
 import { cn } from '@/lib/utils';
+
+// Configure DOMPurify to only allow safe formatting tags
+const DOMPURIFY_CONFIG = {
+  ALLOWED_TAGS: ['b', 'i', 'u', 'strong', 'em', 'span', 'br'],
+  ALLOWED_ATTR: ['class', 'style'],
+  KEEP_CONTENT: true,
+};
+
+// Sanitize HTML content to prevent XSS attacks
+const sanitizeHtml = (html: string): string => {
+  return DOMPurify.sanitize(html, DOMPURIFY_CONFIG);
+};
 import { 
   Lightbulb, Target, Zap, TrendingUp, Users, Rocket, CheckCircle2,
   Plus, Trash2, Bold, Italic, Undo2, Redo2
@@ -154,14 +167,16 @@ export const SlideWYSIWYG = ({ slide, isEditing = true, onExitEdit }: SlideWYSIW
   };
 
   const handleTitleInput = (e: React.FormEvent<HTMLDivElement>) => {
-    // Use innerHTML to preserve formatting
-    setLocalTitle(e.currentTarget.innerHTML || '');
+    // Use innerHTML to preserve formatting, sanitize to prevent XSS
+    const rawHtml = e.currentTarget.innerHTML || '';
+    setLocalTitle(sanitizeHtml(rawHtml));
   };
 
   const handleContentInput = (index: number, e: React.FormEvent<HTMLDivElement>) => {
     const newContent = [...localContent];
-    // Use innerHTML to preserve formatting
-    newContent[index] = e.currentTarget.innerHTML || '';
+    // Use innerHTML to preserve formatting, sanitize to prevent XSS
+    const rawHtml = e.currentTarget.innerHTML || '';
+    newContent[index] = sanitizeHtml(rawHtml);
     setLocalContent(newContent);
   };
 
@@ -220,7 +235,7 @@ export const SlideWYSIWYG = ({ slide, isEditing = true, onExitEdit }: SlideWYSIW
       )}
       style={style}
       data-placeholder={placeholder}
-      dangerouslySetInnerHTML={{ __html: value || placeholder }}
+      dangerouslySetInnerHTML={{ __html: sanitizeHtml(value || placeholder) }}
     />
   );
 
