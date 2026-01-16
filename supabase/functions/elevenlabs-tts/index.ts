@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { validateTTSText, validateVoiceId } from "../_shared/input-validation.ts";
 import { checkRateLimit, getRateLimitKey, createRateLimitResponse, RATE_LIMITS } from "../_shared/rate-limit.ts";
+import { getAuthStatus } from "../_shared/auth-validation.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,14 +14,23 @@ serve(async (req) => {
   }
 
   try {
-    // Rate limiting
+    // Check authentication status (optional - allows both authenticated and anonymous)
+    const authResult = await getAuthStatus(req);
+    const isAuthenticated = authResult.authenticated;
+    
+    // Rate limiting - more generous for authenticated users
     const rateLimitKey = getRateLimitKey(req, 'elevenlabs-tts');
-    const rateLimitResult = checkRateLimit(rateLimitKey, RATE_LIMITS.speech);
+    const rateLimitConfig = isAuthenticated 
+      ? { ...RATE_LIMITS.speech, maxRequests: RATE_LIMITS.speech.maxRequests * 2 }
+      : RATE_LIMITS.speech;
+    const rateLimitResult = checkRateLimit(rateLimitKey, rateLimitConfig);
     
     if (!rateLimitResult.allowed) {
-      console.warn(`Rate limit exceeded for key: ${rateLimitKey}`);
+      console.warn(`Rate limit exceeded for key: ${rateLimitKey} (authenticated: ${isAuthenticated})`);
       return createRateLimitResponse(rateLimitResult, corsHeaders);
     }
+
+    console.log(`TTS request from ${isAuthenticated ? `user ${authResult.userId}` : 'anonymous'}`);
 
     const body = await req.json();
     const { text, voiceId } = body;

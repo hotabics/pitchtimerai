@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { validateIdea, validateType, validateContext } from "../_shared/input-validation.ts";
 import { checkRateLimit, getRateLimitKey, createRateLimitResponse, RATE_LIMITS } from "../_shared/rate-limit.ts";
+import { getAuthStatus } from "../_shared/auth-validation.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -31,14 +32,24 @@ serve(async (req) => {
   }
 
   try {
-    // Rate limiting
+    // Check authentication status (optional - allows both authenticated and anonymous)
+    const authResult = await getAuthStatus(req);
+    const isAuthenticated = authResult.authenticated;
+    const userId = authResult.userId;
+    
+    // Rate limiting - more generous for authenticated users
     const rateLimitKey = getRateLimitKey(req, 'generate-pitch');
-    const rateLimitResult = checkRateLimit(rateLimitKey, RATE_LIMITS.aiGeneration);
+    const rateLimitConfig = isAuthenticated 
+      ? { ...RATE_LIMITS.aiGeneration, maxRequests: RATE_LIMITS.aiGeneration.maxRequests * 2 }
+      : RATE_LIMITS.aiGeneration;
+    const rateLimitResult = checkRateLimit(rateLimitKey, rateLimitConfig);
     
     if (!rateLimitResult.allowed) {
-      console.warn(`Rate limit exceeded for key: ${rateLimitKey}`);
+      console.warn(`Rate limit exceeded for key: ${rateLimitKey} (authenticated: ${isAuthenticated})`);
       return createRateLimitResponse(rateLimitResult, corsHeaders);
     }
+
+    console.log(`Request from ${isAuthenticated ? `user ${userId}` : 'anonymous'}`);
 
     const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
     if (!OPENAI_API_KEY) {
