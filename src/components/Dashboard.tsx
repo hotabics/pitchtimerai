@@ -7,7 +7,7 @@ import {
   Smartphone, Presentation, RefreshCw, Download, Clock, Minus, 
   Smile, Zap, Timer, SkipForward, Volume2, VolumeX,
   Gauge, Mic, Pencil, Check, X, Copy, CheckCheck, Share2, Link, QrCode, Printer,
-  LayoutGrid
+  LayoutGrid, Undo2, Redo2
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -194,12 +194,63 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
   const [isRegeneratingBullets, setIsRegeneratingBullets] = useState(false);
   const bulletRegenerateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Undo/Redo state for block edits
+  const [editHistory, setEditHistory] = useState<SpeechBlock[][]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const isUndoRedoAction = useRef(false);
+
   // Version history state
   const [savedVersions, setSavedVersions] = useState<ScriptVersion[]>(() => {
     // Load from localStorage on mount
     const stored = localStorage.getItem(`script_versions_${data.idea.slice(0, 50)}`);
     return stored ? JSON.parse(stored) : [];
   });
+
+  // Generate a stable storage key from the idea
+  const storageKey = `pitch_script_${data.idea.slice(0, 50).replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+  // Load persisted script edits from localStorage on mount
+  useEffect(() => {
+    const persistedData = localStorage.getItem(storageKey);
+    if (persistedData && speechBlocks.length === 0) {
+      try {
+        const parsed = JSON.parse(persistedData);
+        if (parsed.speechBlocks?.length > 0) {
+          setSpeechBlocks(parsed.speechBlocks);
+          if (parsed.meta) {
+            setMeta(parsed.meta);
+          }
+          setIsLoading(false);
+          toast({
+            title: "Script Restored",
+            description: "Your previous edits have been loaded.",
+          });
+        }
+      } catch (e) {
+        console.error('Failed to load persisted script:', e);
+      }
+    }
+  }, [storageKey]);
+
+  // Persist script edits to localStorage whenever speechBlocks change
+  useEffect(() => {
+    if (speechBlocks.length > 0 && !isLoading) {
+      const dataToStore = {
+        speechBlocks,
+        meta,
+        lastUpdated: Date.now(),
+      };
+      localStorage.setItem(storageKey, JSON.stringify(dataToStore));
+    }
+  }, [speechBlocks, meta, storageKey, isLoading]);
+
+  // Initialize edit history when speechBlocks first load
+  useEffect(() => {
+    if (speechBlocks.length > 0 && editHistory.length === 0) {
+      setEditHistory([speechBlocks]);
+      setHistoryIndex(0);
+    }
+  }, [speechBlocks, editHistory.length]);
 
   // Save versions to localStorage whenever they change
   useEffect(() => {
@@ -333,6 +384,17 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
         actualWordCount: newWordCount,
       } : null);
       
+      // Add to edit history for undo/redo (only if not an undo/redo action)
+      if (!isUndoRedoAction.current) {
+        setEditHistory(prevHistory => {
+          // Remove any redo history beyond current index
+          const newHistory = prevHistory.slice(0, historyIndex + 1);
+          // Add new state, keep max 20 entries
+          return [...newHistory.slice(-19), updated];
+        });
+        setHistoryIndex(prevIndex => Math.min(prevIndex + 1, 19));
+      }
+      
       return updated;
     });
     
@@ -354,6 +416,122 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
       description: "Full script synced. Bullet points will update shortly.",
     });
   };
+
+  // Undo edit
+  const handleUndo = useCallback(() => {
+    if (historyIndex <= 0 || editHistory.length <= 1) return;
+    
+    isUndoRedoAction.current = true;
+    const newIndex = historyIndex - 1;
+    const previousState = editHistory[newIndex];
+    
+    setSpeechBlocks(previousState);
+    setHistoryIndex(newIndex);
+    
+    // Sync meta
+    const newFullScript = previousState.map(block => block.content).join('\n\n');
+    const newWordCount = previousState.reduce((acc, block) => 
+      acc + block.content.split(/\s+/).filter(w => w.length > 0).length, 0
+    );
+    setMeta(prevMeta => prevMeta ? {
+      ...prevMeta,
+      fullScript: newFullScript,
+      actualWordCount: newWordCount,
+    } : null);
+    
+    setBulletPointsStale(true);
+    isUndoRedoAction.current = false;
+    
+    toast({ title: "Undone", description: "Reverted to previous version" });
+  }, [historyIndex, editHistory]);
+
+  // Redo edit
+  const handleRedo = useCallback(() => {
+    if (historyIndex >= editHistory.length - 1) return;
+    
+    isUndoRedoAction.current = true;
+    const newIndex = historyIndex + 1;
+    const nextState = editHistory[newIndex];
+    
+    setSpeechBlocks(nextState);
+    setHistoryIndex(newIndex);
+    
+    // Sync meta
+    const newFullScript = nextState.map(block => block.content).join('\n\n');
+    const newWordCount = nextState.reduce((acc, block) => 
+      acc + block.content.split(/\s+/).filter(w => w.length > 0).length, 0
+    );
+    setMeta(prevMeta => prevMeta ? {
+      ...prevMeta,
+      fullScript: newFullScript,
+      actualWordCount: newWordCount,
+    } : null);
+    
+    setBulletPointsStale(true);
+    isUndoRedoAction.current = false;
+    
+    toast({ title: "Redone", description: "Restored next version" });
+  }, [historyIndex, editHistory]);
+
+  // Manual regenerate bullet points
+  const handleRegenerateBullets = useCallback(async () => {
+    if (speechBlocks.length === 0) return;
+    
+    setIsRegeneratingBullets(true);
+    
+    try {
+      const fullScript = speechBlocks.map(block => block.content).join('\n\n');
+      
+      const { data: result, error } = await supabase.functions.invoke('regenerate-bullets', {
+        body: { script: fullScript },
+      });
+
+      if (error) throw error;
+      if (result?.bulletPoints) {
+        setMeta(prev => prev ? {
+          ...prev,
+          bulletPoints: result.bulletPoints,
+        } : null);
+        
+        setBulletPointsStale(false);
+        toast({
+          title: "Bullet Points Regenerated",
+          description: "Fresh bullet points generated from your script.",
+        });
+      }
+    } catch (err) {
+      console.error('Failed to regenerate bullet points:', err);
+      toast({
+        title: "Regeneration Failed",
+        description: "Could not regenerate bullet points. Try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRegeneratingBullets(false);
+    }
+  }, [speechBlocks]);
+
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Undo: Cmd/Ctrl+Z
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey && editingBlockIndex === null) {
+        e.preventDefault();
+        handleUndo();
+      }
+      // Redo: Cmd/Ctrl+Shift+Z or Cmd/Ctrl+Y
+      if (((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'z') || 
+          ((e.metaKey || e.ctrlKey) && e.key === 'y')) {
+        if (editingBlockIndex === null) {
+          e.preventDefault();
+          handleRedo();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleUndo, handleRedo, editingBlockIndex]);
 
   // Handle edit cancel
   const handleCancelEdit = () => {
@@ -1279,6 +1457,29 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
                       Bullet Points
                     </button>
                   </div>
+                  {/* Undo/Redo buttons */}
+                  <div className="flex items-center gap-1 border-l border-border pl-2 ml-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleUndo}
+                      disabled={historyIndex <= 0}
+                      className="h-7 w-7 p-0"
+                      title="Undo (⌘/Ctrl+Z)"
+                    >
+                      <Undo2 className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRedo}
+                      disabled={historyIndex >= editHistory.length - 1}
+                      className="h-7 w-7 p-0"
+                      title="Redo (⌘/Ctrl+Shift+Z)"
+                    >
+                      <Redo2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
                   <span className="text-[10px] text-muted-foreground hidden sm:inline">
                     ⌘/Ctrl+C to copy
                   </span>
@@ -1390,6 +1591,17 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
                           {meta.estimatedDuration}
                         </span>
                       )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleRegenerateBullets}
+                        disabled={isRegeneratingBullets}
+                        className="h-7 px-2 gap-1 text-muted-foreground hover:text-foreground"
+                        title="Regenerate bullet points from current script"
+                      >
+                        <RefreshCw className={cn("w-3.5 h-3.5", isRegeneratingBullets && "animate-spin")} />
+                        <span className="text-xs">Refresh</span>
+                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"
