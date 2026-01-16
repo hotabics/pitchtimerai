@@ -37,7 +37,6 @@ const InterrogationHistory = lazy(() => import("./pages/InterrogationHistory"));
 const Survey = lazy(() => import("./pages/Survey"));
 const SurveyAnalytics = lazy(() => import("./pages/SurveyAnalytics"));
 const AdminRoles = lazy(() => import("./pages/AdminRoles"));
-const MyPitches = lazy(() => import("./pages/MyPitches"));
 
 const queryClient = new QueryClient();
 
@@ -84,7 +83,8 @@ const App = () => (
                   <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                   <Route path="/interrogation-history" element={<ProtectedRoute><InterrogationHistory /></ProtectedRoute>} />
                   <Route path="/mobile-record/:sessionId" element={<ProtectedRoute><MobileRecord /></ProtectedRoute>} />
-                  <Route path="/my-pitches" element={<ProtectedRoute><MyPitches /></ProtectedRoute>} />
+                  {/* Redirect /my-pitches to /profile */}
+                  <Route path="/my-pitches" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
                   
                   {/* Admin routes - require admin role */}
                   <Route path="/admin/analytics" element={<AdminRoute><AdminAnalytics /></AdminRoute>} />

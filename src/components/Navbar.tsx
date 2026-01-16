@@ -35,8 +35,7 @@ const guestLinks = [
 
 const userLinks = [
   { label: 'Dashboard', href: '/' },
-  { label: 'My Pitches', href: '/my-pitches' },
-  { label: 'My Projects', href: '/profile' },
+  { label: 'My Profile', href: '/profile' },
 ];
 
 const aiCoachLink = { label: 'AI Coach', href: '/ai-coach' };
