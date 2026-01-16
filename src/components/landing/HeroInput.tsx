@@ -1,10 +1,25 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Rocket, Sparkles, AlertTriangle } from "lucide-react";
+import { Rocket, Sparkles, AlertTriangle, Clock, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const MAX_IDEA_LENGTH = 500;
 const WARNING_THRESHOLD = 0.8; // 80% of max
+
+// Estimate generation time based on idea complexity
+const getEstimatedTime = (ideaLength: number): { min: number; max: number; label: string } => {
+  if (ideaLength === 0) return { min: 0, max: 0, label: "" };
+  if (ideaLength < 50) return { min: 8, max: 12, label: "~10 sec" };
+  if (ideaLength < 150) return { min: 12, max: 18, label: "~15 sec" };
+  if (ideaLength < 300) return { min: 18, max: 25, label: "~20 sec" };
+  return { min: 25, max: 35, label: "~30 sec" };
+};
 
 interface HeroInputProps {
   onSubmit: (idea: string) => void;
@@ -18,6 +33,8 @@ export const HeroInput = ({ onSubmit }: HeroInputProps) => {
   const isNearLimit = charCount >= MAX_IDEA_LENGTH * WARNING_THRESHOLD;
   const isAtLimit = charCount >= MAX_IDEA_LENGTH;
   const remainingChars = MAX_IDEA_LENGTH - charCount;
+  
+  const estimatedTime = useMemo(() => getEstimatedTime(charCount), [charCount]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -72,23 +89,60 @@ export const HeroInput = ({ onSubmit }: HeroInputProps) => {
           <div className="flex flex-col sm:flex-row gap-2">
             <div className="relative flex-1">
               <Sparkles className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary/50" />
-              <input
-                type="text"
-                value={idea}
-                onChange={handleInputChange}
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
-                onKeyDown={handleKeyDown}
-                maxLength={MAX_IDEA_LENGTH}
-                placeholder="What are you building? (e.g., Tinder for rescue dogs...)"
-                className="
-                  w-full h-14 pl-12 pr-4 
-                  bg-transparent text-foreground text-base
-                  placeholder:text-muted-foreground/60
-                  focus:outline-none
-                  rounded-xl
-                "
-              />
+              <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <input
+                      type="text"
+                      value={idea}
+                      onChange={handleInputChange}
+                      onFocus={() => setIsFocused(true)}
+                      onBlur={() => setIsFocused(false)}
+                      onKeyDown={handleKeyDown}
+                      maxLength={MAX_IDEA_LENGTH}
+                      placeholder="What are you building? (e.g., Tinder for rescue dogs...)"
+                      className="
+                        w-full h-14 pl-12 pr-10 
+                        bg-transparent text-foreground text-base
+                        placeholder:text-muted-foreground/60
+                        focus:outline-none
+                        rounded-xl
+                      "
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs p-3 space-y-2">
+                    <p className="font-semibold text-sm">💡 What makes a great pitch idea?</p>
+                    <ul className="text-xs space-y-1 text-muted-foreground">
+                      <li>• <strong>Be specific:</strong> "AI tutor for dyslexic kids" beats "education app"</li>
+                      <li>• <strong>Show the hook:</strong> "Uber for dog walking" instantly communicates value</li>
+                      <li>• <strong>Include the problem:</strong> "Reduces hiring time from weeks to hours"</li>
+                      <li>• <strong>Name your audience:</strong> "For busy parents who..." adds clarity</li>
+                    </ul>
+                    <p className="text-xs text-muted-foreground/80 pt-1 border-t border-border">
+                      Examples: "Spotify for podcasters", "A CRM that actually updates itself", "Plant care app using phone camera AI"
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40 hover:text-muted-foreground cursor-help transition-colors" />
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs p-3 space-y-2">
+                    <p className="font-semibold text-sm">💡 What makes a great pitch idea?</p>
+                    <ul className="text-xs space-y-1 text-muted-foreground">
+                      <li>• <strong>Be specific:</strong> "AI tutor for dyslexic kids" beats "education app"</li>
+                      <li>• <strong>Show the hook:</strong> "Uber for dog walking" instantly communicates value</li>
+                      <li>• <strong>Include the problem:</strong> "Reduces hiring time from weeks to hours"</li>
+                      <li>• <strong>Name your audience:</strong> "For busy parents who..." adds clarity</li>
+                    </ul>
+                    <p className="text-xs text-muted-foreground/80 pt-1 border-t border-border">
+                      Examples: "Spotify for podcasters", "A CRM that actually updates itself", "Plant care app using phone camera AI"
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
             <Button
               onClick={handleSubmit}
@@ -109,21 +163,30 @@ export const HeroInput = ({ onSubmit }: HeroInputProps) => {
             </Button>
           </div>
           
-          {/* Character count indicator */}
+          {/* Character count and estimated time indicators */}
           {charCount > 0 && (
-            <div className={`
-              flex items-center justify-end gap-1.5 mt-2 px-2 text-xs transition-colors
-              ${isAtLimit ? "text-destructive" : isNearLimit ? "text-yellow-500" : "text-muted-foreground"}
-            `}>
-              {isNearLimit && (
-                <AlertTriangle className="w-3.5 h-3.5" />
-              )}
-              <span className="font-medium">
-                {charCount}/{MAX_IDEA_LENGTH}
-              </span>
-              {isAtLimit && (
-                <span className="text-destructive/80">Character limit reached</span>
-              )}
+            <div className="flex items-center justify-between mt-2 px-2 text-xs">
+              {/* Estimated generation time */}
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <Clock className="w-3.5 h-3.5" />
+                <span>Est. generation: <span className="font-medium text-foreground/80">{estimatedTime.label}</span></span>
+              </div>
+              
+              {/* Character count */}
+              <div className={`
+                flex items-center gap-1.5 transition-colors
+                ${isAtLimit ? "text-destructive" : isNearLimit ? "text-yellow-500" : "text-muted-foreground"}
+              `}>
+                {isNearLimit && (
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                )}
+                <span className="font-medium">
+                  {charCount}/{MAX_IDEA_LENGTH}
+                </span>
+                {isAtLimit && (
+                  <span className="text-destructive/80 ml-1">Limit reached</span>
+                )}
+              </div>
             </div>
           )}
         </div>
