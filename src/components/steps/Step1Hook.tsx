@@ -3,7 +3,7 @@ import { lazy, Suspense } from "react";
 import { AlertCircle } from "lucide-react";
 import { ScrapedData } from "@/services/mockScraper";
 import { ScrapedProjectData } from "@/lib/api/firecrawl";
-import { HeroSection } from "@/components/landing/HeroSection";
+import { HeroSection, AudienceType } from "@/components/landing/HeroSection";
 import { LandingSectionsSkeleton } from "@/components/landing/LandingSkeleton";
 
 // Lazy load below-the-fold sections to reduce initial bundle
@@ -16,20 +16,30 @@ const BentoGrid = lazy(() => import("@/components/landing/BentoGrid").then(m => 
 export type EntryMode = "generate" | "custom_script";
 
 interface Step1HookProps {
-  onNext: (idea: string, scrapedData?: ScrapedData) => void;
-  onAutoGenerate: (idea: string, scrapedData?: ScrapedData) => void;
+  onNext: (idea: string, scrapedData?: ScrapedData, durationMinutes?: number) => void;
+  onAutoGenerate: (
+    idea: string,
+    scrapedData?: ScrapedData,
+    durationMinutes?: number,
+    audience?: AudienceType
+  ) => void;
   onPracticeOwn: () => void;
   onOpenAICoach?: () => void;
 }
 
 export const Step1Hook = ({ onNext, onAutoGenerate, onPracticeOwn, onOpenAICoach }: Step1HookProps) => {
   // ScrapedData is an alias for ScrapedProjectData, so we can pass directly
-  const handleSubmit = (idea: string, scrapedData?: ScrapedProjectData) => {
-    onNext(idea, scrapedData);
+  const handleSubmit = (idea: string, scrapedData?: ScrapedProjectData, durationMinutes?: number) => {
+    onNext(idea, scrapedData, durationMinutes);
   };
 
-  const handleAutoGenerate = (idea: string, scrapedData?: ScrapedProjectData) => {
-    onAutoGenerate(idea, scrapedData);
+  const handleAutoGenerate = (
+    idea: string,
+    scrapedData?: ScrapedProjectData,
+    durationMinutes?: number,
+    audience?: AudienceType
+  ) => {
+    onAutoGenerate(idea, scrapedData, durationMinutes, audience);
   };
 
   return (
