@@ -38,6 +38,9 @@ import { openPrintView } from "./dashboard/PrintView";
 import { HookRegenerator, HookStyleBadge } from "./dashboard/HookRegenerator";
 import { DurationSelector } from "./dashboard/DurationSelector";
 import { WordCountProgress } from "./dashboard/WordCountProgress";
+import { useSavedPitch } from "@/hooks/useSavedPitch";
+import { SaveStatusIndicator } from "./shared/SaveStatusIndicator";
+import { LoginPromptBanner } from "./shared/LoginPromptBanner";
 
 interface SpeechBlock {
   timeStart: string;
@@ -131,6 +134,7 @@ const formatTime = (ms: number): string => {
 };
 
 export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
+  const { isLoggedIn } = useUserStore();
   const [activeTab, setActiveTab] = useState("script");
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentBlock, setCurrentBlock] = useState(0);
@@ -161,6 +165,38 @@ export const Dashboard = ({ data, onBack, onEditInputs }: DashboardProps) => {
     }
     return 3; // Default to 3 minutes
   });
+
+  // Auto-save hook for logged-in users
+  const { saveStatus, lastSavedAt, savePitch, autoSaveEnabled } = useSavedPitch({
+    idea: data.idea,
+    track: data.track,
+    audience: data.trackData?.audience as string,
+    audienceLabel: data.audienceLabel,
+    durationMinutes: currentDuration,
+    hookStyle: data.hookStyle,
+    generationMode: data.entryMode || 'auto',
+  });
+
+  // Auto-save when speechBlocks change (debounced)
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  useEffect(() => {
+    if (!autoSaveEnabled || speechBlocks.length === 0 || isLoading) return;
+    
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+    
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      savePitch(speechBlocks, meta);
+    }, 3000); // Auto-save after 3 seconds of inactivity
+    
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [speechBlocks, meta, autoSaveEnabled, isLoading, savePitch]);
+  
   
   // Practice mode state
   const [blockProgress, setBlockProgress] = useState(0);
