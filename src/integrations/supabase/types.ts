@@ -404,6 +404,242 @@ export type Database = {
         }
         Relationships: []
       }
+      sales_scripts: {
+        Row: {
+          call_goal: string | null
+          created_at: string
+          feedback_items: Json | null
+          id: string
+          improved_content: string | null
+          industry: string | null
+          original_content: string
+          overall_assessment: string | null
+          title: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          call_goal?: string | null
+          created_at?: string
+          feedback_items?: Json | null
+          id?: string
+          improved_content?: string | null
+          industry?: string | null
+          original_content: string
+          overall_assessment?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          call_goal?: string | null
+          created_at?: string
+          feedback_items?: Json | null
+          id?: string
+          improved_content?: string | null
+          industry?: string | null
+          original_content?: string
+          overall_assessment?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      sales_simulation_turns: {
+        Row: {
+          coach_next_action: Json | null
+          coach_red_flags: Json | null
+          coach_stage_recommendation: string | null
+          coach_tips: Json | null
+          content: string
+          created_at: string
+          duration_seconds: number | null
+          end_time_seconds: number | null
+          id: string
+          intent: string | null
+          is_objection_response: boolean | null
+          is_question: boolean | null
+          objection: Json | null
+          role: string
+          simulation_id: string
+          start_time_seconds: number | null
+          state_update: Json | null
+          turn_number: number
+          word_count: number | null
+        }
+        Insert: {
+          coach_next_action?: Json | null
+          coach_red_flags?: Json | null
+          coach_stage_recommendation?: string | null
+          coach_tips?: Json | null
+          content: string
+          created_at?: string
+          duration_seconds?: number | null
+          end_time_seconds?: number | null
+          id?: string
+          intent?: string | null
+          is_objection_response?: boolean | null
+          is_question?: boolean | null
+          objection?: Json | null
+          role: string
+          simulation_id: string
+          start_time_seconds?: number | null
+          state_update?: Json | null
+          turn_number: number
+          word_count?: number | null
+        }
+        Update: {
+          coach_next_action?: Json | null
+          coach_red_flags?: Json | null
+          coach_stage_recommendation?: string | null
+          coach_tips?: Json | null
+          content?: string
+          created_at?: string
+          duration_seconds?: number | null
+          end_time_seconds?: number | null
+          id?: string
+          intent?: string | null
+          is_objection_response?: boolean | null
+          is_question?: boolean | null
+          objection?: Json | null
+          role?: string
+          simulation_id?: string
+          start_time_seconds?: number | null
+          state_update?: Json | null
+          turn_number?: number
+          word_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_simulation_turns_simulation_id_fkey"
+            columns: ["simulation_id"]
+            isOneToOne: false
+            referencedRelation: "sales_simulations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_simulations: {
+        Row: {
+          call_goal: string
+          call_stage: string | null
+          client_interest_level: number | null
+          client_personality: string
+          client_role: string
+          client_signals: Json | null
+          client_trust_level: number | null
+          client_urgency_level: number | null
+          close_score: number | null
+          coach_suggestions_followed: number | null
+          coach_suggestions_shown: number | null
+          conversion_likelihood: string | null
+          created_at: string
+          custom_goal: string | null
+          discovery_score: number | null
+          duration_seconds: number | null
+          ended_at: string | null
+          highlights: Json | null
+          id: string
+          improvements: Json | null
+          industry: string
+          objection_level: string
+          objection_score: number | null
+          objections_handled: number | null
+          objections_raised: number | null
+          opening_score: number | null
+          overall_score: number | null
+          penalties: Json | null
+          product_description: string
+          question_count: number | null
+          started_at: string | null
+          status: string
+          talk_ratio: number | null
+          timeline_events: Json | null
+          updated_at: string
+          user_id: string | null
+          value_score: number | null
+        }
+        Insert: {
+          call_goal?: string
+          call_stage?: string | null
+          client_interest_level?: number | null
+          client_personality?: string
+          client_role: string
+          client_signals?: Json | null
+          client_trust_level?: number | null
+          client_urgency_level?: number | null
+          close_score?: number | null
+          coach_suggestions_followed?: number | null
+          coach_suggestions_shown?: number | null
+          conversion_likelihood?: string | null
+          created_at?: string
+          custom_goal?: string | null
+          discovery_score?: number | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          highlights?: Json | null
+          id?: string
+          improvements?: Json | null
+          industry: string
+          objection_level?: string
+          objection_score?: number | null
+          objections_handled?: number | null
+          objections_raised?: number | null
+          opening_score?: number | null
+          overall_score?: number | null
+          penalties?: Json | null
+          product_description: string
+          question_count?: number | null
+          started_at?: string | null
+          status?: string
+          talk_ratio?: number | null
+          timeline_events?: Json | null
+          updated_at?: string
+          user_id?: string | null
+          value_score?: number | null
+        }
+        Update: {
+          call_goal?: string
+          call_stage?: string | null
+          client_interest_level?: number | null
+          client_personality?: string
+          client_role?: string
+          client_signals?: Json | null
+          client_trust_level?: number | null
+          client_urgency_level?: number | null
+          close_score?: number | null
+          coach_suggestions_followed?: number | null
+          coach_suggestions_shown?: number | null
+          conversion_likelihood?: string | null
+          created_at?: string
+          custom_goal?: string | null
+          discovery_score?: number | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          highlights?: Json | null
+          id?: string
+          improvements?: Json | null
+          industry?: string
+          objection_level?: string
+          objection_score?: number | null
+          objections_handled?: number | null
+          objections_raised?: number | null
+          opening_score?: number | null
+          overall_score?: number | null
+          penalties?: Json | null
+          product_description?: string
+          question_count?: number | null
+          started_at?: string | null
+          status?: string
+          talk_ratio?: number | null
+          timeline_events?: Json | null
+          updated_at?: string
+          user_id?: string | null
+          value_score?: number | null
+        }
+        Relationships: []
+      }
       saved_pitches: {
         Row: {
           audience: string | null
