@@ -5,12 +5,14 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { 
-  Phone, PhoneOff, Mic, MicOff, MessageSquare, Send,
+  Phone, PhoneOff, MessageSquare, Send,
   User, Bot, Lightbulb, AlertTriangle, Clock, Volume2
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useSalesVoice, getVoiceForPersonality } from "@/hooks/useSalesVoice";
+import { VoiceControls } from "@/components/sales-simulator/VoiceControls";
 
 interface Turn {
   id: string;
@@ -42,8 +44,6 @@ const SalesSimulatorLive = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [callActive, setCallActive] = useState(false);
   const [callTimer, setCallTimer] = useState(0);
-  const [isVoiceMode, setIsVoiceMode] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
   
   // Coach panel state
   const [coachTips, setCoachTips] = useState<string[]>([]);
@@ -54,6 +54,26 @@ const SalesSimulatorLive = () => {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const turnNumberRef = useRef(0);
+
+  // Voice mode hook
+  const handleVoiceTranscript = useCallback((text: string) => {
+    setUserInput(text);
+  }, []);
+  
+  const {
+    isSpeaking,
+    speakText,
+    stopSpeaking,
+    isRecording,
+    isTranscribing,
+    startRecording,
+    stopRecording,
+    voiceEnabled,
+    setVoiceEnabled,
+  } = useSalesVoice({
+    onTranscript: handleVoiceTranscript,
+    autoSpeak: true,
+  });
 
   // Load simulation config
   useEffect(() => {
@@ -185,6 +205,12 @@ const SalesSimulatorLive = () => {
       
       setTurns(prev => [...prev, clientTurn]);
       turnNumberRef.current += 1;
+
+      // Speak client response if voice mode is enabled
+      if (voiceEnabled && clientData.client_reply) {
+        const voiceId = config ? getVoiceForPersonality(config.client_personality) : undefined;
+        speakText(clientData.client_reply, voiceId);
+      }
 
       // Save turn to database
       await supabase.from("sales_simulation_turns").insert({
@@ -433,33 +459,48 @@ const SalesSimulatorLive = () => {
           {/* Input Area */}
           <div className="border-t border-border p-4">
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setIsVoiceMode(!isVoiceMode)}
-                disabled={!callActive}
-              >
-                {isVoiceMode ? <Mic className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
-              </Button>
+              <VoiceControls
+                isRecording={isRecording}
+                isTranscribing={isTranscribing}
+                isSpeaking={isSpeaking}
+                voiceEnabled={voiceEnabled}
+                disabled={!callActive || isProcessing}
+                onStartRecording={startRecording}
+                onStopRecording={async () => {
+                  const transcript = await stopRecording();
+                  if (transcript) {
+                    // Auto-send after voice transcription
+                    setUserInput(transcript);
+                  }
+                }}
+                onToggleVoice={() => setVoiceEnabled(!voiceEnabled)}
+                onStopSpeaking={stopSpeaking}
+              />
               
               <Textarea
-                placeholder={callActive ? "Type your response..." : "Start the call first"}
+                placeholder={callActive ? (voiceEnabled ? "Or type your response..." : "Type your response...") : "Start the call first"}
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
                 onKeyDown={handleKeyPress}
-                disabled={!callActive || isProcessing}
-                className="min-h-[40px] max-h-[120px] resize-none"
+                disabled={!callActive || isProcessing || isRecording}
+                className="min-h-[40px] max-h-[120px] resize-none flex-1"
                 rows={1}
               />
               
               <Button
                 onClick={sendMessage}
-                disabled={!callActive || isProcessing || !userInput.trim()}
+                disabled={!callActive || isProcessing || !userInput.trim() || isRecording}
                 size="icon"
               >
                 <Send className="w-4 h-4" />
               </Button>
             </div>
+            
+            {voiceEnabled && (
+              <p className="text-xs text-muted-foreground mt-2">
+                🎤 Voice mode active — Click mic to speak, client responses will be spoken aloud
+              </p>
+            )}
           </div>
         </div>
 
