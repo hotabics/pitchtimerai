@@ -37,6 +37,11 @@ const InterrogationHistory = lazy(() => import("./pages/InterrogationHistory"));
 const Survey = lazy(() => import("./pages/Survey"));
 const SurveyAnalytics = lazy(() => import("./pages/SurveyAnalytics"));
 const AdminRoles = lazy(() => import("./pages/AdminRoles"));
+const SalesSimulator = lazy(() => import("./pages/SalesSimulator"));
+const SalesSimulatorSetup = lazy(() => import("./pages/SalesSimulatorSetup"));
+const SalesSimulatorLive = lazy(() => import("./pages/SalesSimulatorLive"));
+const SalesSimulatorSummary = lazy(() => import("./pages/SalesSimulatorSummary"));
+const ScriptCoach = lazy(() => import("./pages/ScriptCoach"));
 
 const queryClient = new QueryClient();
 
@@ -76,6 +81,11 @@ const App = () => (
                   <Route path="/cookies" element={<Cookies />} />
                   <Route path="/careers" element={<Careers />} />
                   <Route path="/survey" element={<Survey />} />
+                  <Route path="/sales-simulator" element={<SalesSimulator />} />
+                  <Route path="/sales-simulator/setup" element={<SalesSimulatorSetup />} />
+                  <Route path="/sales-simulator/live/:sessionId" element={<SalesSimulatorLive />} />
+                  <Route path="/sales-simulator/summary/:sessionId" element={<SalesSimulatorSummary />} />
+                  <Route path="/sales-simulator/script-coach" element={<ScriptCoach />} />
                   
                   {/* Protected routes - require authentication */}
                   <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
