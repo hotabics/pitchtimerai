@@ -276,6 +276,50 @@ const SalesSimulatorLive = () => {
     }
   };
 
+  // Auto-send message helper for voice mode
+  const sendMessageWithText = useCallback(async (text: string) => {
+    if (!text.trim() || isProcessing || !callActive) return;
+
+    const message = text.trim();
+    setUserInput("");
+
+    // Add user turn
+    const userTurn: Turn = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: message,
+      timestamp: new Date(),
+      coachTips: [...coachTips],
+      coachNextAction: nextAction || undefined,
+      coachRedFlags: [...redFlags],
+    };
+    
+    setTurns(prev => [...prev, userTurn]);
+    turnNumberRef.current += 1;
+
+    // Save turn to database
+    await supabase.from("sales_simulation_turns").insert({
+      simulation_id: sessionId,
+      turn_number: turnNumberRef.current,
+      role: "user",
+      content: message,
+      coach_tips: coachTips,
+      coach_next_action: nextAction,
+      coach_red_flags: redFlags,
+      coach_stage_recommendation: currentStage,
+      is_question: message.includes("?"),
+      word_count: message.split(/\s+/).length,
+    });
+
+    // Clear coach suggestions
+    setCoachTips([]);
+    setNextAction(null);
+    setRedFlags([]);
+
+    // Get client response
+    await getClientResponse(message);
+  }, [isProcessing, callActive, coachTips, nextAction, redFlags, sessionId, currentStage, getClientResponse]);
+
   const sendMessage = async () => {
     if (!userInput.trim() || isProcessing || !callActive) return;
 
@@ -382,13 +426,51 @@ const SalesSimulatorLive = () => {
         {/* Left Column - AI Client */}
         <div className="w-1/4 border-r border-border p-4 flex flex-col">
           <div className="text-center mb-4">
-            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-2">
-              <User className="w-8 h-8 text-muted-foreground" />
+            <div className="relative">
+              <motion.div 
+                className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-2"
+                animate={isSpeaking ? {
+                  boxShadow: [
+                    "0 0 0 0 hsl(var(--primary) / 0)",
+                    "0 0 0 8px hsl(var(--primary) / 0.3)",
+                    "0 0 0 0 hsl(var(--primary) / 0)"
+                  ]
+                } : {}}
+                transition={{ repeat: Infinity, duration: 1.5 }}
+              >
+                <User className="w-8 h-8 text-muted-foreground" />
+              </motion.div>
+              {isSpeaking && (
+                <motion.div 
+                  className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex items-end gap-0.5"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                >
+                  {[...Array(5)].map((_, i) => (
+                    <motion.span
+                      key={i}
+                      className="w-1 bg-primary rounded-full"
+                      animate={{ height: [4, 12, 4] }}
+                      transition={{
+                        repeat: Infinity,
+                        duration: 0.5,
+                        delay: i * 0.1,
+                      }}
+                    />
+                  ))}
+                </motion.div>
+              )}
             </div>
             <h3 className="font-semibold">{getRoleName()}</h3>
             <p className="text-sm text-muted-foreground capitalize">
               {config.client_personality} • {config.objection_level} objections
             </p>
+            {isSpeaking && (
+              <Badge variant="outline" className="mt-2 text-xs gap-1">
+                <Volume2 className="w-3 h-3" />
+                Speaking...
+              </Badge>
+            )}
           </div>
           
           <div className="flex-1 overflow-auto space-y-2">
@@ -470,7 +552,7 @@ const SalesSimulatorLive = () => {
                   const transcript = await stopRecording();
                   if (transcript) {
                     // Auto-send after voice transcription
-                    setUserInput(transcript);
+                    await sendMessageWithText(transcript);
                   }
                 }}
                 onToggleVoice={() => setVoiceEnabled(!voiceEnabled)}
