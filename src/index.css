@@ -74,6 +74,16 @@
     /* Rotating slogan colors */
     --slogan-primary: 51 100% 50%; /* Mustard Yellow #FFD700 */
     --slogan-emphasis: 0 100% 27%; /* Blood Red #8B0000 */
+
+    /* Interview Simulator Theme - Neo-Noir Cinematic */
+    --interview-bg: 220 15% 10%;
+    --interview-card: 220 15% 13%;
+    --interview-border: 220 15% 20%;
+    --interview-text: 220 10% 95%;
+    --interview-muted: 220 10% 60%;
+    --interview-mustard: 45 100% 51%;
+    --interview-blood: 0 72% 45%;
+    --interview-cold: 210 20% 85%;
   }
 
   .dark {
@@ -124,6 +134,16 @@
     /* Rotating slogan colors - White for dark mode */
     --slogan-primary: 0 0% 98%; /* White */
     --slogan-emphasis: 0 100% 27%; /* Blood Red #8B0000 */
+
+    /* Interview Simulator Theme - Neo-Noir Cinematic (same for dark) */
+    --interview-bg: 220 15% 10%;
+    --interview-card: 220 15% 13%;
+    --interview-border: 220 15% 20%;
+    --interview-text: 220 10% 95%;
+    --interview-muted: 220 10% 60%;
+    --interview-mustard: 45 100% 51%;
+    --interview-blood: 0 72% 45%;
+    --interview-cold: 210 20% 85%;
   }
 }
 
