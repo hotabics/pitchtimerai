@@ -58,22 +58,94 @@ serve(async (req) => {
   }
 
   try {
-    const formData = await req.formData();
-    const file = formData.get('file') as File;
+    let fileName = 'document';
+    let fileSize = 0;
+    let fileContent = '';
     
-    if (!file) {
+    // Check content type to determine how to parse the request
+    const contentType = req.headers.get('content-type') || '';
+    
+    if (contentType.includes('application/json')) {
+      // Handle JSON body with base64 file
+      const body = await req.json();
+      const { file: base64File, filename, mimeType } = body;
+      
+      if (!base64File) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'No file provided' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      fileName = filename || 'document';
+      
+      // Decode base64 to text
+      try {
+        const binaryString = atob(base64File);
+        fileSize = binaryString.length;
+        
+        // For PDF files, we need special handling - just extract readable text
+        if (mimeType === 'application/pdf' || fileName.endsWith('.pdf')) {
+          // Simple PDF text extraction - look for text between stream markers
+          // This is a basic approach; complex PDFs may not extract well
+          const textParts: string[] = [];
+          
+          // Look for text objects in PDF
+          const textMatches = binaryString.match(/\(([^)]+)\)/g);
+          if (textMatches) {
+            textMatches.forEach(match => {
+              const text = match.slice(1, -1);
+              // Filter out control characters and keep readable text
+              const cleaned = text.replace(/[\x00-\x1f\x7f-\x9f]/g, ' ').trim();
+              if (cleaned.length > 2 && /[a-zA-Z]/.test(cleaned)) {
+                textParts.push(cleaned);
+              }
+            });
+          }
+          
+          // Also try to find plain text content
+          const plainText = binaryString
+            .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          
+          fileContent = textParts.length > 10 ? textParts.join(' ') : plainText;
+        } else {
+          // For text files, decode directly
+          fileContent = binaryString;
+        }
+      } catch (decodeError) {
+        console.error('Base64 decode error:', decodeError);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to decode file' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else if (contentType.includes('multipart/form-data')) {
+      // Handle FormData upload
+      const formData = await req.formData();
+      const file = formData.get('file') as File;
+      
+      if (!file) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'No file provided' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      fileName = file.name;
+      fileSize = file.size;
+      fileContent = await file.text();
+    } else {
       return new Response(
-        JSON.stringify({ success: false, error: 'No file provided' }),
+        JSON.stringify({ success: false, error: 'Unsupported content type. Use JSON or FormData.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Processing file: ${file.name}, size: ${file.size}, type: ${file.type}`);
-
-    // Read file content
-    const fileContent = await file.text();
+    console.log(`Processing file: ${fileName}, size: ${fileSize}`);
+    
     const truncatedContent = fileContent.slice(0, 15000); // Limit to ~15k chars for API
-
     console.log(`File content length: ${fileContent.length}, truncated to: ${truncatedContent.length}`);
 
     // Extract images from content
@@ -110,7 +182,7 @@ Be concise and focus on pitch-relevant information. If information is not availa
         model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Please analyze this document and extract pitch information:\n\nFilename: ${file.name}\n\n---\n\n${truncatedContent}` }
+          { role: 'user', content: `Please analyze this document and extract pitch information:\n\nFilename: ${fileName}\n\n---\n\n${truncatedContent}` }
         ],
         tools: [
           {
@@ -187,8 +259,9 @@ Be concise and focus on pitch-relevant information. If information is not availa
       JSON.stringify({
         success: true,
         data: extractedData,
-        filename: file.name,
-        fileSize: file.size,
+        text: truncatedContent, // Return raw text for CV parsing use case
+        filename: fileName,
+        fileSize: fileSize,
         extractedImages
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
