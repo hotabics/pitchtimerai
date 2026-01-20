@@ -75,6 +75,16 @@ export default {
           primary: "hsl(var(--slogan-primary))",
           emphasis: "hsl(var(--slogan-emphasis))",
         },
+        interview: {
+          bg: "hsl(var(--interview-bg))",
+          card: "hsl(var(--interview-card))",
+          border: "hsl(var(--interview-border))",
+          text: "hsl(var(--interview-text))",
+          muted: "hsl(var(--interview-muted))",
+          mustard: "hsl(var(--interview-mustard))",
+          blood: "hsl(var(--interview-blood))",
+          cold: "hsl(var(--interview-cold))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

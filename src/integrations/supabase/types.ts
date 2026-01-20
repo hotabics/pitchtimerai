@@ -228,6 +228,137 @@ export type Database = {
         }
         Relationships: []
       }
+      interview_simulation_turns: {
+        Row: {
+          content: string
+          created_at: string
+          evidence_used: Json | null
+          id: string
+          intent: string | null
+          missed_opportunities: Json | null
+          role: string
+          simulation_id: string
+          strategic_score: number | null
+          suggested_reframe: string | null
+          turn_number: number
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          evidence_used?: Json | null
+          id?: string
+          intent?: string | null
+          missed_opportunities?: Json | null
+          role: string
+          simulation_id: string
+          strategic_score?: number | null
+          suggested_reframe?: string | null
+          turn_number: number
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          evidence_used?: Json | null
+          id?: string
+          intent?: string | null
+          missed_opportunities?: Json | null
+          role?: string
+          simulation_id?: string
+          strategic_score?: number | null
+          suggested_reframe?: string | null
+          turn_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_simulation_turns_simulation_id_fkey"
+            columns: ["simulation_id"]
+            isOneToOne: false
+            referencedRelation: "interview_simulations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interview_simulations: {
+        Row: {
+          category_scores: Json | null
+          company_name: string | null
+          conversion_likelihood: string | null
+          created_at: string
+          cv_content: string
+          cv_parsed: Json | null
+          duration_seconds: number | null
+          ended_at: string | null
+          hireability_score: number | null
+          id: string
+          interviewer_persona: string | null
+          job_description: string
+          job_requirements: Json | null
+          job_title: string
+          job_url: string | null
+          key_evidence: Json | null
+          match_gaps: Json | null
+          match_strengths: Json | null
+          started_at: string | null
+          status: string
+          strategic_reframes: Json | null
+          updated_at: string
+          user_id: string | null
+          verdict_summary: string | null
+        }
+        Insert: {
+          category_scores?: Json | null
+          company_name?: string | null
+          conversion_likelihood?: string | null
+          created_at?: string
+          cv_content: string
+          cv_parsed?: Json | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          hireability_score?: number | null
+          id?: string
+          interviewer_persona?: string | null
+          job_description: string
+          job_requirements?: Json | null
+          job_title: string
+          job_url?: string | null
+          key_evidence?: Json | null
+          match_gaps?: Json | null
+          match_strengths?: Json | null
+          started_at?: string | null
+          status?: string
+          strategic_reframes?: Json | null
+          updated_at?: string
+          user_id?: string | null
+          verdict_summary?: string | null
+        }
+        Update: {
+          category_scores?: Json | null
+          company_name?: string | null
+          conversion_likelihood?: string | null
+          created_at?: string
+          cv_content?: string
+          cv_parsed?: Json | null
+          duration_seconds?: number | null
+          ended_at?: string | null
+          hireability_score?: number | null
+          id?: string
+          interviewer_persona?: string | null
+          job_description?: string
+          job_requirements?: Json | null
+          job_title?: string
+          job_url?: string | null
+          key_evidence?: Json | null
+          match_gaps?: Json | null
+          match_strengths?: Json | null
+          started_at?: string | null
+          status?: string
+          strategic_reframes?: Json | null
+          updated_at?: string
+          user_id?: string | null
+          verdict_summary?: string | null
+        }
+        Relationships: []
+      }
       pitch_challenges: {
         Row: {
           created_at: string
