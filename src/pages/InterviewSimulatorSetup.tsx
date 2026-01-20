@@ -16,10 +16,13 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserStore } from "@/stores/userStore";
 import { toast } from "sonner";
+import { DemoModePrompt } from "@/components/shared/DemoModePrompt";
+import { useSimulatorDemo } from "@/hooks/useSimulatorDemo";
 
 const InterviewSimulatorSetup = () => {
   const navigate = useNavigate();
-  const { user } = useUserStore();
+  const { user, isLoggedIn } = useUserStore();
+  const { canUseDemo } = useSimulatorDemo();
   
   // Form state
   const [jobUrl, setJobUrl] = useState("");
@@ -185,6 +188,11 @@ const InterviewSimulatorSetup = () => {
   return (
     <div className="min-h-screen bg-interview-bg pt-20 pb-12 px-4">
       <div className="max-w-4xl mx-auto">
+        {/* Demo Mode Banner for anonymous users */}
+        {!isLoggedIn && (
+          <DemoModePrompt simulatorType="interview" canUseDemo={canUseDemo('interview')} />
+        )}
+        
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

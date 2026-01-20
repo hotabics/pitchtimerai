@@ -10,6 +10,7 @@ import { Navbar } from "./components/Navbar";
 import { Footer } from "./components/Footer";
 import { SurveyTriggerProvider } from "./components/survey";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { DemoEnabledRoute } from "./components/auth/DemoEnabledRoute";
 import { AdminRoute } from "./components/auth/AdminRoute";
 
 // Lazy load pages for code splitting - reduces initial CSS bundle
@@ -90,13 +91,13 @@ const App = () => (
                   <Route path="/interview-simulator" element={<InterviewSimulator />} />
                   <Route path="/sales-simulator/script-coach" element={<ScriptCoach />} />
                   
-                  {/* Protected simulator routes - require authentication */}
-                  <Route path="/sales-simulator/setup" element={<ProtectedRoute><SalesSimulatorSetup /></ProtectedRoute>} />
-                  <Route path="/sales-simulator/live/:sessionId" element={<ProtectedRoute><SalesSimulatorLive /></ProtectedRoute>} />
-                  <Route path="/sales-simulator/summary/:sessionId" element={<ProtectedRoute><SalesSimulatorSummary /></ProtectedRoute>} />
-                  <Route path="/interview-simulator/setup" element={<ProtectedRoute><InterviewSimulatorSetup /></ProtectedRoute>} />
-                  <Route path="/interview-simulator/live/:sessionId" element={<ProtectedRoute><InterviewSimulatorLive /></ProtectedRoute>} />
-                  <Route path="/interview-simulator/summary/:sessionId" element={<ProtectedRoute><InterviewSimulatorSummary /></ProtectedRoute>} />
+                  {/* Demo-enabled simulator routes - one free session for anonymous users */}
+                  <Route path="/sales-simulator/setup" element={<DemoEnabledRoute simulatorType="sales"><SalesSimulatorSetup /></DemoEnabledRoute>} />
+                  <Route path="/sales-simulator/live/:sessionId" element={<DemoEnabledRoute simulatorType="sales"><SalesSimulatorLive /></DemoEnabledRoute>} />
+                  <Route path="/sales-simulator/summary/:sessionId" element={<DemoEnabledRoute simulatorType="sales"><SalesSimulatorSummary /></DemoEnabledRoute>} />
+                  <Route path="/interview-simulator/setup" element={<DemoEnabledRoute simulatorType="interview"><InterviewSimulatorSetup /></DemoEnabledRoute>} />
+                  <Route path="/interview-simulator/live/:sessionId" element={<DemoEnabledRoute simulatorType="interview"><InterviewSimulatorLive /></DemoEnabledRoute>} />
+                  <Route path="/interview-simulator/summary/:sessionId" element={<DemoEnabledRoute simulatorType="interview"><InterviewSimulatorSummary /></DemoEnabledRoute>} />
                   
                   {/* Protected routes - require authentication */}
                   <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

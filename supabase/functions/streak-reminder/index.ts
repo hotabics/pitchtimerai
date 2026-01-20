@@ -65,33 +65,50 @@ serve(async (req) => {
     todayStart.setUTCHours(0, 0, 0, 0);
 
     // Find users with active streaks who haven't practiced today
-    // First get all users with practice sessions
-    const { data: allSessions, error: sessionsError } = await supabase
-      .from("practice_sessions")
-      .select("user_id, created_at")
-      .order("created_at", { ascending: false });
+    // Gather activity from multiple sources: practice_sessions, coach_analysis, interview_simulations, sales_simulations
+    
+    const [practiceResult, coachResult, interviewResult, salesResult] = await Promise.all([
+      supabase.from("practice_sessions").select("user_id, created_at").order("created_at", { ascending: false }),
+      supabase.from("coach_analysis").select("user_id, created_at").order("created_at", { ascending: false }),
+      supabase.from("interview_simulations").select("user_id, created_at").order("created_at", { ascending: false }),
+      supabase.from("sales_simulations").select("user_id, created_at").order("created_at", { ascending: false }),
+    ]);
 
-    if (sessionsError) {
-      throw new Error(`Failed to fetch sessions: ${sessionsError.message}`);
-    }
+    if (practiceResult.error) throw new Error(`Failed to fetch practice sessions: ${practiceResult.error.message}`);
+
+    // Combine all activity into one array
+    const allActivity: { user_id: string | null; created_at: string }[] = [
+      ...(practiceResult.data || []),
+      ...(coachResult.data || []),
+      ...(interviewResult.data || []),
+      ...(salesResult.data || []),
+    ];
+
+    logStep("Combined activity sources", { 
+      practice: practiceResult.data?.length || 0,
+      coach: coachResult.data?.length || 0,
+      interview: interviewResult.data?.length || 0,
+      sales: salesResult.data?.length || 0,
+    });
 
     // Group sessions by user and calculate streaks
     const userStreaks = new Map<string, { lastPractice: Date; streak: number }>();
     
-    for (const session of allSessions || []) {
+    for (const session of allActivity) {
       if (!session.user_id) continue;
       
       const sessionDate = new Date(session.created_at);
       sessionDate.setUTCHours(0, 0, 0, 0);
       
-      if (!userStreaks.has(session.user_id)) {
-        userStreaks.set(session.user_id, { lastPractice: sessionDate, streak: 1 });
+      const existing = userStreaks.get(session.user_id);
+      if (!existing || sessionDate > existing.lastPractice) {
+        userStreaks.set(session.user_id, { lastPractice: sessionDate, streak: existing?.streak || 1 });
       }
     }
 
     // Calculate actual streaks for each user
     for (const [userId, data] of userStreaks.entries()) {
-      const userSessions = (allSessions || [])
+      const userSessions = allActivity
         .filter(s => s.user_id === userId)
         .map(s => {
           const d = new Date(s.created_at);

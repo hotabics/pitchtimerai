@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { SimulatorLoginBanner } from "@/components/shared/SimulatorLoginBanner";
+import { InterviewLeaderboard } from "@/components/profile/InterviewLeaderboard";
 
 const InterviewSimulator = () => {
   const navigate = useNavigate();
@@ -207,6 +208,17 @@ const InterviewSimulator = () => {
             </motion.div>
           ))}
         </div>
+      </div>
+
+      {/* Leaderboard Section */}
+      <div className="max-w-5xl mx-auto px-4 py-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.9 }}
+        >
+          <InterviewLeaderboard />
+        </motion.div>
       </div>
 
       {/* CTA */}
