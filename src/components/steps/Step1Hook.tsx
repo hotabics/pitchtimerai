@@ -51,25 +51,27 @@ export const Step1Hook = ({ onNext, onAutoGenerate, onPracticeOwn, onOpenAICoach
         onOpenAICoach={onOpenAICoach}
       />
 
-      {/* Lazy-loaded below-the-fold sections */}
-      <Suspense fallback={<LandingSectionsSkeleton />}>
-        {/* Path Comparison Demo - Visual explainer */}
-        <PathComparisonDemo />
+      {/* Lazy-loaded below-the-fold sections with layout containment to prevent CLS */}
+      <div style={{ contain: 'layout', minHeight: '2800px' }}>
+        <Suspense fallback={<LandingSectionsSkeleton />}>
+          {/* Path Comparison Demo - Visual explainer */}
+          <PathComparisonDemo />
 
-        {/* Comparison Section - "Why not just ChatGPT?" */}
-        <ComparisonSection />
+          {/* Comparison Section - "Why not just ChatGPT?" */}
+          <ComparisonSection />
 
-        {/* AI Coach Spotlight - The "Iron Man" HUD */}
-        <AICoachSpotlight />
+          {/* AI Coach Spotlight - The "Iron Man" HUD */}
+          <AICoachSpotlight />
 
-        {/* Tech Stack Banner - Social Proof */}
-        <TechStackBanner />
+          {/* Tech Stack Banner - Social Proof */}
+          <TechStackBanner />
 
-        {/* Bento Grid - Original features (refined) */}
-        <section id="how-it-works" className="py-16 md:py-24 px-4 bg-gradient-to-b from-transparent to-muted/30 scroll-mt-16">
-          <BentoGrid />
-        </section>
-      </Suspense>
+          {/* Bento Grid - Original features (refined) */}
+          <section id="how-it-works" className="py-16 md:py-24 px-4 bg-gradient-to-b from-transparent to-muted/30 scroll-mt-16">
+            <BentoGrid />
+          </section>
+        </Suspense>
+      </div>
 
       {/* Public Demo Disclaimer */}
       <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50">
