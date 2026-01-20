@@ -85,15 +85,18 @@ const App = () => (
                   <Route path="/cookies" element={<Cookies />} />
                   <Route path="/careers" element={<Careers />} />
                   <Route path="/survey" element={<Survey />} />
+                  {/* Public landing pages for simulators */}
                   <Route path="/sales-simulator" element={<SalesSimulator />} />
-                  <Route path="/sales-simulator/setup" element={<SalesSimulatorSetup />} />
-                  <Route path="/sales-simulator/live/:sessionId" element={<SalesSimulatorLive />} />
-                  <Route path="/sales-simulator/summary/:sessionId" element={<SalesSimulatorSummary />} />
-                  <Route path="/sales-simulator/script-coach" element={<ScriptCoach />} />
                   <Route path="/interview-simulator" element={<InterviewSimulator />} />
-                  <Route path="/interview-simulator/setup" element={<InterviewSimulatorSetup />} />
-                  <Route path="/interview-simulator/live/:sessionId" element={<InterviewSimulatorLive />} />
-                  <Route path="/interview-simulator/summary/:sessionId" element={<InterviewSimulatorSummary />} />
+                  <Route path="/sales-simulator/script-coach" element={<ScriptCoach />} />
+                  
+                  {/* Protected simulator routes - require authentication */}
+                  <Route path="/sales-simulator/setup" element={<ProtectedRoute><SalesSimulatorSetup /></ProtectedRoute>} />
+                  <Route path="/sales-simulator/live/:sessionId" element={<ProtectedRoute><SalesSimulatorLive /></ProtectedRoute>} />
+                  <Route path="/sales-simulator/summary/:sessionId" element={<ProtectedRoute><SalesSimulatorSummary /></ProtectedRoute>} />
+                  <Route path="/interview-simulator/setup" element={<ProtectedRoute><InterviewSimulatorSetup /></ProtectedRoute>} />
+                  <Route path="/interview-simulator/live/:sessionId" element={<ProtectedRoute><InterviewSimulatorLive /></ProtectedRoute>} />
+                  <Route path="/interview-simulator/summary/:sessionId" element={<ProtectedRoute><InterviewSimulatorSummary /></ProtectedRoute>} />
                   
                   {/* Protected routes - require authentication */}
                   <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
