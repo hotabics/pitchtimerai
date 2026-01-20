@@ -12,6 +12,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserStore } from "@/stores/userStore";
 import { toast } from "sonner";
+import { DemoModePrompt } from "@/components/shared/DemoModePrompt";
+import { useSimulatorDemo } from "@/hooks/useSimulatorDemo";
 
 const industries = [
   { value: "saas", label: "SaaS" },
