@@ -23,6 +23,7 @@ import { RecordingFilters, FilterState } from "@/components/profile/RecordingFil
 import { MyContentSection } from "@/components/profile/MyContentSection";
 import { StreakCalendar } from "@/components/profile/StreakCalendar";
 import { WeeklyAchievements } from "@/components/profile/WeeklyAchievements";
+import { InterviewHistory } from "@/components/profile/InterviewHistory";
 import { generateSessionPDF, generateSummaryPDF } from "@/services/pdfExport";
 
 interface PracticeSession {
@@ -679,6 +680,16 @@ const Profile = () => {
             className="md:col-span-2 lg:col-span-3"
           >
             <MyContentSection />
+          </motion.div>
+
+          {/* Interview History Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.72 }}
+            className="md:col-span-2 lg:col-span-3"
+          >
+            <InterviewHistory />
           </motion.div>
 
           {/* Performance Stats */}
