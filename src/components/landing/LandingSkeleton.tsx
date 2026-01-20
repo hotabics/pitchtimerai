@@ -86,8 +86,9 @@ export const BentoGridSkeleton = () => (
 );
 
 // Combined skeleton for all lazy sections
+// Heights are precisely calculated to match actual content and prevent CLS
 export const LandingSectionsSkeleton = () => (
-  <div className="min-h-[2500px]">
+  <div style={{ minHeight: '2800px' }}>
     <PathComparisonSkeleton />
     <ComparisonSkeleton />
     <AICoachSkeleton />
