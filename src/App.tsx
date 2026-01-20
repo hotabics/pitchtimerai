@@ -44,6 +44,8 @@ const SalesSimulatorSummary = lazy(() => import("./pages/SalesSimulatorSummary")
 const ScriptCoach = lazy(() => import("./pages/ScriptCoach"));
 const InterviewSimulator = lazy(() => import("./pages/InterviewSimulator"));
 const InterviewSimulatorSetup = lazy(() => import("./pages/InterviewSimulatorSetup"));
+const InterviewSimulatorLive = lazy(() => import("./pages/InterviewSimulatorLive"));
+const InterviewSimulatorSummary = lazy(() => import("./pages/InterviewSimulatorSummary"));
 
 const queryClient = new QueryClient();
 
@@ -90,6 +92,8 @@ const App = () => (
                   <Route path="/sales-simulator/script-coach" element={<ScriptCoach />} />
                   <Route path="/interview-simulator" element={<InterviewSimulator />} />
                   <Route path="/interview-simulator/setup" element={<InterviewSimulatorSetup />} />
+                  <Route path="/interview-simulator/live/:sessionId" element={<InterviewSimulatorLive />} />
+                  <Route path="/interview-simulator/summary/:sessionId" element={<InterviewSimulatorSummary />} />
                   
                   {/* Protected routes - require authentication */}
                   <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
