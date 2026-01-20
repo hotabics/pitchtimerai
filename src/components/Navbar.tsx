@@ -110,8 +110,8 @@ export const Navbar = () => {
           </span>
         </Link>
 
-        {/* Center: Navigation (Desktop Only) - min-w prevents CLS during render */}
-        <div className="hidden md:flex items-center gap-1 min-w-[400px] justify-center">
+        {/* Center: Navigation (Desktop Only) - fixed dimensions prevent CLS during render */}
+        <div className="hidden md:flex items-center gap-1 min-w-[400px] h-9 justify-center">
           {navLinks.map((link) => (
             <NavLink
               key={link.href}

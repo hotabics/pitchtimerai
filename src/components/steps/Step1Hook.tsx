@@ -43,7 +43,7 @@ export const Step1Hook = ({ onNext, onAutoGenerate, onPracticeOwn, onOpenAICoach
   };
 
   return (
-    <div className="min-h-screen hero-gradient overflow-x-hidden">
+    <div className="hero-gradient overflow-x-hidden" style={{ minHeight: 'calc(100vh + 2800px)' }}>
       {/* Hero Section - New transformed design */}
       <HeroSection 
         onSubmit={handleSubmit}
