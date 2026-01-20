@@ -6,6 +6,7 @@ import { Video, Upload, Camera, FileVideo, Sparkles, ArrowRight, Smartphone, QrC
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MobileCompanionModal } from "./MobileCompanionModal";
+import { SimulatorCTABanners } from "./SimulatorCTABanners";
 
 interface StudioHubProps {
   onSelectLive: () => void;
@@ -295,11 +296,24 @@ export const StudioHub = ({ onSelectLive, onSelectUpload, onMobileVideoReceived,
         </motion.div>
       </div>
 
+      {/* Simulator CTA Banners */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.65 }}
+        className="space-y-4"
+      >
+        <h3 className="text-center text-sm font-medium text-muted-foreground uppercase tracking-wider">
+          More Practice Modes
+        </h3>
+        <SimulatorCTABanners />
+      </motion.div>
+
       {/* Bottom tip */}
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.7 }}
+        transition={{ delay: 0.9 }}
         className="text-center text-sm text-muted-foreground"
       >
         💡 Tip: Use your phone for mobility, or try the Interrogation Room to test your pitch under pressure
