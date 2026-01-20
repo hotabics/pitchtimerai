@@ -1,9 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Mic, MicOff, Volume2, VolumeX, Loader2 } from 'lucide-react';
+import { Mic, MicOff, Volume2, VolumeX, Loader2, Hand } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface VoiceControlsProps {
   isRecording: boolean;
@@ -29,6 +35,8 @@ export const VoiceControls = ({
   onStopSpeaking,
 }: VoiceControlsProps) => {
   const [recordingDuration, setRecordingDuration] = useState(0);
+  const [pushToTalkMode, setPushToTalkMode] = useState(false);
+  const [isHolding, setIsHolding] = useState(false);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -45,25 +53,99 @@ export const VoiceControls = ({
     return `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
   };
 
+  // Push to talk handlers
+  const handlePushStart = useCallback(() => {
+    if (disabled || !voiceEnabled || isTranscribing) return;
+    setIsHolding(true);
+    onStartRecording();
+  }, [disabled, voiceEnabled, isTranscribing, onStartRecording]);
+
+  const handlePushEnd = useCallback(() => {
+    if (!isHolding) return;
+    setIsHolding(false);
+    if (isRecording) {
+      onStopRecording();
+    }
+  }, [isHolding, isRecording, onStopRecording]);
+
+  // Handle keyboard for push-to-talk (Space key)
+  useEffect(() => {
+    if (!pushToTalkMode || !voiceEnabled) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !e.repeat && !isHolding && !disabled && !isTranscribing) {
+        e.preventDefault();
+        handlePushStart();
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && isHolding) {
+        e.preventDefault();
+        handlePushEnd();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [pushToTalkMode, voiceEnabled, isHolding, disabled, isTranscribing, handlePushStart, handlePushEnd]);
+
   return (
     <div className="flex items-center gap-2">
       {/* Voice Mode Toggle */}
-      <Button
-        variant="outline"
-        size="icon"
-        onClick={onToggleVoice}
-        className={cn(
-          'relative',
-          voiceEnabled && 'border-primary text-primary'
-        )}
-        title={voiceEnabled ? 'Disable voice mode' : 'Enable voice mode'}
-      >
-        {voiceEnabled ? (
-          <Volume2 className="w-4 h-4" />
-        ) : (
-          <VolumeX className="w-4 h-4" />
-        )}
-      </Button>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={onToggleVoice}
+              className={cn(
+                'relative',
+                voiceEnabled && 'border-primary text-primary'
+              )}
+            >
+              {voiceEnabled ? (
+                <Volume2 className="w-4 h-4" />
+              ) : (
+                <VolumeX className="w-4 h-4" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {voiceEnabled ? 'Disable voice mode' : 'Enable voice mode'}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
+      {/* Push to Talk Mode Toggle */}
+      {voiceEnabled && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setPushToTalkMode(!pushToTalkMode)}
+                className={cn(
+                  'relative',
+                  pushToTalkMode && 'border-primary text-primary bg-primary/10'
+                )}
+              >
+                <Hand className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {pushToTalkMode ? 'Switch to click mode' : 'Switch to push-to-talk (hold Space)'}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
 
       {/* Recording Button */}
       <AnimatePresence mode="wait">
@@ -91,19 +173,37 @@ export const VoiceControls = ({
             exit={{ scale: 0.8, opacity: 0 }}
             className="flex items-center gap-2"
           >
-            <Button
-              variant="destructive"
-              size="icon"
-              onClick={onStopRecording}
-              className="relative"
-            >
-              <motion.div
-                className="absolute inset-0 rounded-md bg-destructive/30"
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ repeat: Infinity, duration: 1 }}
-              />
-              <MicOff className="w-4 h-4 relative z-10" />
-            </Button>
+            {pushToTalkMode ? (
+              <Button
+                variant="destructive"
+                size="icon"
+                className="relative cursor-grab active:cursor-grabbing"
+                onMouseUp={handlePushEnd}
+                onMouseLeave={handlePushEnd}
+                onTouchEnd={handlePushEnd}
+              >
+                <motion.div
+                  className="absolute inset-0 rounded-md bg-destructive/30"
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ repeat: Infinity, duration: 1 }}
+                />
+                <Mic className="w-4 h-4 relative z-10" />
+              </Button>
+            ) : (
+              <Button
+                variant="destructive"
+                size="icon"
+                onClick={onStopRecording}
+                className="relative"
+              >
+                <motion.div
+                  className="absolute inset-0 rounded-md bg-destructive/30"
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ repeat: Infinity, duration: 1 }}
+                />
+                <MicOff className="w-4 h-4 relative z-10" />
+              </Button>
+            )}
             <Badge variant="destructive" className="font-mono">
               {formatDuration(recordingDuration)}
             </Badge>
@@ -115,16 +215,44 @@ export const VoiceControls = ({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.8, opacity: 0 }}
           >
-            <Button
-              variant={voiceEnabled ? 'default' : 'outline'}
-              size="icon"
-              onClick={onStartRecording}
-              disabled={disabled || !voiceEnabled}
-              className="relative"
-              title={voiceEnabled ? 'Start recording' : 'Enable voice mode first'}
-            >
-              <Mic className="w-4 h-4" />
-            </Button>
+            {pushToTalkMode ? (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={voiceEnabled ? 'default' : 'outline'}
+                      size="icon"
+                      disabled={disabled || !voiceEnabled}
+                      className="relative select-none"
+                      onMouseDown={handlePushStart}
+                      onTouchStart={handlePushStart}
+                    >
+                      <Mic className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Hold to record (or press Space)</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            ) : (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={voiceEnabled ? 'default' : 'outline'}
+                      size="icon"
+                      onClick={onStartRecording}
+                      disabled={disabled || !voiceEnabled}
+                      className="relative"
+                    >
+                      <Mic className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {voiceEnabled ? 'Click to start recording' : 'Enable voice mode first'}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
