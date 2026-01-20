@@ -9,12 +9,12 @@ import {
   ArrowLeft, ArrowRight, RotateCcw, Trophy, 
   Target, TrendingUp, MessageSquare, Lightbulb,
   CheckCircle2, XCircle, Clock, Briefcase,
-  ChevronDown, ChevronUp
+  ChevronDown, ChevronUp, Download
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
+import { generateInterviewPDF } from "@/services/interviewPdfExport";
 interface SimulationSummary {
   id: string;
   job_title: string;
@@ -388,6 +388,28 @@ const InterviewSimulatorSummary = () => {
           transition={{ delay: 0.4 }}
           className="flex flex-col sm:flex-row gap-4 justify-center"
         >
+          <Button
+            variant="outline"
+            onClick={() => {
+              generateInterviewPDF({
+                job_title: summary.job_title,
+                company_name: summary.company_name,
+                duration_seconds: summary.duration_seconds,
+                hireability_score: summary.hireability_score,
+                category_scores: summary.category_scores,
+                strategic_reframes: summary.strategic_reframes,
+                verdict_summary: summary.verdict_summary,
+                conversion_likelihood: summary.conversion_likelihood,
+                turns: turns,
+              });
+              toast.success("PDF downloaded!");
+            }}
+            className="gap-2 border-interview-border text-interview-muted hover:text-interview-text"
+          >
+            <Download className="w-4 h-4" />
+            Download Transcript
+          </Button>
+          
           <Button
             variant="outline"
             onClick={() => navigate("/interview-simulator/setup")}
