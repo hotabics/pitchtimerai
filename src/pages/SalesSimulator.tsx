@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Phone, History, Sparkles, Target, Brain, BarChart3 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { SimulatorLoginBanner } from "@/components/shared/SimulatorLoginBanner";
 
 const SalesSimulator = () => {
   const navigate = useNavigate();
@@ -32,6 +33,9 @@ const SalesSimulator = () => {
   return (
     <div className="min-h-screen bg-background pt-20 pb-12 px-4">
       <div className="max-w-4xl mx-auto">
+        {/* Login Banner for anonymous users */}
+        <SimulatorLoginBanner context="sales" />
+        
         {/* Hero Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

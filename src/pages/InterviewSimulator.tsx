@@ -7,6 +7,7 @@ import {
   Volume2, Zap, Award, Users
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { SimulatorLoginBanner } from "@/components/shared/SimulatorLoginBanner";
 
 const InterviewSimulator = () => {
   const navigate = useNavigate();
@@ -36,6 +37,11 @@ const InterviewSimulator = () => {
 
   return (
     <div className="min-h-screen bg-interview-bg pt-20 pb-12">
+      {/* Login Banner for anonymous users */}
+      <div className="max-w-5xl mx-auto px-4 pt-4">
+        <SimulatorLoginBanner context="interview" />
+      </div>
+      
       {/* Hero Section - Neo-Noir Style */}
       <div className="relative overflow-hidden">
         {/* Cinematic gradient overlays */}
