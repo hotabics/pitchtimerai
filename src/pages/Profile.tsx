@@ -385,7 +385,7 @@ const Profile = () => {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <Button
               variant="outline"
               className="h-auto py-4 px-4 flex items-center justify-between group hover:border-primary/50 hover:bg-primary/5"
@@ -418,6 +418,23 @@ const Profile = () => {
                 </div>
               </div>
               <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+            </Button>
+
+            <Button
+              variant="outline"
+              className="h-auto py-4 px-4 flex items-center justify-between group hover:border-interview-mustard/50 hover:bg-interview-mustard/5"
+              onClick={() => navigate('/interview-simulator')}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-interview-mustard/10 flex items-center justify-center">
+                  <Target className="w-5 h-5 text-interview-mustard" />
+                </div>
+                <div className="text-left">
+                  <div className="font-medium">Interview Sim</div>
+                  <div className="text-xs text-muted-foreground">Practice job interviews</div>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-interview-mustard transition-colors" />
             </Button>
 
             <Button
